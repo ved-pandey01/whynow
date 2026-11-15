@@ -1,14 +1,16 @@
+# Exact versions are pinned so everyone gets the same working setup.
+
 # The web page
-streamlit
+streamlit==1.67.0
 # Calling APIs (Companies House)
-requests
+requests==2.34.2
 # Reading API keys from the .env file
-python-dotenv
+python-dotenv==1.2.4
 # Gemini AI
-google-genai
+google-genai==3.3.0
 # News and signals search
-tavily-python
+tavily-python==0.8.5
 # Checking the AI's answer is in the right shape
-pydantic
+pydantic==2.14.3
 # Automated tests
-pytest
+pytest==9.2.0
