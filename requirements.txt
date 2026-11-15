@@ -1,0 +1,14 @@
+# The web page
+streamlit
+# Calling APIs (Companies House)
+requests
+# Reading API keys from the .env file
+python-dotenv
+# Gemini AI
+google-genai
+# News and signals search
+tavily-python
+# Checking the AI's answer is in the right shape
+pydantic
+# Automated tests
+pytest

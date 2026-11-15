@@ -1,0 +1,14 @@
+# Secrets — API keys live here and must NEVER be uploaded
+.env
+.streamlit/secrets.toml
+
+# Python's private copy of installed packages (rebuilt from requirements.txt)
+.venv/
+
+# Files Python creates automatically
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Mac system files
+.DS_Store
