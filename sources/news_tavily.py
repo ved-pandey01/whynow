@@ -173,37 +173,70 @@ def parse_company_card(text):
     }
 
 
-def card_matches(card, legal_name=None, website=None):
+def card_match_reason(card, legal_name=None, website=None, registered_address=None, card_name=None):
     """
-    Is this card about OUR company? It must match the Companies House legal name
-    or the website we were given. Otherwise it could be a different company with a similar name.
+    Is this card about OUR company? Returns how it was confirmed, or None if it can't be.
+    Any ONE of these confirms it:
+      1. its legal name matches the Companies House name exactly
+      2. its website matches the website we were given
+      3. its name is in the Companies House name AND its headquarters city is in the
+         Companies House registered address (e.g. 'Sage' + Newcastle upon Tyne for THE SAGE GROUP PLC)
+    Otherwise it could be a different company with a similar name, so we don't use it.
     """
     if legal_name and card.get("legal_name") and is_exact_match(card["legal_name"], legal_name):
-        return True
+        return "legal name matches Companies House"
     if website and card.get("website") and domain_of(card["website"]) == domain_of(website):
-        return True
-    return False
+        return "website matches"
+    city = (card.get("headquarters") or "").split(",")[0].strip()
+    if (card_name and legal_name and registered_address and city
+            and mentions(card_name, legal_name) and city.lower() in registered_address.lower()):
+        return f"name and head office city ({city}) match Companies House"
+    return None
 
 
-def get_company_card(brand, legal_name=None, website=None):
+def card_matches(card, legal_name=None, website=None, registered_address=None, card_name=None):
+    return card_match_reason(card, legal_name, website, registered_address, card_name) is not None
+
+
+def _card_searches(brand, website):
+    """
+    Searches to try, in order. If the brand has several words ('Sage Group'),
+    also try the first word ('Sage'): the card is often listed under the short name.
+    """
+    first = f'"{brand}" {domain_of(website)}' if website else f'"{brand}" company'
+    searches = [first]
+    short = brand.split()[0] if len(brand.split()) > 1 else None
+    if short:
+        searches.append(f'"{short}" {domain_of(website)}' if website else f'"{short}" company')
+    return searches
+
+
+def get_company_card(brand, legal_name=None, website=None, registered_address=None):
     """
     Find and read the company's Tavily profile page. Returns None if not found
     or if it can't be confirmed as the same company (better "not found" than wrong).
+    A second, shorter search is only run if the first finds no matching card.
     """
-    query = f'"{brand}" {domain_of(website)}' if website else f'"{brand}" company'
-    for result in _search(query, max_results=5):
-        if not _is_company_card(result.get("url")):
-            continue
-        # The full page has more detail (headcount, funding) but drops link text like the website.
-        # The search snippet keeps the website. So read both and fill gaps from the snippet.
-        card = parse_company_card(_extract_text(result["url"]) or "")
-        snippet_card = parse_company_card(result.get("content", ""))
-        for key, value in snippet_card.items():
-            if card.get(key) is None:
-                card[key] = value
-        if card_matches(card, legal_name, website):
-            card["source"] = result["url"]
-            return card
+    checked = set()
+    for query in _card_searches(brand, website):
+        for result in _search(query, max_results=5):
+            url = result.get("url")
+            if not _is_company_card(url) or url in checked:
+                continue
+            checked.add(url)
+            # The full page has more detail (headcount, funding) but drops link text like the website.
+            # The search snippet keeps the website. So read both and fill gaps from the snippet.
+            card = parse_company_card(_extract_text(url) or "")
+            snippet_card = parse_company_card(result.get("content", ""))
+            for key, value in snippet_card.items():
+                if card.get(key) is None:
+                    card[key] = value
+            reason = card_match_reason(card, legal_name, website, registered_address,
+                                       card_name=result.get("title"))
+            if reason:
+                card["source"] = url
+                card["match_reason"] = reason
+                return card
     return None
 
 

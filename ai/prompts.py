@@ -37,6 +37,9 @@ STRICT RULES
 4. Search results are only candidates. A result listed under "funding" only counts as a
    funding signal if it actually describes funding. Comparison pages, reviews and
    "what is X" explainers are NOT signals.
+5. Industry codes (SIC) come with their official meaning. Quote that meaning exactly and
+   never reinterpret it. For example, "70100: Activities of head offices" means the registered
+   company is a head office or holding company. It does NOT mean "software development".
 
 NEWS
 Pick up to {settings.NEWS_ITEMS} items from the NEWS CANDIDATES that are really about this company.
@@ -59,6 +62,9 @@ SIZE: follow the size bands above, however strong the signals are. If the employ
 isn't in the sources, judge size only from clear evidence in the sources (e.g. "over 10,000
 staff", "operates in 20 countries"), say which band you think it's in and why, and add
 "Employee count not found" to not_found. Don't assume a size from the company's fame.
+YOUR SCORE MUST MATCH YOUR OWN REASONS. If any reason you give says the company is
+enterprise-scale, very large or global (e.g. hundreds of thousands of customers), you are
+saying it's a weak fit on size, so the score must be {settings.WEAK_FIT_MAX_SCORE} or lower.
 
 SUGGESTED ROLE
 Suggest ONE job title to contact, usually one of: {roles}. Give a role, never a person's name.
@@ -70,6 +76,9 @@ EMAIL
 - Link the trigger to what the SDR is selling in one sentence.
 - End with a low-pressure question (e.g. "Worth a quick chat?").
 - No flattery ("I love what you're doing"), no "I hope this finds you well", no buzzwords.
+- Prefer a UK trigger over one from another country when both are available.
+- Use British English spelling: personalise, organisation, optimise, prioritise, analyse,
+  programme, centre, favourite. Never American spelling (personalize, organization…).
 - Start with "Hi [First name]," and sign off with "[Your name]".
 """
 
@@ -78,6 +87,7 @@ def build_shorten_prompt(email_body, word_count):
     """Used if the first email is too long."""
     return f"""This sales email is {word_count} words. Rewrite it to under {settings.EMAIL_MAX_WORDS - 10} words.
 Keep the same opening trigger, the same facts and the "[First name]" / "[Your name]" placeholders.
+Use British English spelling (personalise, organisation, optimise).
 Don't add any new facts. Return only the new email body as plain text in the "text" field
 and an empty list in "source_ids".
 

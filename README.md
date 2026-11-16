@@ -23,9 +23,10 @@ Python · Streamlit · Companies House API · Tavily · Gemini · Pydantic · py
 - **Companies House lookup** ([sources/uk_companies_house.py](sources/uk_companies_house.py)): finds UK companies by name or website, ranks exact name matches first, and fetches status, industry codes, founded date, address and recently appointed directors. Every fact links to its public Companies House page. Dissolved, insolvent or dormant companies are flagged as "not worth contacting" by code, not by the AI.
   - Try it: `.venv/bin/python -m sources.uk_companies_house "Cognism"`
   - Tip: typing the website (e.g. `paddle.com`) finds the right company more reliably than a short name.
+  - Industry (SIC) codes come with their **official meanings** from Companies House, stored in [data/sic_codes.csv](data/sic_codes.csv) (all 731 codes). The AI never has to guess what a code means.
 
 - **News, signals and company card** ([sources/news_tavily.py](sources/news_tavily.py)), using Tavily:
-  - **Company card:** headcount and its yearly trend, funding rounds, B2B/SaaS, website. It's only used if its legal name or website matches the company we found, so it never falls back to a lookalike company.
+  - **Company card:** headcount and its yearly trend, funding rounds, B2B/SaaS, website. It's only used if one of these confirms it's the company we found: its legal name matches, its website matches, or its name *and* head office city both match Companies House. Each report says how its card was confirmed. If the full name finds no card (e.g. "Sage Group"), one more search tries the short name ("Sage").
   - **News:** recent articles with the company in the headline.
   - **"Why now" signals:** targeted searches for sales hiring, funding, new sales leaders, expansion and layoffs.
   - **Website:** homepage text, so the AI knows what the company actually does.
@@ -34,7 +35,12 @@ Python · Streamlit · Companies House API · Tavily · Gemini · Pydantic · py
 
 - **AI report** ([report.py](report.py), [ai/](ai/), [models.py](models.py)):
   - Every fetched fact gets a source ID (S1, S2…). Gemini sees **only** those sources and must cite them.
-  - **Code checks the AI's work:** claims citing sources we didn't fetch are removed, news picks must be real news items, and the email must be under 120 words and open with a cited trigger. Every change is listed under "Code checks".
+  - **Code checks the AI's work:**
+    - claims citing sources we didn't fetch are removed
+    - news picks must be real news items
+    - the email must be under 120 words and open with a cited trigger
+    - common American spellings in the email are corrected to British (e.g. personalize → personalise)
+    - every change is listed under "Code checks"
   - **Hard rules in code, not AI:**
     - dissolved, insolvent or dormant companies score 1 with no AI call
     - company size bands, using headcount from the company profile:

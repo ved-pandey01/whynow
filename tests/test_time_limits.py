@@ -53,7 +53,8 @@ def test_signals_stop_when_out_of_time(monkeypatch):
 
 # --- research_company -------------------------------------------------------
 PROFILE = {"name": "ACME LTD", "company_number": "123", "status": "active", "closed_on": None,
-           "founded": "2015-01-01", "address": "Leeds", "sic_codes": [], "last_accounts_type": "full",
+           "founded": "2015-01-01", "address": "Leeds", "sic_codes": [], "sic_descriptions": [],
+           "last_accounts_type": "full",
            "company_type": "ltd", "source": "https://ch/acme", "not_worth_contacting": False}
 
 

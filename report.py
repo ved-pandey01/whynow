@@ -13,6 +13,7 @@ Try it (about 9 Tavily credits + 1–2 Gemini requests):
     .venv/bin/python -m report "Cognism"
 """
 
+import re
 import sys
 import time
 from datetime import date
@@ -105,8 +106,8 @@ def research_company(company_number, typed):
     warnings = []
 
     profile = ch.get_company_profile(company_number)
-    sic = ", ".join(f"{c} ({settings.SOFTWARE_SIC_CODES.get(c, 'see Companies House')})"
-                    for c in profile["sic_codes"]) or None
+    # Official SIC meanings from Companies House, so the AI never has to guess what a code means
+    sic = "; ".join(profile["sic_descriptions"]) or None
     sources.add("companies_house", f"Companies House: {profile['name']}", profile["source"], _lines([
         ("Legal name", profile["name"]), ("Company number", profile["company_number"]),
         ("Status", profile["status"]), ("Closed on", profile["closed_on"]),
@@ -152,7 +153,7 @@ def research_company(company_number, typed):
         # Order matters: the card gives the website and topic word that make later searches accurate.
         # The website comes before news and signals because the AI needs it to spot lookalike results.
         card = run_step("Company profile", lambda: tavily.get_company_card(
-            brand, legal_name=profile["name"], website=website))
+            brand, legal_name=profile["name"], website=website, registered_address=profile["address"]))
         if card:
             research["card"] = card
             website = website or card["website"]
@@ -193,6 +194,7 @@ def _add_card_source(sources, brand, card):
         ("Funding rounds", card["funding_rounds"]),
         ("Total raised", ", ".join(card["total_raised"] or []) or None),
         ("Description", card["description"]),
+        ("Confirmed as the same company because", card.get("match_reason")),
     ]))
 
 
@@ -344,6 +346,36 @@ def word_count(text):
     return len((text or "").split())
 
 
+# Common American → British spellings in sales emails.
+# Each entry: (American word start, British word start, allowed endings).
+# Endings are listed so 'color' fixes 'colors' but never touches 'Colorado'.
+_IZE = r"(?:e|es|ed|ing|ation|ations|er|ers)"
+US_TO_UK = [
+    ("personaliz", "personalis", _IZE), ("organiz", "organis", _IZE), ("optimiz", "optimis", _IZE),
+    ("prioritiz", "prioritis", _IZE), ("realiz", "realis", _IZE), ("recogniz", "recognis", _IZE),
+    ("maximiz", "maximis", _IZE), ("minimiz", "minimis", _IZE), ("customiz", "customis", _IZE),
+    ("standardiz", "standardis", _IZE), ("centraliz", "centralis", _IZE), ("utiliz", "utilis", _IZE),
+    ("analyz", "analys", r"(?:e|es|ed|ing|er|ers)"),
+    ("favorite", "favourite", r"(?:s)?"), ("behavior", "behaviour", r"(?:s|al)?"),
+    ("color", "colour", r"(?:s|ed|ful)?"), ("center", "centre", r"(?:s|d)?"),
+    ("catalog", "catalogue", r"(?:s)?"),
+]
+
+
+def to_british(text):
+    """Swap common American spellings for British ones, keeping capitals. Returns (text, changed_words)."""
+    changed = []
+    for us, uk, endings in US_TO_UK:
+        def swap(match, us=us, uk=uk):
+            word = match.group(0)
+            new = uk + word[len(us):]
+            new = new[0].upper() + new[1:] if word[0].isupper() else new
+            changed.append(f"{word} → {new}")
+            return new
+        text = re.sub(rf"\b{us}{endings}\b", swap, text or "", flags=re.IGNORECASE)
+    return text, changed
+
+
 def _check_email(draft, valid, ai, checks, timings=None):
     """Make sure the email is short enough and opens with a trigger we can verify."""
     body = draft.email_body.strip()
@@ -359,13 +391,19 @@ def _check_email(draft, valid, ai, checks, timings=None):
             checks.append(f"Couldn't shorten the email: {e}")
         if timings is not None:
             timings["Email shortening"] = round(time.monotonic() - shorten_start, 1)
+    # British spelling, enforced by code as well as asked for in the prompt
+    body, fixed_body = to_british(body)
+    subject, fixed_subject = to_british(draft.email_subject.strip())
+    if fixed_body or fixed_subject:
+        checks.append("British spelling: " + ", ".join(fixed_subject + fixed_body))
+
     warnings = []
     if words > settings.EMAIL_MAX_WORDS:
         warnings.append(f"Email is {words} words, over the {settings.EMAIL_MAX_WORDS}-word limit. Trim before sending.")
     triggers = [i for i in draft.email_trigger_source_ids if i in valid]
     if not triggers:
         warnings.append("The email's opening trigger couldn't be matched to a source. Check it before sending.")
-    return {"subject": draft.email_subject.strip(), "body": body, "word_count": words,
+    return {"subject": subject, "body": body, "word_count": words,
             "trigger_sources": triggers, "warnings": warnings}
 
 

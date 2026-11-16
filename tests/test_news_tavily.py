@@ -130,6 +130,54 @@ def test_card_matches_by_legal_name_or_website():
     assert not nt.card_matches(card)  # nothing to check against → don't trust it
 
 
+# A shortened copy of Sage's real card: no legal name, blank website on the full page
+SAGE_CARD = """# Sage
+Website:
+Headquarters: Newcastle upon Tyne, United Kingdom
+Industry: Software Development
+Headcount
+Now: 15,886 · +1,163 yearly (7.9%) · +270 quarterly
+"""
+SAGE_ADDRESS = "1 Example Road, Newcastle Upon Tyne, NE1 1AA"  # pretend address in the right city
+
+
+def test_card_confirmed_by_name_and_head_office_city():
+    card = nt.parse_company_card(SAGE_CARD)
+    reason = nt.card_match_reason(card, legal_name="THE SAGE GROUP PLC.",
+                                  registered_address=SAGE_ADDRESS, card_name="Sage")
+    assert reason == "name and head office city (Newcastle upon Tyne) match Companies House"
+
+
+@pytest.mark.parametrize("card_name, address", [
+    ("Sage", "1 High Street, Leeds, LS1 1AA"),        # right name, wrong city
+    ("Sagent", SAGE_ADDRESS),                          # right city, different name
+])
+def test_card_rejected_if_name_or_city_does_not_match(card_name, address):
+    card = nt.parse_company_card(SAGE_CARD)
+    assert not nt.card_matches(card, legal_name="THE SAGE GROUP PLC.",
+                               registered_address=address, card_name=card_name)
+
+
+def test_short_name_search_is_tried_when_first_search_misses(monkeypatch):
+    """Real problem: '"Sage Group" company' found the wrong card; '"Sage" company' finds Sage."""
+    searches = []
+
+    def fake_search(query, **options):
+        searches.append(query)
+        if query == '"Sage" company':
+            return [{"url": "https://tavily.com/knowledge/company/sage", "title": "Sage",
+                     "content": "Website: www.sage.com"}]
+        return [{"url": "https://tavily.com/knowledge/company/other", "title": "SAGE Group", "content": ""}]
+
+    monkeypatch.setattr(nt, "_search", fake_search)
+    monkeypatch.setattr(nt, "_extract_text",
+                        lambda url: SAGE_CARD if url.endswith("/sage") else "# Other\nHeadquarters: Paris, France")
+    card = nt.get_company_card("Sage Group", legal_name="THE SAGE GROUP PLC.", registered_address=SAGE_ADDRESS)
+    assert searches == ['"Sage Group" company', '"Sage" company']
+    assert card["headcount"] == 15886
+    assert card["website"] == "www.sage.com"  # filled in from the search snippet
+
+
 def test_wrong_company_card_is_rejected(monkeypatch):
     """Like the Paddle canoe-hire mix-up: a card for a different company must not be used."""
     use_fake(monkeypatch,

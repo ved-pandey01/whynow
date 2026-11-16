@@ -13,9 +13,11 @@ Test it from the terminal:
     .venv/bin/python -m sources.uk_companies_house "Cognism"
 """
 
+import csv
 import os
 import sys
 from datetime import date, timedelta
+from functools import lru_cache
 from pathlib import Path
 
 import requests
@@ -30,8 +32,23 @@ API_BASE = "https://api.company-information.service.gov.uk"
 PUBLIC_SITE = "https://find-and-update.company-information.service.gov.uk"
 
 
+SIC_CODES_FILE = Path(__file__).resolve().parent.parent / "data" / "sic_codes.csv"
+
+
 class CompaniesHouseError(Exception):
     """A problem with Companies House, with a friendly message to show the user."""
+
+
+@lru_cache(maxsize=1)
+def _sic_table():
+    """Load the official SIC code list once (from resources.companieshouse.gov.uk/sic/)."""
+    with open(SIC_CODES_FILE, encoding="utf-8") as f:
+        return {row["code"]: row["description"] for row in csv.DictReader(f)}
+
+
+def sic_description(code):
+    """The official meaning of a SIC code, e.g. '70100' → 'Activities of head offices'. None if unknown."""
+    return _sic_table().get(str(code))
 
 
 # ---------------------------------------------------------------------------
@@ -196,6 +213,8 @@ def get_company_profile(company_number):
         "closed_on": data.get("date_of_cessation"),
         "address": _format_address(data.get("registered_office_address")),
         "sic_codes": sic_codes,
+        "sic_descriptions": [f"{c}: {sic_description(c) or 'description not in the official list'}"
+                             for c in sic_codes],
         "is_software_sic": any(code in settings.SOFTWARE_SIC_CODES for code in sic_codes),
         "last_accounts_type": last_accounts_type,
         "has_insolvency_history": data.get("has_insolvency_history", False),

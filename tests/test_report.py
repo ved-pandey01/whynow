@@ -228,6 +228,29 @@ def test_email_without_a_real_trigger_gets_a_warning():
     assert any("couldn't be matched to a source" in w for w in r["email"]["warnings"])
 
 
+def test_email_spelling_is_made_british():
+    """Real problem: a Sage email said 'personalization'."""
+    r, _ = build(make_research(), make_draft(
+        email_subject="Personalized outreach",
+        email_body="Hi [First name], manual research can slow down personalization. [Your name]"))
+    assert r["email"]["subject"] == "Personalised outreach"
+    assert "personalisation" in r["email"]["body"]
+    assert any(c.startswith("British spelling") for c in r["checks"])
+
+
+@pytest.mark.parametrize("us, uk", [
+    ("optimize", "optimise"), ("Organizations", "Organisations"), ("analyzing", "analysing"),
+    ("prioritized", "prioritised"), ("favorite", "favourite"), ("colors", "colours"),
+])
+def test_to_british(us, uk):
+    assert report.to_british(us)[0] == uk
+
+
+@pytest.mark.parametrize("word", ["Colorado", "size", "Centerline", "organic", "already British: personalise"])
+def test_to_british_leaves_other_words_alone(word):
+    assert report.to_british(word) == (word, [])
+
+
 # --- Helpers ----------------------------------------------------------------
 def test_source_list_does_not_repeat_the_same_page():
     s = report.SourceList()

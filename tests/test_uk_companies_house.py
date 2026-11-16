@@ -160,6 +160,31 @@ def test_not_worth_contacting(status, accounts_type, expected):
     assert ch.is_not_worth_contacting(status, accounts_type) is expected
 
 
+@pytest.mark.parametrize("code, meaning", [
+    ("70100", "Activities of head offices"),          # Sage: NOT software development
+    ("62012", "Business and domestic software development"),
+    ("99999", "Dormant Company"),
+])
+def test_sic_codes_use_official_meanings(code, meaning):
+    assert ch.sic_description(code) == meaning
+
+
+def test_unknown_sic_code_is_said_plainly():
+    assert ch.sic_description("00000") is None
+
+
+def test_official_sic_list_is_complete():
+    assert len(ch._sic_table()) == 731
+
+
+def test_profile_includes_sic_meanings(monkeypatch):
+    fake_reply(monkeypatch, json_data={"company_name": "THE SAGE GROUP PLC.", "company_number": "02231246",
+                                       "company_status": "active", "sic_codes": ["70100", "00000"]})
+    profile = ch.get_company_profile("02231246")
+    assert profile["sic_descriptions"] == ["70100: Activities of head offices",
+                                           "00000: description not in the official list"]
+
+
 def test_dissolved_profile_is_flagged(monkeypatch):
     fake_reply(monkeypatch, json_data={
         "company_name": "OLD CO LTD", "company_number": "01234567",
