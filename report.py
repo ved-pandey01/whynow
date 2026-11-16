@@ -96,7 +96,11 @@ def looks_like_website(typed):
 
 
 def research_company(company_number, typed):
-    """Fetch everything we know about one company. Never crashes on a Tavily problem."""
+    """
+    Fetch everything we know about one company. Never crashes on a Tavily problem.
+    Stops starting new searches after RESEARCH_TIME_BUDGET_SECONDS, and records how long each part took.
+    """
+    started = time.monotonic()
     sources = SourceList()
     warnings = []
 
@@ -111,7 +115,7 @@ def research_company(company_number, typed):
     ]))
 
     research = {"profile": profile, "card": None, "website": None,
-                "sources": sources, "warnings": warnings, "typed": typed}
+                "sources": sources, "warnings": warnings, "typed": typed, "timings": {}}
     if profile["not_worth_contacting"]:
         return research  # no point spending credits on a closed company
 
@@ -121,41 +125,75 @@ def research_company(company_number, typed):
                     "\n".join(f"{d['name']} ({d['role']}, {d['occupation'] or 'occupation not listed'}), "
                               f"appointed {d['appointed_on']}" for d in directors))
 
+    research["timings"]["Companies House"] = round(time.monotonic() - started, 1)
     brand = brand_from(typed)
     website = typed if looks_like_website(typed) else None
+
+    def out_of_time():
+        return time.monotonic() - started > settings.RESEARCH_TIME_BUDGET_SECONDS
+
+    def run_step(label, fn):
+        """Run one Tavily step, timing it. A slow step is skipped; a key/credit problem stops all."""
+        if out_of_time():
+            warnings.append(f"{label} skipped to keep the report under a minute.")
+            return None
+        step_start = time.monotonic()
+        try:
+            return fn()
+        except tavily.NewsError as e:
+            if not e.temporary:
+                raise
+            warnings.append(f"{label} skipped: {e}")
+            return None
+        finally:
+            research["timings"][label] = round(time.monotonic() - step_start, 1)
+
     try:
-        card = tavily.get_company_card(brand, legal_name=profile["name"], website=website)
+        # Order matters: the card gives the website and topic word that make later searches accurate.
+        # The website comes before news and signals because the AI needs it to spot lookalike results.
+        card = run_step("Company profile", lambda: tavily.get_company_card(
+            brand, legal_name=profile["name"], website=website))
         if card:
             research["card"] = card
             website = website or card["website"]
-            sources.add("company_card", f"Company profile: {brand}", card["source"], _lines([
-                ("Website", card["website"]), ("Headquarters", card["headquarters"]),
-                ("Industry", card["industry"]),
-                ("Business areas", ", ".join(card["business_areas"] or []) or None),
-                ("Business model", card["business_model"]), ("SaaS", card["saas"]),
-                ("Founded", card["founded"]), ("Employees (headcount)", card["headcount"]),
-                ("Headcount change", card["headcount_yearly_change"]),
-                ("Funding rounds", card["funding_rounds"]),
-                ("Total raised", ", ".join(card["total_raised"] or []) or None),
-                ("Description", card["description"]),
-            ]))
-
+            _add_card_source(sources, brand, card)
         topic = tavily.topic_hint(card)
-        for item in tavily.get_recent_news(brand, website, topic):
-            sources.add("news", item["title"], item["source"], item["snippet"], item["date"])
-        for signal_type, items in tavily.get_signals(brand, website, topic).items():
-            for item in items:
-                sources.add("signal", f"[{signal_type}] {item['title']}", item["source"],
-                            item["snippet"], item["date"])
 
-        web = tavily.get_website_text(website)
+        web = run_step("Website", lambda: tavily.get_website_text(website))
         if web:
             research["website"] = web["source"]
             sources.add("website", f"{brand} website", web["source"], web["text"])
+
+        for item in run_step("News", lambda: tavily.get_recent_news(brand, website, topic)) or []:
+            sources.add("news", item["title"], item["source"], item["snippet"], item["date"])
+
+        signals = run_step("Signals", lambda: tavily.get_signals(
+            brand, website, topic, out_of_time=out_of_time)) or {}
+        skipped = [t for t in tavily.SIGNAL_SEARCHES if t not in signals]
+        if signals and skipped:
+            warnings.append(f"Signal searches skipped to keep the report under a minute: {', '.join(skipped)}")
+        for signal_type, items in signals.items():
+            for item in items:
+                sources.add("signal", f"[{signal_type}] {item['title']}", item["source"],
+                            item["snippet"], item["date"])
     except tavily.NewsError as e:
         warnings.append(f"News and signals unavailable: {e}")
 
     return research
+
+
+def _add_card_source(sources, brand, card):
+    sources.add("company_card", f"Company profile: {brand}", card["source"], _lines([
+        ("Website", card["website"]), ("Headquarters", card["headquarters"]),
+        ("Industry", card["industry"]),
+        ("Business areas", ", ".join(card["business_areas"] or []) or None),
+        ("Business model", card["business_model"]), ("SaaS", card["saas"]),
+        ("Founded", card["founded"]), ("Employees (headcount)", card["headcount"]),
+        ("Headcount change", card["headcount_yearly_change"]),
+        ("Funding rounds", card["funding_rounds"]),
+        ("Total raised", ", ".join(card["total_raised"] or []) or None),
+        ("Description", card["description"]),
+    ]))
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +211,10 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
 
     prompt = build_report_prompt(profile["name"], offer, sources.as_prompt_text(),
                                  (today or date.today()).isoformat())
+    ai_start = time.monotonic()
     draft = ai(prompt, AIReport)
+    timings = dict(research.get("timings", {}))
+    timings["AI report"] = round(time.monotonic() - ai_start, 1)
 
     checks = []      # notes on what code changed, shown for transparency
     valid = sources.ids()
@@ -212,7 +253,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
     score = max(1, min(10, draft.fit_score))
     score, fit_reasons = _apply_size_rule(score, fit_reasons, research, checks)
 
-    email = _check_email(draft, valid, ai, checks)
+    email = _check_email(draft, valid, ai, checks, timings)
     if score <= LOW_FIT_SCORE:
         email["warnings"].insert(0, "Low fit: we don't recommend contacting this company.")
 
@@ -246,59 +287,78 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
         "all_sources": sources.items,
         "checks": checks,
         "warnings": research["warnings"],
+        "timings": timings,
         "seconds": round(time.time() - started, 1),
     }
 
 
-PLC_MAX_SCORE = 4  # a PLC with no headcount data can't score above this
 LOW_FIT_SCORE = 3  # at or below this, the email gets a "don't recommend contacting" warning
+
+
+def size_band(headcount):
+    """'best', 'good' or 'weak' for a number of employees (see the bands in settings.py)."""
+    if settings.BEST_FIT_MIN_EMPLOYEES <= headcount <= settings.BEST_FIT_MAX_EMPLOYEES:
+        return "best"
+    if settings.GOOD_FIT_MIN_EMPLOYEES <= headcount <= settings.GOOD_FIT_MAX_EMPLOYEES:
+        return "good"
+    return "weak"
 
 
 def _apply_size_rule(score, reasons, research, checks):
     """
-    Too small or too big for the ICP → score can't be above 3. Decided by code.
-    If we have no headcount but Companies House says it's a PLC (public limited company),
-    cap at 4: PLCs are usually far bigger than 50–500-staff scale-ups. A rule of thumb, so we say so.
+    Size bands decided by code, not the AI:
+      best fit (200–2,000)              → no change
+      good fit (50–199 or 2,001–10,000) → score at most 8, with the reason shown
+      weak fit (under 50 or over 10,000) → score at most 3, with the reason shown
+    If headcount wasn't found, there's no rule: the AI judges size from the sources.
     """
     card = research["card"]
     headcount = card and card.get("headcount")
     if not headcount:
-        if research["profile"].get("company_type") == "plc" and score > PLC_MAX_SCORE:
-            ch_id = research["sources"].ids("companies_house").copy().pop()
-            checks.append(f"Score capped at {PLC_MAX_SCORE}: a PLC with no headcount data "
-                          "is usually larger than the ICP")
-            score = PLC_MAX_SCORE
-            reasons = [{"text": "Registered as a public limited company (PLC), which is usually "
-                                "much larger than the 50–500-employee target. Headcount not found.",
-                        "sources": [ch_id]}] + reasons
         return score, reasons
-    if headcount < settings.TOO_SMALL_BELOW or headcount > settings.TOO_BIG_ABOVE:
-        card_id = research["sources"]._by_url[card["source"]]
-        if score > 3:
-            checks.append(f"Score capped at 3: {headcount} employees is outside the ICP size range")
-            score = 3
-        reasons = [{"text": f"About {headcount:,} employees, outside the ideal "
-                            f"{settings.ICP_MIN_EMPLOYEES}–{settings.ICP_MAX_EMPLOYEES} range.",
-                    "sources": [card_id]}] + reasons
-    return score, reasons
+
+    band = size_band(headcount)
+    if band == "best":
+        return score, reasons
+
+    best_range = f"{settings.BEST_FIT_MIN_EMPLOYEES:,}–{settings.BEST_FIT_MAX_EMPLOYEES:,}"
+    if band == "good":
+        cap = settings.GOOD_FIT_MAX_SCORE
+        side = "smaller" if headcount < settings.BEST_FIT_MIN_EMPLOYEES else "larger"
+        reason = (f"About {headcount:,} employees: a good fit, but {side} than the best-fit "
+                  f"{best_range} range, so the score is slightly lower.")
+    else:
+        cap = settings.WEAK_FIT_MAX_SCORE
+        side = (f"under {settings.GOOD_FIT_MIN_EMPLOYEES:,}" if headcount < settings.GOOD_FIT_MIN_EMPLOYEES
+                else f"over {settings.GOOD_FIT_MAX_EMPLOYEES:,}")
+        reason = f"About {headcount:,} employees ({side}): a weak fit on size."
+
+    if score > cap:
+        checks.append(f"Score capped at {cap}: {headcount:,} employees is a {band} fit on size")
+        score = cap
+    card_id = research["sources"]._by_url[card["source"]]
+    return score, [{"text": reason, "sources": [card_id]}] + reasons
 
 
 def word_count(text):
     return len((text or "").split())
 
 
-def _check_email(draft, valid, ai, checks):
+def _check_email(draft, valid, ai, checks, timings=None):
     """Make sure the email is short enough and opens with a trigger we can verify."""
     body = draft.email_body.strip()
     words = word_count(body)
     if words > settings.EMAIL_MAX_WORDS:
+        shorten_start = time.monotonic()
         try:
             shorter = ai(build_shorten_prompt(body, words), Claim).text.strip()
             if word_count(shorter) <= settings.EMAIL_MAX_WORDS:
                 checks.append(f"Email shortened from {words} to {word_count(shorter)} words")
                 body, words = shorter, word_count(shorter)
-        except AIError:
-            pass
+        except AIError as e:
+            checks.append(f"Couldn't shorten the email: {e}")
+        if timings is not None:
+            timings["Email shortening"] = round(time.monotonic() - shorten_start, 1)
     warnings = []
     if words > settings.EMAIL_MAX_WORDS:
         warnings.append(f"Email is {words} words, over the {settings.EMAIL_MAX_WORDS}-word limit. Trim before sending.")
@@ -331,7 +391,7 @@ def _closed_company_report(research):
         "suggested_role": None, "role_reason": None, "email": None,
         "not_found": [], "sources": research["sources"].items, "all_sources": research["sources"].items,
         "checks": ["Flagged by code from Companies House status. No AI used."],
-        "warnings": research["warnings"], "seconds": 0.0,
+        "warnings": research["warnings"], "timings": dict(research.get("timings", {})), "seconds": 0.0,
     }
 
 
@@ -385,6 +445,8 @@ def _print_report(r, sources_by_id):
             print(f"  ✓ {c}")
     for w in r["warnings"]:
         print(f"⚠️  {w}")
+    if r.get("timings"):
+        print("\nTIME TAKEN: " + " · ".join(f"{k} {v}s" for k, v in r["timings"].items()))
 
 
 if __name__ == "__main__":
@@ -392,10 +454,12 @@ if __name__ == "__main__":
     started = time.time()
     try:
         matches = ch.search_companies(typed)
+        search_seconds = round(time.time() - started, 1)
         if not matches or not matches[0]["close_match"]:
             print(f'No close match found for "{typed}". Check the spelling or try the website.')
             sys.exit(0)
         research = research_company(matches[0]["company_number"], typed)
+        research["timings"] = {"Company search": search_seconds, **research["timings"]}
         result = build_report(research)
         _print_report(result, {s["id"]: s for s in result["all_sources"]})
         print(f"\nTotal time: {time.time() - started:.1f} seconds")

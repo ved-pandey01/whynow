@@ -20,10 +20,16 @@ TARGET_BUYER_ROLES = ["Head of Sales", "VP Sales", "Head of RevOps"]
 # ---------------------------------------------------------------------------
 ICP_INDUSTRY = "B2B SaaS"
 ICP_COUNTRY = "UK"
-ICP_MIN_EMPLOYEES = 50      # ideal range starts here
-ICP_MAX_EMPLOYEES = 500     # ideal range ends here
-TOO_SMALL_BELOW = 50        # bad fit: no SDR team yet
-TOO_BIG_ABOVE = 1000        # bad fit: long enterprise buying cycles
+# Company size bands (employees). Code applies these to the score; the AI can't override them.
+#   Best fit: 200–2,000                     → no size limit on the score
+#   Good fit: 50–199 or 2,001–10,000        → score slightly lower (max GOOD_FIT_MAX_SCORE)
+#   Weak fit: under 50 or over 10,000       → score max WEAK_FIT_MAX_SCORE
+BEST_FIT_MIN_EMPLOYEES = 200
+BEST_FIT_MAX_EMPLOYEES = 2000
+GOOD_FIT_MIN_EMPLOYEES = 50      # below this: too small, usually no SDR team yet
+GOOD_FIT_MAX_EMPLOYEES = 10000   # above this: enterprise, long buying cycles
+GOOD_FIT_MAX_SCORE = 8
+WEAK_FIT_MAX_SCORE = 3
 
 # Signals that push the score UP
 STRONG_FIT_SIGNALS = [
@@ -35,7 +41,7 @@ STRONG_FIT_SIGNALS = [
 
 # Signals that push the score DOWN
 BAD_FIT_SIGNALS = [
-    f"Fewer than {TOO_SMALL_BELOW} or more than {TOO_BIG_ABOVE} employees",
+    f"Fewer than {GOOD_FIT_MIN_EMPLOYEES:,} or more than {GOOD_FIT_MAX_EMPLOYEES:,} employees",
     "Not B2B SaaS (B2C, retail, charity, public sector, local services)",
     "Recent layoffs, hiring freeze or cost-cutting",
 ]
@@ -78,7 +84,14 @@ COMPANY_SEARCH_RESULTS = 5   # how many Companies House matches to show
 NEWS_ITEMS = 3               # recent news items in the report
 NEWS_CANDIDATES = 8          # news items fetched; the AI picks the 3 really about the company
 EMAIL_MAX_WORDS = 120        # outreach email length limit
-REQUEST_TIMEOUT_SECONDS = 15 # give up on a slow API after this long
+
+# ---------------------------------------------------------------------------
+# Time limits (seconds). A slow service gives a clear message instead of a long wait.
+# ---------------------------------------------------------------------------
+COMPANIES_HOUSE_TIMEOUT_SECONDS = 15   # per request
+TAVILY_TIMEOUT_SECONDS = 20            # per search or page read
+GEMINI_TIMEOUT_SECONDS = 60            # per AI request (no hidden retries)
+RESEARCH_TIME_BUDGET_SECONDS = 35      # after this, skip any searches not yet started
 
 
 # ---------------------------------------------------------------------------

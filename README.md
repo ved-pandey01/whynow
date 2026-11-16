@@ -37,10 +37,23 @@ Python · Streamlit · Companies House API · Tavily · Gemini · Pydantic · py
   - **Code checks the AI's work:** claims citing sources we didn't fetch are removed, news picks must be real news items, and the email must be under 120 words and open with a cited trigger. Every change is listed under "Code checks".
   - **Hard rules in code, not AI:**
     - dissolved, insolvent or dormant companies score 1 with no AI call
-    - headcount outside 50–1,000 caps the score at 3
-    - a PLC with no headcount caps it at 4
+    - company size bands, using headcount from the company profile:
+
+      | Band | Employees | Effect on score |
+      |---|---|---|
+      | Best fit | 200–2,000 | no limit |
+      | Good fit | 50–199 or 2,001–10,000 | at most 8, with the reason shown |
+      | Weak fit | under 50 or over 10,000 | at most 3, plus a "low fit" warning |
+
+    - if headcount isn't found, the AI judges size only from evidence in the sources
   - The AI provider sits behind one function ([ai/provider.py](ai/provider.py)), so swapping Gemini for another model is a settings change.
   - Try it (about 9 Tavily credits + 1–2 Gemini requests): `.venv/bin/python -m report "paddle.com"`
+
+- **Time limits** (set in [settings.py](settings.py)):
+  - Every service has a limit: Companies House 15s, Tavily 20s per search, Gemini 60s with no hidden retries. A slow service gives a clear message instead of an endless wait.
+  - One slow search is skipped with a note, and the rest carry on.
+  - After 35 seconds of research, no new searches start, so the report stays near a minute.
+  - Each report shows how long each part took.
 
 ## Running the tests
 ```

@@ -43,7 +43,11 @@ Pick up to {settings.NEWS_ITEMS} items from the NEWS CANDIDATES that are really 
 Newest first. If none are relevant, return an empty list and say so in not_found.
 
 ICP FIT SCORE (1–10)
-Ideal customer: {settings.ICP_INDUSTRY}, {settings.ICP_MIN_EMPLOYEES}–{settings.ICP_MAX_EMPLOYEES} employees, {settings.ICP_COUNTRY}.
+Ideal customer: {settings.ICP_INDUSTRY}, {settings.ICP_COUNTRY}.
+Company size (employees):
+  - Best fit: {settings.BEST_FIT_MIN_EMPLOYEES:,}–{settings.BEST_FIT_MAX_EMPLOYEES:,}
+  - Good fit: {settings.GOOD_FIT_MIN_EMPLOYEES:,}–{settings.BEST_FIT_MIN_EMPLOYEES - 1:,} or {settings.BEST_FIT_MAX_EMPLOYEES + 1:,}–{settings.GOOD_FIT_MAX_EMPLOYEES:,} (score slightly lower, at most {settings.GOOD_FIT_MAX_SCORE})
+  - Weak fit: under {settings.GOOD_FIT_MIN_EMPLOYEES:,} or over {settings.GOOD_FIT_MAX_EMPLOYEES:,} (score at most {settings.WEAK_FIT_MAX_SCORE})
 Strong-fit signals (push the score up):
 {strong}
 Bad-fit signals (push the score down):
@@ -51,10 +55,10 @@ Bad-fit signals (push the score down):
 Score guide: 8–10 = ideal profile plus at least one strong signal; 5–7 = good profile,
 no strong signal; 1–4 = poor profile or a bad-fit signal. A falling headcount counts
 against the company. Give 2–3 reasons, each with sources.
-SIZE MATTERS MOST: if the sources show the company is far bigger than the ideal range
-(a stock-market-listed PLC, thousands of staff, or billions in revenue), the score must be
-1–3, however strong its signals are. Large enterprises have long buying cycles and are not
-the target customer.
+SIZE: follow the size bands above, however strong the signals are. If the employee count
+isn't in the sources, judge size only from clear evidence in the sources (e.g. "over 10,000
+staff", "operates in 20 countries"), say which band you think it's in and why, and add
+"Employee count not found" to not_found. Don't assume a size from the company's fame.
 
 SUGGESTED ROLE
 Suggest ONE job title to contact, usually one of: {roles}. Give a role, never a person's name.

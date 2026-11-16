@@ -126,21 +126,51 @@ def test_score_is_kept_between_1_and_10():
     assert r["fit_score"] == 10
 
 
-@pytest.mark.parametrize("headcount", [12, 5000])
-def test_too_small_or_too_big_caps_score_at_3(headcount):
+@pytest.mark.parametrize("headcount, band", [
+    (49, "weak"), (50, "good"), (199, "good"),
+    (200, "best"), (1500, "best"), (2000, "best"),
+    (2001, "good"), (10000, "good"), (10001, "weak"),
+])
+def test_size_bands_including_edges(headcount, band):
+    assert report.size_band(headcount) == band
+
+
+@pytest.mark.parametrize("headcount", [300, 2000])
+def test_best_fit_size_keeps_the_ai_score(headcount):
+    r, _ = build(make_research(headcount=headcount), make_draft(fit_score=10))
+    assert r["fit_score"] == 10
+    assert r["checks"] == []
+
+
+@pytest.mark.parametrize("headcount, side", [(120, "smaller"), (5000, "larger")])
+def test_good_fit_size_caps_at_8_and_gives_reason(headcount, side):
+    r, _ = build(make_research(headcount=headcount), make_draft(fit_score=10))
+    assert r["fit_score"] == 8
+    assert f"{side} than the best-fit" in r["fit_reasons"][0]["text"]
+    assert r["fit_reasons"][0]["sources"] == ["S2"]  # cites the company profile
+
+
+def test_good_fit_size_still_gives_reason_when_score_already_low():
+    r, _ = build(make_research(headcount=120), make_draft(fit_score=6))
+    assert r["fit_score"] == 6
+    assert "slightly lower" in r["fit_reasons"][0]["text"]
+
+
+@pytest.mark.parametrize("headcount, side", [(12, "under 50"), (25000, "over 10,000")])
+def test_weak_fit_size_caps_at_3(headcount, side):
     r, _ = build(make_research(headcount=headcount), make_draft(fit_score=9))
     assert r["fit_score"] == 3
-    assert "outside the ideal" in r["fit_reasons"][0]["text"]
+    assert side in r["fit_reasons"][0]["text"]
+    assert r["email"]["warnings"][0].startswith("Low fit")
 
 
-def test_plc_without_headcount_is_capped_at_4():
-    """Real problem: The Sage Group plc scored 5/10 because its headcount wasn't found."""
+def test_unknown_headcount_has_no_size_rule():
+    """Without a headcount, the AI judges size from the sources (no code cap)."""
     research = make_research()
     research["card"] = None
     research["profile"]["company_type"] = "plc"
     r, _ = build(research, make_draft(fit_score=7))
-    assert r["fit_score"] == 4
-    assert "public limited company" in r["fit_reasons"][0]["text"]
+    assert r["fit_score"] == 7
 
 
 def test_low_score_adds_do_not_contact_warning():
@@ -171,6 +201,19 @@ def test_long_email_is_shortened():
     assert r["email"]["word_count"] <= 120
     assert len(ai.prompts) == 2
     assert any("shortened" in c for c in r["checks"])
+
+
+def test_email_shortening_is_timed_and_failures_are_noted():
+    """Real problem: a failing shortening call added ~58 hidden seconds to the Sage report."""
+    def failing_ai(prompt, shape):
+        if shape is AIReport:
+            return make_draft(email_body="word " * 150)
+        raise report.AIError("Gemini is having problems right now.")
+
+    r = report.build_report(make_research(), ai=failing_ai, today=date(2026, 11, 16))
+    assert "Email shortening" in r["timings"]
+    assert any("Couldn't shorten the email" in c for c in r["checks"])
+    assert any("over the 120-word limit" in w for w in r["email"]["warnings"])
 
 
 def test_email_still_too_long_gets_a_warning():

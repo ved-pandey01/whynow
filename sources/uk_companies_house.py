@@ -110,7 +110,7 @@ def _call_api(path, params=None):
             API_BASE + path,
             params=params,
             auth=(api_key, ""),
-            timeout=settings.REQUEST_TIMEOUT_SECONDS,
+            timeout=settings.COMPANIES_HOUSE_TIMEOUT_SECONDS,
         )
     except requests.exceptions.Timeout:
         raise CompaniesHouseError("Companies House took too long to reply. Please try again.")

@@ -34,7 +34,14 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class NewsError(Exception):
-    """A problem with Tavily, with a friendly message to show the user."""
+    """
+    A problem with Tavily, with a friendly message to show the user.
+    temporary=True means only this one request failed (e.g. too slow): other searches can carry on.
+    """
+
+    def __init__(self, message, temporary=False):
+        super().__init__(message)
+        self.temporary = temporary
 
 
 # ---------------------------------------------------------------------------
@@ -53,15 +60,16 @@ def _friendly(error):
         return NewsError("Tavily rejected the API key. Check TAVILY_API_KEY in your .env file.")
     if isinstance(error, tavily_errors.UsageLimitExceededError):
         return NewsError("Your free Tavily credits have run out for this month.")
-    if isinstance(error, tavily_errors.TimeoutError):
-        return NewsError("Tavily took too long to reply. Please try again.")
-    return NewsError("Couldn't get news from Tavily right now. Please try again.")
+    if isinstance(error, tavily_errors.TimeoutError) or "timeout" in type(error).__name__.lower():
+        return NewsError(f"Tavily took longer than {settings.TAVILY_TIMEOUT_SECONDS} seconds to reply.",
+                         temporary=True)
+    return NewsError("Couldn't get news from Tavily right now. Please try again.", temporary=True)
 
 
 def _search(query, **options):
     """Run one Tavily search and return its list of results."""
     try:
-        return _client().search(query, timeout=settings.REQUEST_TIMEOUT_SECONDS * 2, **options).get("results", [])
+        return _client().search(query, timeout=settings.TAVILY_TIMEOUT_SECONDS, **options).get("results", [])
     except NewsError:
         raise
     except Exception as e:
@@ -71,7 +79,7 @@ def _search(query, **options):
 def _extract_text(url):
     """Read one web page as plain text. Returns None if the page can't be read."""
     try:
-        result = _client().extract(urls=[url], format="text")
+        result = _client().extract(urls=[url], format="text", timeout=settings.TAVILY_TIMEOUT_SECONDS)
     except NewsError:
         raise
     except Exception as e:
@@ -271,13 +279,16 @@ SIGNAL_SEARCHES = {
 }
 
 
-def get_signals(brand, website=None, topic=None):
+def get_signals(brand, website=None, topic=None, out_of_time=lambda: False):
     """
     Possible "why now" signals, grouped by type. These are CANDIDATES:
     the AI step decides which ones really show the signal, and must cite them.
+    If out_of_time() becomes True, the remaining searches are skipped (left out of the result).
     """
     signals = {}
     for signal_type, (query, search_topic, months) in SIGNAL_SEARCHES.items():
+        if out_of_time():
+            break
         results = _search(
             _with_context(query.format(b=brand), website, topic),
             topic=search_topic, start_date=_months_ago(months),

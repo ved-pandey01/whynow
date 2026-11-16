@@ -37,7 +37,10 @@ SDRs often spend 20–30 minutes researching each company before outreach (websi
 
 ## 6. My ICP (who is a good fit)
 - **Industry:** B2B SaaS
-- **Company size:** 50–500 employees
+- **Company size** (updated 16 Nov 2026):
+  - Best fit: 200–2,000 employees
+  - Good fit: 50–199 or 2,001–10,000 employees. The score is slightly lower (max 8), with the reason given.
+  - Weak fit: under 50 or over 10,000 employees (max 3)
 - **Location:** UK (Stage 1)
 - **Strong-fit signals:**
   - Hiring SDRs/BDRs or other sales roles
@@ -45,7 +48,7 @@ SDRs often spend 20–30 minutes researching each company before outreach (websi
   - New sales or revenue leader (CRO, VP Sales, Head of Sales) in the last 6 months
   - Expansion into new markets or offices, or a new product launch
 - **Bad-fit signals:**
-  - Too small (under ~50 staff) or too big (over ~1,000 staff)
+  - Too small (under 50 staff) or too big (over 10,000 staff)
   - Not B2B SaaS (B2C, retail, charity, public sector, local services)
   - Recent layoffs, hiring freeze or cost-cutting
   - Dissolved, in liquidation or dormant on Companies House. These are flagged straight away as "not worth contacting".

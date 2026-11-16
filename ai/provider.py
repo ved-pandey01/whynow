@@ -38,7 +38,13 @@ def _ask_gemini(prompt, shape):
 
     # Keep the client in a variable: if it's created and used in one line,
     # Python throws it away too early and the library says "client has been closed".
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(
+            timeout=settings.GEMINI_TIMEOUT_SECONDS * 1000,      # the library counts in milliseconds
+            retry_options=types.HttpRetryOptions(attempts=1),     # no hidden retries that add waiting
+        ),
+    )
     try:
         response = client.models.generate_content(
             model=settings.GEMINI_MODEL,
@@ -54,6 +60,8 @@ def _ask_gemini(prompt, shape):
     except (ConnectionError, TimeoutError, OSError):
         raise AIError("Couldn't reach Gemini. Check your internet connection and try again.")
     except Exception as e:
+        if "timeout" in type(e).__name__.lower():
+            raise AIError(f"Gemini took longer than {settings.GEMINI_TIMEOUT_SECONDS} seconds. Please try again.")
         # Name the error type (never the key) so problems are easy to diagnose
         raise AIError(f"Something went wrong talking to Gemini ({type(e).__name__}). Please try again.")
 
