@@ -32,6 +32,16 @@ Python · Streamlit · Companies House API · Tavily · Gemini · Pydantic · py
   - Searches include the website and a topic word from the company card. That stops brands that are ordinary words ("Paddle") pulling in unrelated stories.
   - Try it (about 9 Tavily credits): `.venv/bin/python -m sources.news_tavily "Paddle" "PADDLE.COM MARKET LIMITED" "paddle.com"`
 
+- **AI report** ([report.py](report.py), [ai/](ai/), [models.py](models.py)):
+  - Every fetched fact gets a source ID (S1, S2…). Gemini sees **only** those sources and must cite them.
+  - **Code checks the AI's work:** claims citing sources we didn't fetch are removed, news picks must be real news items, and the email must be under 120 words and open with a cited trigger. Every change is listed under "Code checks".
+  - **Hard rules in code, not AI:**
+    - dissolved, insolvent or dormant companies score 1 with no AI call
+    - headcount outside 50–1,000 caps the score at 3
+    - a PLC with no headcount caps it at 4
+  - The AI provider sits behind one function ([ai/provider.py](ai/provider.py)), so swapping Gemini for another model is a settings change.
+  - Try it (about 9 Tavily credits + 1–2 Gemini requests): `.venv/bin/python -m report "paddle.com"`
+
 ## Running the tests
 ```
 .venv/bin/python -m pytest

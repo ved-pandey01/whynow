@@ -85,4 +85,6 @@ REQUEST_TIMEOUT_SECONDS = 15 # give up on a slow API after this long
 # AI provider (kept swappable: change these two lines to use another AI)
 # ---------------------------------------------------------------------------
 AI_PROVIDER = "gemini"
-GEMINI_MODEL = "gemini-2.5-flash"   # fast, free-tier model; confirmed available to your key
+# gemini-2.5-flash is listed but "no longer available to new users" (Nov 2026).
+# gemini-3.8-flash is Google's recommended replacement and is tested working with this key.
+GEMINI_MODEL = "gemini-3.8-flash"
