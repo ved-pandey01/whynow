@@ -19,5 +19,8 @@ Python · Streamlit · Companies House API · Tavily · Gemini · Pydantic · py
 1. Copy `.env.example` to `.env` and add your API keys.
 2. Install packages: `pip install -r requirements.txt`
 
+## Customising
+Edit [settings.py](settings.py) to change the default offer, the ICP (industry, size, fit signals), limits and the AI model. No other code needs to change.
+
 ## Part of a pair
 This is the outbound partner to my [Inbound Lead Engine](https://github.com/ved-pandey01/inbound-lead-engine) (n8n).
