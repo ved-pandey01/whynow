@@ -1,0 +1,279 @@
+"""
+uk_companies_house.py — official UK company data from Companies House.
+
+Three main jobs:
+  1. search_companies(name)        → top matches, so the user can pick the right one
+  2. get_company_profile(number)   → status, industry, founded date, address
+  3. get_recent_directors(number)  → directors appointed recently (a "new leader" signal)
+
+Every fact comes with a "source" link to the public Companies House page,
+so the report can always show where it came from.
+
+Test it from the terminal:
+    .venv/bin/python -m sources.uk_companies_house "Cognism"
+"""
+
+import os
+import sys
+from datetime import date, timedelta
+from pathlib import Path
+
+import requests
+from dotenv import load_dotenv
+
+import settings
+
+# Load API keys from the .env file in the project folder
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
+API_BASE = "https://api.company-information.service.gov.uk"
+PUBLIC_SITE = "https://find-and-update.company-information.service.gov.uk"
+
+
+class CompaniesHouseError(Exception):
+    """A problem with Companies House, with a friendly message to show the user."""
+
+
+# ---------------------------------------------------------------------------
+# Small helpers
+# ---------------------------------------------------------------------------
+def clean_query(text):
+    """Turn a website like 'https://www.cognism.com/' into a searchable name like 'cognism'."""
+    q = _strip_website(text)
+    # If it looks like a website (has a dot and no spaces), keep just the name part
+    if "." in q and " " not in q:
+        q = q.split(".")[0]
+    return q.strip()
+
+
+def _strip_website(text):
+    """Lower-case and remove 'https://', 'www.' and any page path: 'https://www.paddle.com/x' → 'paddle.com'."""
+    q = (text or "").strip().lower()
+    for prefix in ("https://", "http://", "www."):
+        if q.startswith(prefix):
+            q = q[len(prefix):]
+    return q.split("/")[0].strip()
+
+
+def search_terms(text):
+    """
+    What to search for. For a website, try the full domain first ('paddle.com'),
+    because many UK companies register under it (e.g. PADDLE.COM MARKET LIMITED),
+    then the short name ('paddle').
+    """
+    full = _strip_website(text)
+    short = clean_query(text)
+    return [full, short] if full != short else [short]
+
+
+# Legal endings that aren't really part of a company's name
+_LEGAL_WORDS = {"ltd", "limited", "plc", "llp", "the"}
+# Extra words that don't help tell companies apart (incl. website endings)
+_FILLER_WORDS = _LEGAL_WORDS | {"group", "uk", "holdings", "co", "and", "com", "io", "net", "org"}
+
+
+def _words(text):
+    """Split a name into plain lower-case words: 'The Sage Group plc.' → ['the', 'sage', 'group', 'plc']."""
+    cleaned = "".join(c if c.isalnum() else " " for c in (text or "").lower())
+    return cleaned.split()
+
+
+def is_exact_match(query, company_name):
+    """True if the name is exactly what was typed, ignoring Ltd/PLC/The: 'Sage Group' = 'THE SAGE GROUP PLC'."""
+    typed = [w for w in _words(_strip_website(query)) if w not in _LEGAL_WORDS]
+    name = [w for w in _words(company_name) if w not in _LEGAL_WORDS]
+    return bool(typed) and typed == name
+
+
+def is_close_match(query, company_name):
+    """True if every meaningful word typed appears as a whole word in the name."""
+    typed = [w for w in _words(_strip_website(query)) if w not in _FILLER_WORDS]
+    name = set(_words(company_name))
+    return bool(typed) and all(w in name for w in typed)
+
+
+def company_page_url(company_number):
+    """The public web page for a company, used as the source link."""
+    return f"{PUBLIC_SITE}/company/{company_number}"
+
+
+def _call_api(path, params=None):
+    """Call Companies House and return the JSON. Turns every failure into a friendly error."""
+    api_key = os.getenv("COMPANIES_HOUSE_API_KEY")
+    if not api_key:
+        raise CompaniesHouseError(
+            "Companies House API key is missing. Add COMPANIES_HOUSE_API_KEY to your .env file."
+        )
+    try:
+        # Companies House uses the key as a username with a blank password
+        response = requests.get(
+            API_BASE + path,
+            params=params,
+            auth=(api_key, ""),
+            timeout=settings.REQUEST_TIMEOUT_SECONDS,
+        )
+    except requests.exceptions.Timeout:
+        raise CompaniesHouseError("Companies House took too long to reply. Please try again.")
+    except requests.exceptions.RequestException:
+        raise CompaniesHouseError("Couldn't reach Companies House. Check your internet connection.")
+
+    if response.status_code == 401:
+        raise CompaniesHouseError("Companies House rejected the API key. Check it in your .env file.")
+    if response.status_code == 404:
+        return None  # "not found" is normal, not an error
+    if response.status_code == 429:
+        raise CompaniesHouseError("Too many Companies House requests. Wait a few minutes and try again.")
+    if not response.ok:
+        raise CompaniesHouseError(f"Companies House had a problem (code {response.status_code}). Try again later.")
+    return response.json()
+
+
+def _format_address(addr):
+    """Join the address parts into one line, skipping blanks."""
+    if not addr:
+        return None
+    parts = [addr.get(k) for k in ("address_line_1", "address_line_2", "locality", "postal_code", "country")]
+    return ", ".join(p for p in parts if p) or None
+
+
+# ---------------------------------------------------------------------------
+# 1. Search
+# ---------------------------------------------------------------------------
+def search_companies(name):
+    """
+    Return the top matches for a company name (or website). Empty list if nothing found.
+    Companies House's own ranking can bury the right company (e.g. THE SAGE GROUP PLC is 10th
+    for "Sage Group"), so we fetch more results and re-rank them ourselves:
+    exact name matches first, then close matches, then loose ones; active companies before closed ones.
+    """
+    if not clean_query(name):
+        raise CompaniesHouseError("Please type a company name or website.")
+
+    matches, seen = [], set()
+    for term in search_terms(name):
+        data = _call_api("/search/companies", {"q": term, "items_per_page": 20})
+        for item in (data or {}).get("items", []):
+            number = item.get("company_number")
+            if number in seen:
+                continue  # already found by an earlier search term
+            seen.add(number)
+            matches.append({
+                "name": item.get("title"),
+                "company_number": number,
+                "status": item.get("company_status"),
+                "founded": item.get("date_of_creation"),
+                "address": item.get("address_snippet"),
+                "exact_match": is_exact_match(name, item.get("title")),
+                "close_match": is_exact_match(name, item.get("title")) or is_close_match(name, item.get("title")),
+                "source": company_page_url(number),
+            })
+
+    # Best first. Python's sort keeps Companies House's order when two matches tie.
+    matches.sort(key=lambda m: (not m["exact_match"], not m["close_match"], m["status"] != "active"))
+    return matches[: settings.COMPANY_SEARCH_RESULTS]
+
+
+# ---------------------------------------------------------------------------
+# 2. Company profile
+# ---------------------------------------------------------------------------
+def get_company_profile(company_number):
+    """Official details for one company. Missing details are set to None (shown as 'not found')."""
+    data = _call_api(f"/company/{company_number}")
+    if data is None:
+        raise CompaniesHouseError(f"No company found with number {company_number}.")
+
+    source = company_page_url(company_number)
+    sic_codes = data.get("sic_codes", [])
+    last_accounts_type = data.get("accounts", {}).get("last_accounts", {}).get("type")
+    status = data.get("company_status")
+
+    return {
+        "name": data.get("company_name"),
+        "company_number": data.get("company_number"),
+        "status": status,
+        "company_type": data.get("type"),
+        "founded": data.get("date_of_creation"),
+        "closed_on": data.get("date_of_cessation"),
+        "address": _format_address(data.get("registered_office_address")),
+        "sic_codes": sic_codes,
+        "is_software_sic": any(code in settings.SOFTWARE_SIC_CODES for code in sic_codes),
+        "last_accounts_type": last_accounts_type,
+        "has_insolvency_history": data.get("has_insolvency_history", False),
+        "not_worth_contacting": is_not_worth_contacting(status, last_accounts_type),
+        "source": source,
+    }
+
+
+def is_not_worth_contacting(status, last_accounts_type):
+    """True if the company is closed, insolvent or dormant. Decided by code, never by the AI."""
+    if (status or "").lower() in settings.CLOSED_COMPANY_STATUSES:
+        return True
+    if (last_accounts_type or "").lower() == settings.DORMANT_ACCOUNTS_TYPE:
+        return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# 3. Recently appointed directors ("new leader" signal)
+# ---------------------------------------------------------------------------
+def get_recent_directors(company_number, today=None):
+    """
+    Directors appointed within the new-leader window who haven't resigned.
+    Note: these are board directors, not necessarily sales leaders.
+    """
+    today = today or date.today()
+    cutoff = today - timedelta(days=30 * settings.NEW_LEADER_WINDOW_MONTHS)
+
+    data = _call_api(f"/company/{company_number}/officers", {"items_per_page": 100})
+    officers = (data or {}).get("items", [])
+    source = company_page_url(company_number) + "/officers"
+
+    recent = []
+    for officer in officers:
+        appointed = officer.get("appointed_on")
+        if not appointed or officer.get("resigned_on"):
+            continue
+        if date.fromisoformat(appointed) >= cutoff:
+            recent.append({
+                "name": officer.get("name"),
+                "role": officer.get("officer_role"),
+                "occupation": officer.get("occupation"),
+                "appointed_on": appointed,
+                "source": source,
+            })
+    return recent
+
+
+# ---------------------------------------------------------------------------
+# Run this file directly to try it out
+# ---------------------------------------------------------------------------
+if __name__ == "__main__":
+    name = " ".join(sys.argv[1:]) or "Cognism"
+    try:
+        matches = search_companies(name)
+        if not matches:
+            print(f'Not found: no UK company matches "{name}".')
+            sys.exit(0)
+
+        print(f'Top {len(matches)} matches for "{name}":')
+        for i, m in enumerate(matches, 1):
+            tag = "exact match" if m["exact_match"] else "close match" if m["close_match"] else "loose match"
+            print(f"  {i}. {m['name']} ({m['company_number']}) | {m['status']} | founded {m['founded']} | {tag}")
+
+        if not matches[0]["close_match"]:
+            print(f'\nNo close match found for "{name}". Check the spelling, or pick from the list above.')
+            sys.exit(0)
+
+        top = matches[0]
+        profile = get_company_profile(top["company_number"])
+        print(f"\nProfile of top match: {profile['name']}")
+        for key in ("status", "founded", "address", "sic_codes", "is_software_sic", "not_worth_contacting"):
+            print(f"  {key}: {profile[key] if profile[key] not in (None, []) else 'not found'}")
+        print(f"  source: {profile['source']}")
+
+        directors = get_recent_directors(top["company_number"])
+        print(f"\nDirectors appointed in the last {settings.NEW_LEADER_WINDOW_MONTHS} months: {len(directors) or 'none found'}")
+        for d in directors:
+            print(f"  - {d['name']} ({d['role']}, appointed {d['appointed_on']})")
+    except CompaniesHouseError as e:
+        print(f"Sorry: {e}")
