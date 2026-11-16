@@ -98,6 +98,9 @@ RESEARCH_TIME_BUDGET_SECONDS = 35      # after this, skip any searches not yet s
 # AI provider (kept swappable: change these two lines to use another AI)
 # ---------------------------------------------------------------------------
 AI_PROVIDER = "gemini"
-# gemini-2.5-flash is listed but "no longer available to new users" (Nov 2026).
-# gemini-3.8-flash is Google's recommended replacement and is tested working with this key.
-GEMINI_MODEL = "gemini-3.8-flash"
+# Model history (Nov 2026):
+#   gemini-2.5-flash / 2.5-flash-lite: listed, but "no longer available to new users"
+#   gemini-3.8-flash / 3.7-flash: failing on Google's side (server errors after ~58s)
+#   gemini-3.6-flash: tested working (full report shape in ~6s). Using this for now;
+#   try 3.8-flash again once Google's service is stable.
+GEMINI_MODEL = "gemini-3.6-flash"
