@@ -76,6 +76,7 @@ SOFTWARE_SIC_CODES = {
 # ---------------------------------------------------------------------------
 COMPANY_SEARCH_RESULTS = 5   # how many Companies House matches to show
 NEWS_ITEMS = 3               # recent news items in the report
+NEWS_CANDIDATES = 8          # news items fetched; the AI picks the 3 really about the company
 EMAIL_MAX_WORDS = 120        # outreach email length limit
 REQUEST_TIMEOUT_SECONDS = 15 # give up on a slow API after this long
 

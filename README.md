@@ -24,6 +24,14 @@ Python · Streamlit · Companies House API · Tavily · Gemini · Pydantic · py
   - Try it: `.venv/bin/python -m sources.uk_companies_house "Cognism"`
   - Tip: typing the website (e.g. `paddle.com`) finds the right company more reliably than a short name.
 
+- **News, signals and company card** ([sources/news_tavily.py](sources/news_tavily.py)), using Tavily:
+  - **Company card:** headcount and its yearly trend, funding rounds, B2B/SaaS, website. It's only used if its legal name or website matches the company we found, so it never falls back to a lookalike company.
+  - **News:** recent articles with the company in the headline.
+  - **"Why now" signals:** targeted searches for sales hiring, funding, new sales leaders, expansion and layoffs.
+  - **Website:** homepage text, so the AI knows what the company actually does.
+  - Searches include the website and a topic word from the company card. That stops brands that are ordinary words ("Paddle") pulling in unrelated stories.
+  - Try it (about 9 Tavily credits): `.venv/bin/python -m sources.news_tavily "Paddle" "PADDLE.COM MARKET LIMITED" "paddle.com"`
+
 ## Running the tests
 ```
 .venv/bin/python -m pytest
