@@ -15,6 +15,7 @@ Headquarters: London, England, United Kingdom
 Industry: Software Development
 Business model: B2B
 SaaS: yes
+LinkedIn:  · 131,651 followers
 Founded: 2015
 Description: Cognism is a leader in premium sales intelligence.
 Headcount
@@ -23,6 +24,8 @@ Funding
 Rounds: 11
 Total raised: 126.66M USD
 Total raised: 4.80M GBP
+Financials
+Annual revenue: 32.93M GBP
 """
 
 
@@ -89,6 +92,8 @@ def test_parse_company_card():
     assert card["saas"] == "yes"
     assert card["funding_rounds"] == 11
     assert card["total_raised"] == ["126.66M USD", "4.80M GBP"]
+    assert card["linkedin_followers"] == 131651
+    assert card["annual_revenue"] == "32.93M GBP"
 
 
 def test_parse_company_card_with_missing_facts():

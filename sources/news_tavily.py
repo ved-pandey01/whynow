@@ -154,6 +154,7 @@ def parse_company_card(text):
         yearly = re.search(r"([+-]?[\d,]+ yearly \([+-]?[\d.]+%\))", m.group(2))
         headcount_change = yearly.group(1) if yearly else None
 
+    followers = re.search(r"^LinkedIn:.*?([\d,]+) followers", text, re.MULTILINE)
     rounds = field("Rounds")
     areas = field("Business areas")
     return {
@@ -170,6 +171,8 @@ def parse_company_card(text):
         "funding_rounds": int(rounds) if rounds and rounds.isdigit() else None,
         "total_raised": re.findall(r"^Total raised:\s*(.+)$", text, re.MULTILINE) or None,
         "description": (field("Description") or "")[:500] or None,
+        "linkedin_followers": int(followers.group(1).replace(",", "")) if followers else None,
+        "annual_revenue": field("Annual revenue"),
     }
 
 

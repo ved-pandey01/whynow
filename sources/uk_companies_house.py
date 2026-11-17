@@ -196,7 +196,7 @@ def search_companies(name):
     # 2. Look up the real size (from filed accounts) of the top few only, then sort properly.
     for i, m in enumerate(matches):
         checked = i < settings.COMPANY_SIZE_CHECKS and m["close_match"]
-        m["size_rank"], m["size"] = company_size(m["company_number"]) if checked else (SIZE_UNKNOWN, None)
+        m.update(company_summary(m["company_number"]) if checked else _NO_SUMMARY)
     matches.sort(key=lambda m: _best_first(m, domain))
     return matches[: settings.COMPANY_SEARCH_RESULTS]
 
@@ -246,14 +246,25 @@ def size_from_accounts(accounts_type, company_type=None):
     return ACCOUNTS_SIZES.get(accounts_type or "", (SIZE_UNKNOWN, None))
 
 
-def company_size(company_number):
-    """Size of one company, or 'unknown' if Companies House can't tell us (never stops the search)."""
+_NO_SUMMARY = {"size_rank": SIZE_UNKNOWN, "size": None, "industry": None, "city": None}
+
+
+def company_summary(company_number):
+    """
+    Size, main industry and city of one company, for the picker cards.
+    One quick call; if it fails, the details are just left blank (it never stops the search).
+    """
     try:
         data = _call_api(f"/company/{company_number}") or {}
     except CompaniesHouseError:
-        return SIZE_UNKNOWN, None
+        return dict(_NO_SUMMARY)
     accounts_type = (data.get("accounts") or {}).get("last_accounts", {}).get("type")
-    return size_from_accounts(accounts_type, data.get("type"))
+    rank, size = size_from_accounts(accounts_type, data.get("type"))
+    sic_codes = data.get("sic_codes") or []
+    city = (data.get("registered_office_address") or {}).get("locality")
+    return {"size_rank": rank, "size": size,
+            "industry": sic_description(sic_codes[0]) if sic_codes else None,
+            "city": city.title() if city and city.isupper() else city}
 
 
 # ---------------------------------------------------------------------------

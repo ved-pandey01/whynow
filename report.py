@@ -194,9 +194,45 @@ def _add_card_source(sources, brand, card):
         ("Headcount change", card["headcount_yearly_change"]),
         ("Funding rounds", card["funding_rounds"]),
         ("Total raised", ", ".join(card["total_raised"] or []) or None),
+        ("Annual revenue", card.get("annual_revenue")),
+        ("LinkedIn followers", card.get("linkedin_followers")),
         ("Description", card["description"]),
         ("Confirmed as the same company because", card.get("match_reason")),
     ]))
+
+
+def company_profile(research):
+    """
+    The facts for the banner, profile card and stat tiles. Each is {"value", "source"}
+    (or None if not found), taken only from Companies House or the confirmed company profile.
+    """
+    sources, p, card = research["sources"], research["profile"], research["card"] or {}
+    ch_id = sources._by_url.get(p["source"])
+    card_id = sources._by_url.get(card.get("source"))
+
+    def fact(value, source_id):
+        return {"value": value, "source": source_id} if value not in (None, "", []) else None
+
+    founded_year = (p.get("founded") or "")[:4] or None
+    website = card.get("website") or research.get("website")
+    return {
+        "brand": fact(brand_from(research.get("typed") or p["name"]), None),
+        "legal_name": fact(p["name"], ch_id),
+        "status": fact(p["status"], ch_id),
+        "website": fact(website, card_id if card.get("website") else sources._by_url.get(website)),
+        "domain": tavily.domain_of(website) if website else None,
+        "headquarters": fact(card.get("headquarters"), card_id),
+        "industry": (fact(card.get("industry"), card_id)
+                     or fact(ch.sic_description((p.get("sic_codes") or [None])[0]), ch_id)),
+        "founded": fact(card.get("founded"), card_id) or fact(founded_year, ch_id),
+        "headcount": fact(card.get("headcount"), card_id),
+        "headcount_change": fact(card.get("headcount_yearly_change"), card_id),
+        "total_raised": fact(", ".join(card.get("total_raised") or []), card_id),
+        "revenue": fact(card.get("annual_revenue"), card_id),
+        "linkedin_followers": fact(card.get("linkedin_followers"), card_id),
+        "business_model": fact(card.get("business_model"), card_id),
+        "saas": fact(card.get("saas"), card_id),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -265,6 +301,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
                     "status": profile["status"], "source": profile["source"]},
         "not_worth_contacting": False,
         "offer": offer,
+        "profile": company_profile(research),
         "what_they_do": what_they_do,
         "snapshot": snapshot,
         "news": news,
@@ -500,6 +537,7 @@ def _closed_company_report(research):
         "company": {"name": p["name"], "number": p["company_number"],
                     "status": p["status"], "source": p["source"]},
         "not_worth_contacting": True,
+        "profile": company_profile(research),
         "what_they_do": None,
         "snapshot": [{"text": f"Founded {p['founded']}." if p["founded"] else "Founded date not found.",
                       "sources": [source_id]}],

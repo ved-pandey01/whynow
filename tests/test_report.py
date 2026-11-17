@@ -335,3 +335,32 @@ def test_source_list_does_not_repeat_the_same_page():
 ])
 def test_brand_from(typed, brand):
     assert report.brand_from(typed) == brand
+
+
+# --- Profile block for the banner and stat tiles --------------------------
+def test_profile_facts_come_with_sources():
+    research = make_research()
+    research["card"].update(headquarters="Leeds, United Kingdom", industry="Software Development",
+                            founded="2015", website="www.acme.com", headcount_yearly_change="+30 yearly (11%)",
+                            total_raised=["5M GBP"], annual_revenue=None, linkedin_followers=1200)
+    research["profile"]["sic_codes"] = ["62012"]
+    r, _ = build(research, make_draft())
+    p = r["profile"]
+    assert p["headcount"] == {"value": 300, "source": "S2"}
+    assert p["legal_name"] == {"value": "ACME LTD", "source": "S1"}
+    assert p["linkedin_followers"]["value"] == 1200
+    assert p["domain"] == "acme.com"
+    assert p["revenue"] is None                       # not found → None, never guessed
+    assert p["brand"]["value"] == "Acme"
+
+
+def test_profile_falls_back_to_companies_house_without_a_card():
+    research = make_research()
+    research["card"] = None
+    research["website"] = None
+    research["profile"]["sic_codes"] = ["62012"]
+    r, _ = build(research, make_draft())
+    p = r["profile"]
+    assert p["industry"] == {"value": "Business and domestic software development", "source": "S1"}
+    assert p["founded"] == {"value": "2015", "source": "S1"}
+    assert p["headcount"] is None and p["website"] is None and p["domain"] is None

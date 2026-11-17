@@ -108,7 +108,8 @@ def fake_api(monkeypatch, search_items, accounts):
             return FakeResponse(json_data={"items": search_items})
         number = url.rsplit("/", 1)[-1]
         accounts_type, company_type = accounts.get(number, (None, "ltd"))
-        return FakeResponse(json_data={"type": company_type,
+        return FakeResponse(json_data={"type": company_type, "sic_codes": ["62012"],
+                                       "registered_office_address": {"locality": "NEWCASTLE UPON TYNE"},
                                        "accounts": {"last_accounts": {"type": accounts_type}}})
     monkeypatch.setattr(ch.requests, "get", get)
 
@@ -128,6 +129,9 @@ def test_big_companies_are_listed_first(monkeypatch):
     assert [m["company_number"] for m in matches] == ["4", "3", "1", "2"]
     assert matches[0]["size"] == "Large: public company (plc)"
     assert matches[3]["size"] == "Very small (micro)"
+    # Picker cards also get the main industry and the city, from the same call
+    assert matches[0]["industry"] == "Business and domestic software development"
+    assert matches[0]["city"] == "Newcastle Upon Tyne"
 
 
 def test_typed_website_company_beats_bigger_lookalikes(monkeypatch):
