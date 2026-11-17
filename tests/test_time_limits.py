@@ -179,3 +179,15 @@ def test_both_models_busy_gives_a_friendly_error(monkeypatch):
     with pytest.raises(provider.AIError, match="having problems"):
         provider.generate_structured("hi", Claim)
     assert len(gemini.models_asked) == 2   # exactly one retry, no endless loop
+
+
+class ConnectError(Exception):
+    """Same name as the web library's error when the internet connection drops."""
+
+
+def test_dropped_connection_gets_a_plain_message(monkeypatch):
+    """Real problem (17 Nov 2026): the connection dropped and the message said 'ConnectError'."""
+    from models import Claim
+    FakeGemini({settings.GEMINI_MODEL: ConnectError(), settings.GEMINI_FALLBACK_MODEL: ConnectError()}).install(monkeypatch)
+    with pytest.raises(provider.AIError, match="Couldn't reach Gemini. Check your internet connection"):
+        provider.generate_structured("hi", Claim)

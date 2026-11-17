@@ -87,6 +87,8 @@ def _ask_gemini(prompt, shape, model):
     except (ConnectionError, TimeoutError, OSError):
         raise AIError("Couldn't reach Gemini. Check your internet connection and try again.")
     except Exception as e:
+        if "connect" in type(e).__name__.lower():   # e.g. the web library's ConnectError
+            raise AIError("Couldn't reach Gemini. Check your internet connection and try again.", try_backup=True)
         if "timeout" in type(e).__name__.lower():
             raise AIError(f"Gemini took longer than {settings.GEMINI_TIMEOUT_SECONDS} seconds. Please try again.",
                           try_backup=True)

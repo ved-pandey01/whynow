@@ -9,6 +9,13 @@ WhyNow is an AI account research agent for SDRs and sales teams. Type any UK com
 - **who to contact:** a suggested role, plus a one-click LinkedIn people search
 - **an outreach email:** under 120 words, opening with a real trigger, written only when you ask
 
+![WhyNow landing page](docs/landing.png)
+
+<details><summary>See a full sample report (Paddle, saved 17 Nov 2026)</summary>
+
+![WhyNow sample report for Paddle](docs/report.png)
+</details>
+
 **Why:** SDRs often spend 20–30 minutes researching each account. WhyNow aims to cut that to under a minute, and every fact links to its source.
 
 > 🚧 Work in progress: Stage 1 is being built.
@@ -38,7 +45,7 @@ Your browser opens at http://localhost:8501. Then:
 4. Click **Create email for this company** to write the email. For scores of 3 or under, a note says it's probably not worth contacting.
 5. Open "Behind the scenes" to see what code changed in the AI's answer and how long each step took.
 
-**See a sample report:** the landing page has a button for a saved real report. You can also link straight to it with `http://localhost:8501/?sample=1`. It uses no API calls and needs no keys. To refresh it: `.venv/bin/python -m scripts.save_sample`
+**See a sample report:** the landing page has a button for a saved real report. You can also link straight to it with `http://localhost:8501/?sample=1`. It uses no API calls and needs no keys. To refresh it: `.venv/bin/python -m scripts.save_sample`. The research is saved first in `.cache/` (git-ignored), so if the AI step fails, running it again costs no Tavily credits.
 
 Results are cached: looking up the same company again within 6 hours costs no API credits. Stop the app with `Ctrl + C` in the terminal.
 
