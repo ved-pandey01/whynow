@@ -81,7 +81,7 @@ SOFTWARE_SIC_CODES = {
 # Limits
 # ---------------------------------------------------------------------------
 COMPANY_SEARCH_RESULTS = 5   # how many Companies House matches to show
-COMPANY_SIZE_CHECKS = 15     # how many matches get their size looked up before ranking (free, ~0.1s each)
+COMPANY_SIZE_CHECKS = 25     # how many matches get their size looked up before ranking (free, ~0.1s each)
 NEWS_ITEMS = 3               # recent news items in the report
 NEWS_WINDOW_MONTHS = 6       # "recent" news means published in the last 6 months
 NEWS_CANDIDATES = 8          # news items fetched; the AI picks the 3 really about the company
@@ -115,7 +115,14 @@ GEMINI_FALLBACK_MODEL = "gemini-3.5-flash"   # tried once if the main model is b
 APP_NAME = "WhyNow"
 APP_LABEL = "AI ACCOUNT RESEARCH AGENT"
 APP_SLOGAN = "Before you reach out, WhyNow."
-APP_INTRO = "Type any UK company. See who they are, if they fit, and why to reach out now."
+APP_INTRO = "Know the company. Know the fit. Know the moment."
+APP_TYPING_LINES = [             # the animated amber line on the landing page
+    "Because they're hiring SDRs…",
+    "Because they just raised funding…",
+    "Because they hired a new sales leader…",
+    "Because they're expanding to new markets…",
+]
+SEARCH_TIP = "Tip: searching by website (e.g. cognism.com) finds the right company fastest."
 AUTHOR_NAME = "Ved Prakash Pandey"
 AUTHOR_LINKEDIN = "https://www.linkedin.com/in/ved-prakash-pandey-954493202/"
 AUTHOR_GITHUB = "https://github.com/ved-pandey01"

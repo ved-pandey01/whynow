@@ -1,10 +1,10 @@
-# Look of the web page: white background, navy main colour, teal accent (see ui/style.css).
+# Look of the web page: light background, royal blue main colour, emerald and amber accents (see ui/style.css).
 [theme]
 base = "light"
-primaryColor = "#1E3A8A"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F5F7FB"
-textColor = "#111827"
+primaryColor = "#2563EB"
+backgroundColor = "#F8FAFC"
+secondaryBackgroundColor = "#EFF6FF"
+textColor = "#0F172A"
 font = "sans serif"
 
 [client]

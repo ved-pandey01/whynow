@@ -74,9 +74,14 @@ def friendly_error(e):
 def search_form():
     """What company, and what are we selling?"""
     with st.form("search"):
-        typed = st.text_input("Company name or website", placeholder="e.g. Cognism or paddle.com")
-        offer = st.text_area("What are you selling?", value=settings.DEFAULT_OFFER, height=80)
-        if st.form_submit_button("Find company", type="primary"):
+        typed = st.text_input("Company name or website", placeholder="e.g. cognism.com or Paddle")
+        # The offer keeps its default unless the user opens "Change offer"
+        with st.expander("Change offer"):
+            offer = st.text_area("What are you selling?", value=settings.DEFAULT_OFFER, height=80)
+        submitted = st.form_submit_button("Find company", type="primary", icon=":material/search:",
+                                          use_container_width=True)
+        st.html(ui.search_tip())
+        if submitted:
             for key in ("report", "email", "sample"):
                 st.session_state.pop(key, None)
             st.session_state["offer"] = offer
@@ -99,15 +104,16 @@ def open_sample_from_link():
 
 
 def landing_extras():
-    """'How it works' and the sample button, only before any search."""
-    st.html(ui.how_it_works())
+    """The report preview, 'How it works' and the sample button, only before any search."""
     sample = load_sample()
-    _, middle, _ = st.columns([1, 1, 1])
-    if middle.button("See a sample report", icon=":material/visibility:", disabled=sample is None,
-                     use_container_width=True):
+    st.html(ui.preview_strip(sample))
+    _, middle, _ = st.columns([1, 1.2, 1])
+    if middle.button("See a sample report", type="primary", icon=":material/visibility:",
+                     disabled=sample is None, use_container_width=True):
         st.session_state.update(report=sample, sample=True, matches=None)
         st.session_state.pop("email", None)
         st.rerun()
+    st.html(ui.how_it_works())
 
 
 # ---------------------------------------------------------------------------
@@ -127,11 +133,12 @@ def pick_company():
     st.caption("Biggest first. Size is a guide from the accounts each company files, not a staff count.")
     typed_domain = domain_of(typed) if report.looks_like_website(typed) else None
     for m in matches:
-        with st.container(border=True):
+        with st.container(border=True, key=f"wn_box_pick_{m['company_number']}"):
             text, button = st.columns([4, 1.4], vertical_alignment="center")
             text.html(ui.picker_card(m, typed_domain))
+            closed = (m.get("status") or "active") != "active"
             if button.button("Research this company", key=f"pick_{m['company_number']}",
-                             type="primary", use_container_width=True):
+                             type="secondary" if closed else "primary", use_container_width=True):
                 run_report(m)
 
 
@@ -152,8 +159,8 @@ def run_report(choice):
 # ---------------------------------------------------------------------------
 def show_contact(r):
     """Who to contact, with a LinkedIn people search (we only build the link)."""
-    with st.container(border=True):
-        st.html(f'<div class="wn-card" style="border:none;box-shadow:none;padding:0;margin:0">'
+    with st.container(border=True, key="wn_box_contact"):
+        st.html(f'<div class="wn-card wn-card-head">'
                 f'<h4>{ui.icon("person_search")}Who to contact</h4>{ui.role_html(r)}</div>')
         role = r.get("suggested_role")
         if role:
@@ -164,8 +171,8 @@ def show_contact(r):
 
 def show_email(r, by_id):
     """The email is written only when asked, so we don't spend AI time on companies we skip."""
-    with st.container(border=True):
-        st.html(f'<div class="wn-card" style="border:none;box-shadow:none;padding:0;margin:0">'
+    with st.container(border=True, key="wn_box_email"):
+        st.html(f'<div class="wn-card wn-card-head">'
                 f'<h4>{ui.icon("mail")}Outreach email</h4></div>')
         if r["not_worth_contacting"]:
             st.caption("No email: this company isn't worth contacting.")

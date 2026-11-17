@@ -27,6 +27,7 @@ SIGNALS = {
     "new_director": ("New director", "badge"),
 }
 WARNING_SIGNALS = {"layoffs", "headcount_decline"}
+GROWTH_SIGNALS = {"headcount_growth", "funding", "expansion", "hiring_sales"}
 
 
 # ---------------------------------------------------------------------------
@@ -95,9 +96,21 @@ def wordmark(css_class="wn-wordmark"):
 
 
 def hero():
-    return (f'<div class="wn-hero"><div class="wn-label">{esc(settings.APP_LABEL)}</div>{wordmark()}'
+    """Header: glow, amber label, wordmark, byline, slogan, one line, and the animated 'Because…' line."""
+    typing = "".join(f"<span>{esc(line)}</span>" for line in settings.APP_TYPING_LINES[:4])
+    byline = f'<div class="wn-byline">by {link(settings.AUTHOR_LINKEDIN, settings.AUTHOR_NAME)}</div>'
+    return (f'<div class="wn-hero"><div class="wn-aurora"></div>'
+            f'<div class="wn-label">{esc(settings.APP_LABEL)}</div>{wordmark()}{byline}'
             f'<div class="wn-slogan">{esc(settings.APP_SLOGAN)}</div>'
-            f'<p class="wn-intro">{esc(settings.APP_INTRO)}</p></div>')
+            f'<p class="wn-intro">{esc(settings.APP_INTRO)}</p>'
+            f'<div class="wn-typing" aria-label="{esc(settings.APP_TYPING_LINES[0])}">{typing}</div></div>')
+
+
+def search_tip():
+    tip = settings.SEARCH_TIP
+    if tip.startswith("Tip:"):
+        return f'<p class="wn-tip"><b>Tip:</b>{esc(tip[4:])}</p>'
+    return f'<p class="wn-tip">{esc(tip)}</p>'
 
 
 def mini_brand():
@@ -105,10 +118,45 @@ def mini_brand():
 
 
 def how_it_works():
-    steps = [("search", "Find the company"), ("radar", "Research the signals"), ("speed", "Score the fit")]
-    tiles = "".join(f'<div class="wn-step">{icon(i)}<div class="wn-step-num">STEP {n}</div>'
-                    f'<div class="wn-step-text">{esc(t)}</div></div>' for n, (i, t) in enumerate(steps, 1))
-    return f'<div class="wn-steps">{tiles}</div>'
+    steps = [("search", "Find the company", "Official UK company data"),
+             ("radar", "Research the signals", "Hiring, funding, new leaders"),
+             ("speed", "Score the fit", "1–10 with reasons")]
+    tiles = "".join(f'<div class="wn-step"><div class="wn-step-top">{icon(i)}<span class="wn-step-num">STEP {n}</span></div>'
+                    f'<div class="wn-step-text">{esc(t)}</div><div class="wn-step-sub">{esc(sub)}</div></div>'
+                    for n, (i, t, sub) in enumerate(steps, 1))
+    return f'<div class="wn-band blue"><div class="wn-band-title">HOW IT WORKS</div><div class="wn-steps">{tiles}</div></div>'
+
+
+def preview_strip(sample=None):
+    """
+    What a report looks like. With the saved sample, it shows that real report's facts;
+    without it, a neutral example layout with no company facts at all.
+    """
+    if sample:
+        p = sample["profile"]
+        name = (p.get("brand") or {}).get("value") or sample["company"]["name"]
+        meta = " · ".join(esc(f["value"]) for f in (p.get("industry"), p.get("headquarters")) if f) or "UK company"
+        score = sample["fit_score"]
+        signals = [SIGNALS.get(s["type"], (s["type"], "bolt")) for s in sample["signals"][:3]]
+        source_count = len(sample["sources"])
+        logo_html, note = logo(p), f"From the saved {esc(name)} example. Click “See a sample report” to open it."
+    else:
+        name, meta, score, source_count = "Your target company", "Industry · Headquarters", 8, 12
+        signals = [SIGNALS["hiring_sales"], SIGNALS["funding"], SIGNALS["new_sales_leader"]]
+        logo_html, note = f'<div class="wn-logo">{icon("domain")}</div>', "Example layout. Every report is built from live, sourced data."
+    kind, label = fit_band(score)
+    lines = "".join(f'<div class="wn-pv-line">{icon(i)}{esc(t)}</div>' for t, i in signals) \
+        or '<div class="wn-pv-line wn-empty">None found</div>'
+    return (f'<div class="wn-band green"><div class="wn-band-title">WHAT YOU GET</div><div class="wn-preview">'
+            f'<div class="wn-pv"><div class="wn-pv-label">Company</div><div class="wn-pv-company">{logo_html}'
+            f'<div><div class="wn-pv-name">{esc(name)}</div><div class="wn-pv-meta">{meta}</div></div></div></div>'
+            f'<div class="wn-pv"><div class="wn-pv-label">Fit score</div><div class="wn-pv-score">'
+            f'<div class="wn-badge {kind}"><div class="wn-badge-circle">{int(score)}</div></div>'
+            f'<div class="wn-badge {kind}"><div class="wn-badge-label">{esc(label)}</div></div></div></div>'
+            f'<div class="wn-pv"><div class="wn-pv-label">Why now signals</div>{lines}</div>'
+            f'<div class="wn-pv"><div class="wn-pv-label">Sources</div><div class="wn-stat-value">{source_count}</div>'
+            f'<div class="wn-pv-meta">every fact linked</div></div>'
+            f'</div><div class="wn-pv-note">{note}</div></div>')
 
 
 def footer():
@@ -133,8 +181,9 @@ def picker_card(m, typed_domain=None):
     if typed_domain and typed_domain in (m.get("name") or "").lower():
         details.append(typed_domain)   # the website the user typed, only when it's in this company's name
     meta = " · ".join(esc(d) for d in details if d) or "No details found"
-    return (f'<div class="wn-pick-name">{esc(m["name"])} {status_chip(m.get("status"))}</div>'
-            f'<div class="wn-pick-meta">{meta} · {link(m["source"], "Companies House")}</div>')
+    closed = " closed" if (m.get("status") or "active") != "active" else ""
+    return (f'<div class="wn-pick{closed}"><div class="wn-pick-name">{esc(m["name"])} {status_chip(m.get("status"))}</div>'
+            f'<div class="wn-pick-meta">{meta} · {link(m["source"], "Companies House")}</div></div>')
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +310,7 @@ def linkedin_search_url(role, company):
 
 def signal_tile(s, by_id):
     label, icon_name = SIGNALS.get(s["type"], (s["type"].replace("_", " ").capitalize(), "bolt"))
-    warn = " warn" if s["type"] in WARNING_SIGNALS else ""
+    warn = " warn" if s["type"] in WARNING_SIGNALS else (" grow" if s["type"] in GROWTH_SIGNALS else "")
     return (f'<div class="wn-signal{warn}"><div class="wn-signal-head">{icon(icon_name)}{esc(label)}</div>'
             f'<div class="wn-signal-text">{esc(s["text"])}{cite(s["sources"], by_id)}</div></div>')
 

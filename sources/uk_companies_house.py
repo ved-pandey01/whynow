@@ -214,8 +214,11 @@ def _likely_big_first(m, domain):
 
 
 def _best_first(m, domain):
-    """Final order: close, active, biggest, then exact name. Ties keep the order from before."""
-    return (_website_first(m, domain), not m["close_match"], m["status"] != "active",
+    """
+    Final order: closed or dissolved companies always last (the page greys them out);
+    then the typed website's company, close matches, biggest, exact name. Ties keep the order from before.
+    """
+    return (m["status"] != "active", _website_first(m, domain), not m["close_match"],
             m["size_rank"], not m["exact_match"])
 
 
