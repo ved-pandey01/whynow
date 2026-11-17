@@ -1,0 +1,19 @@
+# Look of the web page: light theme, white background, one deep-blue accent.
+[theme]
+base = "light"
+primaryColor = "#1E3A8A"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F6FB"
+textColor = "#1F2937"
+
+[client]
+toolbarMode = "minimal"
+
+# Don't send anonymous usage statistics to Streamlit
+[browser]
+gatherUsageStats = false
+
+# Only this computer can open the page (so no one else on your Wi-Fi can use your API credits).
+# Revisit in Stage 3 when the app is hosted.
+[server]
+address = "localhost"

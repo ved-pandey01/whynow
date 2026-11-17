@@ -19,6 +19,18 @@ Python · Streamlit · Companies House API · Tavily · Gemini · Pydantic · py
 1. Copy `.env.example` to `.env` and add your API keys.
 2. Install packages: `pip install -r requirements.txt`
 
+## Run the web page
+```
+.venv/bin/streamlit run app.py
+```
+Your browser opens at http://localhost:8501. Then:
+1. Type a company name or website. The "What are you selling?" box is pre-filled from [settings.py](settings.py), and you can edit it.
+2. Pick the right company from the Companies House matches. You get a warning if none of them is a close match.
+3. Click **Research this company** (usually 20–45 seconds). The report shows 8 cards: snapshot, recent news, "why now" signals, ICP fit score, who to contact, outreach email (with a copy icon), what we couldn't find, and sources. Every `[S1]` citation links to its source.
+4. Open "Behind the scenes" to see what code changed in the AI's answer and how long each step took.
+
+Results are cached: looking up the same company again within 6 hours costs no API credits. Stop the app with `Ctrl + C` in the terminal.
+
 ## Features so far
 - **Companies House lookup** ([sources/uk_companies_house.py](sources/uk_companies_house.py)): finds UK companies by name or website, ranks exact name matches first, and fetches status, industry codes, founded date, address and recently appointed directors. Every fact links to its public Companies House page. Dissolved, insolvent or dormant companies are flagged as "not worth contacting" by code, not by the AI.
   - Try it: `.venv/bin/python -m sources.uk_companies_house "Cognism"`
