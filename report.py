@@ -16,7 +16,7 @@ Try it (about 9 Tavily credits + 1–2 Gemini requests):
 import re
 import sys
 import time
-from datetime import date
+from datetime import date, timedelta
 
 import settings
 from ai.prompts import build_report_prompt, build_shorten_prompt
@@ -233,15 +233,6 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
     snapshot = [c for c in (check_claim(x) for x in draft.snapshot) if c]
     fit_reasons = [c for c in (check_claim(x) for x in draft.fit_reasons) if c]
 
-    # News: only real news sources, max 3, no repeats
-    news, news_ids = [], sources.ids("news")
-    for pick in draft.news:
-        if pick.source_id in news_ids and pick.source_id not in [n["source"] for n in news]:
-            news.append({"source": pick.source_id, "why_it_matters": pick.why_it_matters})
-        elif pick.source_id not in news_ids:
-            checks.append(f"Removed a news pick that wasn't a fetched news item ({pick.source_id})")
-    news = news[: settings.NEWS_ITEMS]
-
     # Signals: known type and real sources only
     signals = []
     for s in draft.signals:
@@ -250,6 +241,8 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
             signals.append({"type": s.signal_type, "text": s.text, "sources": good})
         else:
             checks.append(f"Removed an unsupported signal: \"{s.text[:60]}\"")
+
+    news = _pick_news(draft.news, signals, sources, today or date.today(), checks)
 
     # Score: keep it 1–10, then apply hard ICP rules in code
     score = max(1, min(10, draft.fit_score))
@@ -295,6 +288,45 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
 
 
 LOW_FIT_SCORE = 3  # at or below this, the email gets a "don't recommend contacting" warning
+
+
+def _recent_story_ids(sources, today):
+    """IDs of sources that count as recent news: news results, plus dated signal stories from the last 6 months."""
+    cutoff = (today - timedelta(days=30 * settings.NEWS_WINDOW_MONTHS)).isoformat()
+    signal_stories = {s["id"] for s in sources.items
+                      if s["kind"] == "signal" and s.get("date") and s["date"] >= cutoff}
+    return sources.ids("news") | signal_stories
+
+
+def _pick_news(picks, signals, sources, today, checks):
+    """
+    The news card, at most 3 stories, shown newest first.
+    Recent stories used as "why now" signals go in first, so the two cards never disagree
+    (real problem: Howden's news said "none found" while a signal showed a 20 Oct story).
+    The AI's other picks fill any places left. Only real recent stories are allowed.
+    """
+    allowed = _recent_story_ids(sources, today)
+    ai_reasons = {}
+    for pick in picks:
+        if pick.source_id in allowed:
+            ai_reasons.setdefault(pick.source_id, pick.why_it_matters)
+        else:
+            checks.append(f"Removed a news pick that wasn't a recent news story ({pick.source_id})")
+
+    signal_stories = {}
+    for signal in signals:
+        for source_id in signal["sources"]:
+            if source_id in allowed:
+                signal_stories.setdefault(source_id, signal["text"])
+
+    def newest_first(ids):
+        return sorted(ids, key=lambda i: sources.get(i).get("date") or "", reverse=True)
+
+    chosen = list(dict.fromkeys(newest_first(signal_stories) + newest_first(ai_reasons)))[: settings.NEWS_ITEMS]
+    for source_id in chosen:
+        if source_id not in ai_reasons:
+            checks.append(f"Added {source_id} to news because it's a recent story used as a signal")
+    return [{"source": i, "why_it_matters": ai_reasons.get(i) or signal_stories[i]} for i in newest_first(chosen)]
 
 
 def size_band(headcount):

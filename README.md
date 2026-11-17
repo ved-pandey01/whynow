@@ -25,8 +25,9 @@ Python · Streamlit · Companies House API · Tavily · Gemini · Pydantic · py
 ```
 Your browser opens at http://localhost:8501. Then:
 1. Type a company name or website. The "What are you selling?" box is pre-filled from [settings.py](settings.py), and you can edit it.
-2. Pick the right company from the Companies House matches. You get a warning if none of them is a close match.
+2. Pick the right company from the Companies House matches. The biggest companies come first, each with a size guide, e.g. "Large: parent of a group" or "Very small (micro)". You get a warning if none of them is a close match.
 3. Click **Research this company** (usually 20–45 seconds). The report shows 8 cards: snapshot, recent news, "why now" signals, ICP fit score, who to contact, outreach email (with a copy icon), what we couldn't find, and sources. Every `[S1]` citation links to its source.
+   - Low-fit companies (score 3 or under) have their email hidden behind a **Show email anyway** switch.
 4. Open "Behind the scenes" to see what code changed in the AI's answer and how long each step took.
 
 Results are cached: looking up the same company again within 6 hours costs no API credits. Stop the app with `Ctrl + C` in the terminal.
@@ -35,6 +36,7 @@ Results are cached: looking up the same company again within 6 hours costs no AP
 - **Companies House lookup** ([sources/uk_companies_house.py](sources/uk_companies_house.py)): finds UK companies by name or website, ranks exact name matches first, and fetches status, industry codes, founded date, address and recently appointed directors. Every fact links to its public Companies House page. Dissolved, insolvent or dormant companies are flagged as "not worth contacting" by code, not by the AI.
   - Try it: `.venv/bin/python -m sources.uk_companies_house "Cognism"`
   - Tip: typing the website (e.g. `paddle.com`) finds the right company more reliably than a short name.
+  - **Big companies first:** Companies House lists similar names roughly alphabetically, so for "Howden" the big companies were buried under local firms. The app fetches 100 matches, checks the size of the most likely 15 from the type of accounts they file (group, full, small, micro…), and lists the biggest first. Companies House has no staff counts, so this is a guide. Headcount comes later, from the company profile.
   - Industry (SIC) codes come with their **official meanings** from Companies House, stored in [data/sic_codes.csv](data/sic_codes.csv) (all 731 codes). The AI never has to guess what a code means.
 
 - **News, signals and company card** ([sources/news_tavily.py](sources/news_tavily.py)), using Tavily:
@@ -49,7 +51,8 @@ Results are cached: looking up the same company again within 6 hours costs no AP
   - Every fetched fact gets a source ID (S1, S2…). Gemini sees **only** those sources and must cite them.
   - **Code checks the AI's work:**
     - claims citing sources we didn't fetch are removed
-    - news picks must be real news items
+    - news picks must be real stories from the last 6 months
+    - any recent story used as a "why now" signal also appears under "Recent news", so the two never disagree
     - the email must be under 120 words and open with a cited trigger
     - common American spellings in the email are corrected to British (e.g. personalize → personalise)
     - every change is listed under "Code checks"

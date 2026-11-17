@@ -127,6 +127,9 @@ def show_email(r, by_id):
             return
         for w in e["warnings"]:
             st.warning(safe(w))
+        # Low-fit companies: hide the email unless the user really wants it
+        if r["fit_score"] <= report.LOW_FIT_SCORE and not st.toggle("Show email anyway"):
+            return
         st.markdown(f"**Subject:** {safe(e['subject'])}")
         st.code(e["body"], language=None, wrap_lines=True)
         trigger = cite(e["trigger_sources"], by_id) or " none"
@@ -188,7 +191,9 @@ def search_form():
 
 
 def match_label(m):
-    return f"{m['name']} · {m['company_number']} · {m['status'] or 'status unknown'} · {m['address'] or ''}"
+    size = m.get("size") or "size unknown"
+    return (f"{m['name']} · {size} · {m['company_number']} · {m['status'] or 'status unknown'} · "
+            f"{m['address'] or ''}")
 
 
 def pick_company():
@@ -202,6 +207,8 @@ def pick_company():
     if not matches[0]["close_match"]:
         st.warning(f'No close match found for "{safe(typed)}". Only pick one below if you\'re sure it\'s right.')
     choice = st.radio("Which company did you mean?", matches, format_func=match_label)
+    st.caption("Biggest companies first. Size is a guide from the type of accounts each company "
+               "files with Companies House, not a staff count.")
     if st.button("Research this company", type="primary"):
         run_report(choice)
 

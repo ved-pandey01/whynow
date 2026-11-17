@@ -160,15 +160,18 @@ def search_companies(name):
     """
     Return the top matches for a company name (or website). Empty list if nothing found.
     Companies House's own ranking can bury the right company (e.g. THE SAGE GROUP PLC is 10th
-    for "Sage Group"), so we fetch more results and re-rank them ourselves:
-    exact name matches first, then close matches, then loose ones; active companies before closed ones.
+    for "Sage Group", and small local firms buried the big Howden companies), so we fetch more
+    results and re-rank them ourselves: close matches first, active before closed, bigger before
+    smaller (from the accounts they file), then exact names. A typed website's exact match always comes first.
     """
     if not clean_query(name):
         raise CompaniesHouseError("Please type a company name or website.")
 
     matches, seen = [], set()
-    for term in search_terms(name):
-        data = _call_api("/search/companies", {"q": term, "items_per_page": 20})
+    terms = search_terms(name)
+    domain = terms[0] if len(terms) > 1 else None   # e.g. "paddle.com" is searched as "paddle.com" then "paddle"
+    for term in terms:
+        data = _call_api("/search/companies", {"q": term, "items_per_page": 100})
         for item in (data or {}).get("items", []):
             number = item.get("company_number")
             if number in seen:
@@ -180,14 +183,77 @@ def search_companies(name):
                 "status": item.get("company_status"),
                 "founded": item.get("date_of_creation"),
                 "address": item.get("address_snippet"),
+                "company_type": item.get("company_type"),
                 "exact_match": is_exact_match(name, item.get("title")),
                 "close_match": is_exact_match(name, item.get("title")) or is_close_match(name, item.get("title")),
                 "source": company_page_url(number),
             })
 
-    # Best first. Python's sort keeps Companies House's order when two matches tie.
-    matches.sort(key=lambda m: (not m["exact_match"], not m["close_match"], m["status"] != "active"))
+    # Companies House lists similar names roughly alphabetically, so big companies get buried
+    # (real problem: HOWDEN GROUP HOLDINGS was 41st of 373 "Howden" results).
+    # 1. Quick pre-sort using what the search already tells us (no extra calls).
+    matches.sort(key=lambda m: _likely_big_first(m, domain))
+    # 2. Look up the real size (from filed accounts) of the top few only, then sort properly.
+    for i, m in enumerate(matches):
+        checked = i < settings.COMPANY_SIZE_CHECKS and m["close_match"]
+        m["size_rank"], m["size"] = company_size(m["company_number"]) if checked else (SIZE_UNKNOWN, None)
+    matches.sort(key=lambda m: _best_first(m, domain))
     return matches[: settings.COMPANY_SEARCH_RESULTS]
+
+
+def _website_first(m, domain):
+    """If a website was typed, the company with it in its name comes first (paddle.com → PADDLE.COM MARKET LIMITED)."""
+    return not (domain and domain in (m["name"] or "").lower())
+
+
+def _likely_big_first(m, domain):
+    """Rough order before sizes are known: plc, then names like '... GROUP' or '... HOLDINGS' (often parents)."""
+    words = set(_words(m["name"]))
+    return (_website_first(m, domain), not m["close_match"], m["status"] != "active",
+            m["company_type"] != "plc", not words & {"group", "holdings"}, not m["exact_match"])
+
+
+def _best_first(m, domain):
+    """Final order: close, active, biggest, then exact name. Ties keep the order from before."""
+    return (_website_first(m, domain), not m["close_match"], m["status"] != "active",
+            m["size_rank"], not m["exact_match"])
+
+
+# Size from the type of accounts a company files with Companies House (official, free).
+# Companies House has no staff numbers, but the accounts type is a good guide:
+# big groups file "group" accounts; tiny companies file "micro-entity" accounts.
+# Lower rank = bigger company = shown first.
+ACCOUNTS_SIZES = {
+    "group": (1, "Large: parent of a group"),
+    "full": (2, "Medium to large: full accounts"),
+    "medium": (3, "Medium-sized"),
+    "small": (4, "Small"),
+    "total-exemption-full": (4, "Small"),
+    "total-exemption-small": (4, "Small"),
+    "unaudited-abridged": (4, "Small"),
+    "audit-exemption-subsidiary": (5, "Subsidiary of a larger group"),
+    "filing-exemption-subsidiary": (5, "Subsidiary of a larger group"),
+    "micro-entity": (6, "Very small (micro)"),
+    "dormant": (8, "Dormant (not trading)"),
+}
+SIZE_UNKNOWN = 7
+
+
+def size_from_accounts(accounts_type, company_type=None):
+    """(rank, plain-English size) from the accounts type. Public companies (plc) count as large."""
+    if company_type == "plc":
+        return 1, "Large: public company (plc)"
+    return ACCOUNTS_SIZES.get(accounts_type or "", (SIZE_UNKNOWN, None))
+
+
+def company_size(company_number):
+    """Size of one company, or 'unknown' if Companies House can't tell us (never stops the search)."""
+    try:
+        data = _call_api(f"/company/{company_number}") or {}
+    except CompaniesHouseError:
+        return SIZE_UNKNOWN, None
+    accounts_type = (data.get("accounts") or {}).get("last_accounts", {}).get("type")
+    return size_from_accounts(accounts_type, data.get("type"))
 
 
 # ---------------------------------------------------------------------------

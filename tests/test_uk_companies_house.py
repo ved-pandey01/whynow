@@ -101,6 +101,54 @@ def test_close_matches_are_listed_first(monkeypatch):
     assert matches[1]["close_match"] is False
 
 
+def fake_api(monkeypatch, search_items, accounts):
+    """Search returns search_items; each /company/{n} returns that company's accounts type and company type."""
+    def get(url, params=None, **kwargs):
+        if "/search/" in url:
+            return FakeResponse(json_data={"items": search_items})
+        number = url.rsplit("/", 1)[-1]
+        accounts_type, company_type = accounts.get(number, (None, "ltd"))
+        return FakeResponse(json_data={"type": company_type,
+                                       "accounts": {"last_accounts": {"type": accounts_type}}})
+    monkeypatch.setattr(ch.requests, "get", get)
+
+
+def test_big_companies_are_listed_first(monkeypatch):
+    """Real problem: for 'Howden', small local firms filled the picker and the big Howden companies were buried."""
+    fake_api(monkeypatch,
+             search_items=[{"title": "HOWDEN ACTION GROUP CIC", "company_number": "1", "company_status": "active"},
+                           {"title": "HOWDEN BLACKSMITHS LTD", "company_number": "2", "company_status": "active"},
+                           {"title": "HOWDEN GROUP HOLDINGS LIMITED", "company_number": "3",
+                            "company_status": "active"},
+                           {"title": "HOWDEN JOINERY GROUP PLC", "company_number": "4",
+                            "company_status": "active", "company_type": "plc"}],
+             accounts={"1": ("total-exemption-full", "ltd"), "2": ("micro-entity", "ltd"),
+                       "3": ("group", "ltd"), "4": ("group", "plc")})
+    matches = ch.search_companies("Howden")
+    assert [m["company_number"] for m in matches] == ["4", "3", "1", "2"]
+    assert matches[0]["size"] == "Large: public company (plc)"
+    assert matches[3]["size"] == "Very small (micro)"
+
+
+def test_typed_website_company_beats_bigger_lookalikes(monkeypatch):
+    fake_api(monkeypatch,
+             search_items=[{"title": "PADDLE HOLDINGS LIMITED", "company_number": "1", "company_status": "active"},
+                           {"title": "PADDLE.COM MARKET LIMITED", "company_number": "2", "company_status": "active"}],
+             accounts={"1": ("group", "plc"), "2": ("full", "ltd")})
+    assert ch.search_companies("paddle.com")[0]["name"] == "PADDLE.COM MARKET LIMITED"
+
+
+@pytest.mark.parametrize("accounts_type, company_type, size", [
+    ("group", "ltd", "Large: parent of a group"),
+    ("full", "ltd", "Medium to large: full accounts"),
+    ("micro-entity", "ltd", "Very small (micro)"),
+    ("micro-entity", "plc", "Large: public company (plc)"),
+    (None, "ltd", None),                       # no accounts filed yet → size unknown
+])
+def test_size_from_accounts(accounts_type, company_type, size):
+    assert ch.size_from_accounts(accounts_type, company_type)[1] == size
+
+
 def test_empty_search_gives_friendly_error():
     with pytest.raises(ch.CompaniesHouseError, match="type a company name"):
         ch.search_companies("   ")

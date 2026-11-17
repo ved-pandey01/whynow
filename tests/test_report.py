@@ -114,6 +114,48 @@ def test_news_picks_must_be_real_news_sources():
     assert [n["source"] for n in r["news"]] == ["S3"]
 
 
+def research_with_signal_story(story_date):
+    """make_research plus S5: a dated expansion story found by the signal search, not the news search."""
+    research = make_research()
+    research["sources"].add("signal", "[expansion] Acme opens in Sweden", "https://news/sweden",
+                            "Acme expands to Sweden", story_date)
+    return research
+
+
+def test_recent_story_used_as_signal_also_appears_in_news():
+    """Real problem (Howden): 'Recent news' said none found, but 'Why now' showed a 20 Oct news story."""
+    r, _ = build(research_with_signal_story("2026-10-20"), make_draft(
+        news=[],
+        signals=[Signal(signal_type="expansion", text="Expanding into Sweden.", source_ids=["S5"])]))
+    assert [n["source"] for n in r["news"]] == ["S5"]
+    assert r["news"][0]["why_it_matters"] == "Expanding into Sweden."
+
+
+def test_ai_can_pick_a_recent_signal_story_as_news():
+    r, _ = build(research_with_signal_story("2026-10-20"), make_draft(
+        news=[NewsPick(source_id="S5", why_it_matters="Sweden"), NewsPick(source_id="S3", why_it_matters="Launch")]))
+    assert [n["source"] for n in r["news"]] == ["S3", "S5"]  # newest first: 1 Nov, then 20 Oct
+
+
+def test_signal_stories_take_priority_when_news_is_full():
+    """Real problem (Howden, 2nd try): 3 newer stories pushed the CCO-hire signal out of the news card."""
+    research = research_with_signal_story("2026-10-20")       # S5, the signal story
+    for i in (6, 7, 8):                                        # S6–S8, newer ordinary news
+        research["sources"].add("news", f"Story {i}", f"https://news/{i}", "...", f"2026-11-0{i}")
+    r, _ = build(research, make_draft(
+        news=[NewsPick(source_id=f"S{i}", why_it_matters="...") for i in (6, 7, 8)],
+        signals=[Signal(signal_type="expansion", text="Expanding into Sweden.", source_ids=["S5"])]))
+    assert [n["source"] for n in r["news"]] == ["S8", "S7", "S5"]  # S5 kept, still newest first
+
+
+@pytest.mark.parametrize("story_date", [None, "2025-12-01"])  # undated, or older than 6 months
+def test_old_or_undated_signal_stories_are_not_news(story_date):
+    r, _ = build(research_with_signal_story(story_date), make_draft(
+        news=[],
+        signals=[Signal(signal_type="expansion", text="Expanding into Sweden.", source_ids=["S5"])]))
+    assert r["news"] == []
+
+
 def test_unknown_signal_types_are_removed():
     r, _ = build(make_research(), make_draft(signals=[
         Signal(signal_type="vibes", text="They seem nice.", source_ids=["S4"])]))

@@ -81,7 +81,9 @@ SOFTWARE_SIC_CODES = {
 # Limits
 # ---------------------------------------------------------------------------
 COMPANY_SEARCH_RESULTS = 5   # how many Companies House matches to show
+COMPANY_SIZE_CHECKS = 15     # how many matches get their size looked up before ranking (free, ~0.1s each)
 NEWS_ITEMS = 3               # recent news items in the report
+NEWS_WINDOW_MONTHS = 6       # "recent" news means published in the last 6 months
 NEWS_CANDIDATES = 8          # news items fetched; the AI picks the 3 really about the company
 EMAIL_MAX_WORDS = 120        # outreach email length limit
 

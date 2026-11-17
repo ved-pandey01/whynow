@@ -273,7 +273,7 @@ def _with_context(query, website=None, topic=None):
     return " ".join([query] + extras)
 
 
-def get_recent_news(brand, website=None, topic=None, months=6):
+def get_recent_news(brand, website=None, topic=None, months=settings.NEWS_WINDOW_MONTHS):
     """
     News CANDIDATES with the company in the headline, newest first.
     Brands that are ordinary words ('Paddle', 'Sage') still pick up some unrelated stories,

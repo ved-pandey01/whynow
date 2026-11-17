@@ -42,7 +42,9 @@ STRICT RULES
    company is a head office or holding company. It does NOT mean "software development".
 
 NEWS
-Pick up to {settings.NEWS_ITEMS} items from the NEWS CANDIDATES that are really about this company.
+Pick up to {settings.NEWS_ITEMS} items that are really about this company, from the NEWS CANDIDATES
+or from SIGNAL CANDIDATES that are dated news stories from the last {settings.NEWS_WINDOW_MONTHS} months.
+If you use a recent dated story as a signal, include it in news too, so the report is consistent.
 Newest first. If none are relevant, return an empty list and say so in not_found.
 
 ICP FIT SCORE (1–10)

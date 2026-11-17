@@ -87,6 +87,31 @@ def test_full_report_shows_all_8_cards(app):
     assert app.code[0].value.startswith("Hi [First name]")
 
 
+def test_picker_shows_company_size(app, monkeypatch):
+    monkeypatch.setattr(ch, "search_companies", lambda typed: [dict(MATCHES[0], size="Large: parent of a group")])
+    search(app)
+    assert "Large: parent of a group" in app.radio[0].options[0]
+
+
+def test_low_fit_email_is_hidden_until_toggled(app, monkeypatch):
+    low = dict(REPORT, fit_score=2,
+               email=dict(REPORT["email"], warnings=["Low fit: we don't recommend contacting this company."]))
+    monkeypatch.setattr(report, "build_report", lambda research, offer=None: low)
+    search(app)
+    app.button[1].click().run()
+    assert not app.code                          # email hidden
+    assert "Low fit" in app.warning[0].value
+    app.toggle[0].set_value(True).run()          # "Show email anyway"
+    assert app.code[0].value.startswith("Hi [First name]")
+
+
+def test_good_fit_email_shows_without_toggle(app):
+    search(app)
+    app.button[1].click().run()
+    assert not app.toggle
+    assert app.code
+
+
 def test_no_matches_gives_friendly_message(app, monkeypatch):
     monkeypatch.setattr(ch, "search_companies", lambda typed: [])
     search(app, "Zzqx Widgets Ltd")
