@@ -106,7 +106,11 @@ AI_PROVIDER = "gemini"
 #   gemini-3.6-flash: tested working (full report shape in ~6s). Using this for now;
 #   try 3.8-flash again once Google's service is stable.
 GEMINI_MODEL = "gemini-3.6-flash"
-GEMINI_FALLBACK_MODEL = "gemini-3.5-flash"   # tried once if the main model is busy, slow or retired
+GEMINI_FALLBACK_MODELS = [          # tried in order, once each, if the main model is busy, slow, rate-limited or retired
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",         # each model has its own free daily allowance
+    "gemini-3.1-flash-lite",
+]
 
 
 # ---------------------------------------------------------------------------

@@ -97,10 +97,19 @@ def wordmark(css_class="wn-wordmark"):
 
 def topbar():
     """Slim top bar: brand and label on the left, author on the right."""
-    return (f'<div class="wn-topbar"><div class="wn-topbar-brand">{wordmark("wn-mini")}'
+    return (f'<div class="wn-topbar"><div class="wn-topbar-brand">'
+            f'<a class="wn-home" href="{HOME_URL}" target="_self" title="Back to home">{wordmark("wn-mini")}</a>'
             f'<span class="wn-topbar-label">· {esc(settings.APP_LABEL)}</span></div>'
             f'<a class="wn-topbar-by" href="{safe_url(settings.AUTHOR_LINKEDIN)}" target="_blank" '
             f'rel="noopener noreferrer">by {esc(settings.AUTHOR_NAME)}</a></div>')
+
+
+HOME_URL = "./"   # the home page without "?sample=1"; loading it starts fresh, so the report is cleared
+
+
+def back_link():
+    """'← Back to home' above every report (live or sample)."""
+    return f'<a class="wn-back" href="{HOME_URL}" target="_self">← Back to home</a>'
 
 
 def hero():
@@ -109,8 +118,8 @@ def hero():
     # Each sentence in its own span, so a line only ever breaks between sentences
     sentences = [x.strip() for x in settings.APP_HEADLINE.replace(". ", ".|").split("|")]
     headline = " ".join(f"<span>{esc(x)}</span>" for x in sentences)
-    return (f'<div class="wn-hero">{wordmark()}'
-            f'<h2 class="wn-headline">{headline}</h2>'
+    return (f'<div class="wn-hero"><div class="wn-title">{wordmark()}'
+            f'<h2 class="wn-headline">{headline}</h2></div>'
             f'<div class="wn-typing" aria-label="{esc(settings.APP_TYPING_LINES[0])}">{typing}</div></div>')
 
 
@@ -288,7 +297,7 @@ def profile_card(r, by_id):
     return f'<div class="wn-card"><div class="wn-facts">{"".join(rows)}</div></div>'
 
 
-def stat_tile(label, icon_name, fact, by_id, value=None, trend=None):
+def stat_tile(label, icon_name, fact, by_id, value=None, trend=None, note=None):
     if fact:
         shown = f'<div class="wn-stat-value">{value or esc(fact["value"])}{fact_cite(fact, by_id)}</div>'
     else:
@@ -298,8 +307,17 @@ def stat_tile(label, icon_name, fact, by_id, value=None, trend=None):
         direction = "down" if trend.strip().startswith("-") else "up"
         arrow = "▼" if direction == "down" else "▲"
         trend_html = f'<div class="wn-trend {direction}">{arrow} {esc(trend)}</div>'
+    note_html = f'<div class="wn-stat-note">{esc(note)}</div>' if note and fact else ""
     return (f'<div class="wn-stat"><div class="wn-stat-label">{icon(icon_name)}{esc(label)}</div>'
-            f'{shown}{trend_html}</div>')
+            f'{shown}{trend_html}{note_html}</div>')
+
+
+def split_totals(value):
+    """'318.34M USD, 8.00M GBP' → ('318.34M USD', 'Also reported: 8.00M GBP'). The first listed total is the main one."""
+    parts = [x.strip() for x in str(value or "").split(",") if x.strip()]
+    if len(parts) < 2:
+        return value, None
+    return parts[0], "Also reported: " + ", ".join(parts[1:])
 
 
 def stats_row(r, by_id):
@@ -310,7 +328,9 @@ def stats_row(r, by_id):
         stat_tile("Employees", "groups", headcount, by_id,
                   value=f"{headcount['value']:,}" if headcount else None, trend=change),
         stat_tile("Founded", "calendar_month", p.get("founded"), by_id),
-        stat_tile("Funding raised", "savings", p.get("total_raised"), by_id),
+        stat_tile("Funding raised", "savings", p.get("total_raised"), by_id,
+                  value=esc(split_totals(p["total_raised"]["value"])[0]) if p.get("total_raised") else None,
+                  note=split_totals(p["total_raised"]["value"])[1] if p.get("total_raised") else None),
         stat_tile("Revenue", "bar_chart", p.get("revenue"), by_id),
     ]
     return f'<div class="wn-stats">{"".join(tiles)}</div>'

@@ -164,6 +164,7 @@ def test_full_report_shows_every_section(app):
     for heading in ["ICP fit", "Why reach out now", "Recent news", "What we couldn&#x27;t find", "Sources"]:
         assert heading in page
     assert 'class="wn-badge strong"' in page                  # 8/10 → green
+    assert "← Back to home" in page
     assert '<span class="icon" aria-hidden="true">payments</span>Funding' in page   # signal icon
     assert ">Acme raises $5m<" in page                        # internal "[funding]" tag removed
     assert "300" in page and "▲ +30 yearly (11%)" in page     # stat tile with trend

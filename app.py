@@ -225,13 +225,15 @@ def show_behind_the_scenes(r):
 
 def show_report(r):
     by_id = {s["id"]: s for s in r["all_sources"]}
+    st.html(ui.back_link())
     if st.session_state.get("sample"):
         st.info(f"Saved example from {r.get('saved_on', 'an earlier run')}. "
                 "Search above to research any UK company live.", icon=":material/history:")
 
-    left, right = st.columns([2, 1])
-    left.html(ui.banner(r, by_id))
-    right.html(ui.profile_card(r, by_id))
+    with st.container(key="wn_overview"):   # the CSS makes both cards the same height
+        left, right = st.columns([2, 1])
+        left.html(ui.banner(r, by_id))
+        right.html(ui.profile_card(r, by_id))
     for w in r["warnings"]:
         st.caption(safe(w))
     st.html(ui.stats_row(r, by_id))

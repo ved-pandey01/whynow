@@ -122,3 +122,24 @@ def test_closed_company_card_is_greyed_out():
     m = {"name": "OLD LTD", "status": "dissolved", "source": "https://ch/1"}
     assert 'class="wn-pick closed"' in ui.picker_card(m)
     assert 'class="wn-pick"' in ui.picker_card(dict(m, status="active"))
+
+
+def test_logo_and_back_link_return_home():
+    assert 'class="wn-home" href="./" target="_self"' in ui.topbar()
+    assert ui.back_link() == '<a class="wn-back" href="./" target="_self">← Back to home</a>'
+
+
+def test_headline_is_one_line_on_desktop():
+    css = ui.CSS_FILE.read_text()
+    assert "white-space: nowrap" in css.split(".wn-headline {")[1].split("}")[0]
+
+
+@pytest.mark.parametrize("value, main, note", [
+    ("318.34M USD, 8.00M GBP", "318.34M USD", "Also reported: 8.00M GBP"),
+    ("5M GBP", "5M GBP", None),
+])
+def test_funding_shows_one_main_total(value, main, note):
+    assert ui.split_totals(value) == (main, note)
+    out = ui.stats_row({"profile": {"total_raised": {"value": value, "source": None}}}, {})
+    assert f">{main}<" in out
+    assert (note in out) if note else ("Also reported" not in out)

@@ -2,8 +2,8 @@
 provider.py — the ONE place that talks to the AI.
 
 The rest of the app only calls generate_structured(prompt, Shape).
-If the main Gemini model is busy, slow or retired, the same request is tried once more
-with a backup model (GEMINI_FALLBACK_MODEL). last_model_used() says which one answered.
+If the main Gemini model is busy, slow, rate-limited or retired, the same request is tried
+with each backup model in turn (GEMINI_FALLBACK_MODELS), once each. last_model_used() says which answered.
 To swap Gemini for another AI later, add a new _ask_<provider> function here
 and change AI_PROVIDER in settings.py. Nothing else needs to change.
 """
@@ -41,18 +41,19 @@ def generate_structured(prompt, shape):
     """Ask the AI and get back a filled-in Pydantic object of the given shape."""
     if settings.AI_PROVIDER != "gemini":
         raise AIError(f"Unknown AI provider '{settings.AI_PROVIDER}' in settings.py.")
-    main, backup = settings.GEMINI_MODEL, settings.GEMINI_FALLBACK_MODEL
-    try:
-        answer = _ask_gemini(prompt, shape, main)
-        _last.model = {"name": main, "backup": False, "reason": None}
+    models = [settings.GEMINI_MODEL] + [m for m in settings.GEMINI_FALLBACK_MODELS if m != settings.GEMINI_MODEL]
+    failed = []
+    for model in models:
+        try:
+            answer = _ask_gemini(prompt, shape, model)
+        except AIError as e:
+            # Key problems (or the last model failing) stop here: another model wouldn't help
+            if not e.try_backup or model == models[-1]:
+                raise
+            failed.append(f"{model} failed: {e}")
+            continue
+        _last.model = {"name": model, "backup": bool(failed), "reason": "; ".join(failed) or None}
         return answer
-    except AIError as e:
-        if not (e.try_backup and backup and backup != main):
-            raise
-        reason = f"{main} failed: {e}"
-    answer = _ask_gemini(prompt, shape, backup)   # one more try with the backup model
-    _last.model = {"name": backup, "backup": True, "reason": reason}
-    return answer
 
 
 def _ask_gemini(prompt, shape, model):

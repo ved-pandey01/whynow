@@ -91,7 +91,7 @@ Results are cached: looking up the same company again within 6 hours costs no AP
 
     - if headcount isn't found, the AI judges size only from evidence in the sources
   - The AI provider sits behind one function ([ai/provider.py](ai/provider.py)), so swapping Gemini for another model is a settings change.
-  - **Backup model:** if the main Gemini model is busy, slow, rate-limited or retired, the request is tried once more with `GEMINI_FALLBACK_MODEL`. Key problems don't trigger it, because another model wouldn't help. The report and the email each say which model wrote them.
+  - **Backup models:** if the main Gemini model is busy, slow, rate-limited or retired, the request is tried with each model in `GEMINI_FALLBACK_MODELS` in turn, once each (gemini-3.5-flash, then gemini-3.5-flash-lite, then gemini-3.1-flash-lite). Each model has its own free daily allowance (the main model's is only 20 requests a day), so this keeps the app working on busy days. Key problems don't trigger it, because another model wouldn't help. The report and the email each say which model wrote them.
   - Try it (about 9 Tavily credits + 1–2 Gemini requests): `.venv/bin/python -m report "paddle.com"`
 
 - **Time limits** (set in [settings.py](settings.py)):

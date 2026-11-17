@@ -151,9 +151,9 @@ def test_busy_main_model_falls_back_to_backup(monkeypatch):
     gemini = FakeGemini({settings.GEMINI_MODEL: busy()}).install(monkeypatch)
     answer = provider.generate_structured("hi", Claim)
     assert answer.text == "hello"
-    assert gemini.models_asked == [settings.GEMINI_MODEL, settings.GEMINI_FALLBACK_MODEL]
+    assert gemini.models_asked == [settings.GEMINI_MODEL, settings.GEMINI_FALLBACK_MODELS[0]]
     used = provider.last_model_used()
-    assert used["name"] == settings.GEMINI_FALLBACK_MODEL and used["backup"] is True
+    assert used["name"] == settings.GEMINI_FALLBACK_MODELS[0] and used["backup"] is True
     assert "having problems" in used["reason"]
 
 
@@ -173,12 +173,24 @@ def test_key_problem_does_not_try_the_backup(monkeypatch):
     assert gemini.models_asked == [settings.GEMINI_MODEL]
 
 
-def test_both_models_busy_gives_a_friendly_error(monkeypatch):
+def test_backups_are_tried_in_order_until_one_works(monkeypatch):
+    """Real problem (17 Nov 2026): the main model hit its 20-a-day limit and the first backup was busy."""
     from models import Claim
-    gemini = FakeGemini({settings.GEMINI_MODEL: busy(), settings.GEMINI_FALLBACK_MODEL: busy()}).install(monkeypatch)
+    main, first, second, third = [settings.GEMINI_MODEL] + settings.GEMINI_FALLBACK_MODELS
+    gemini = FakeGemini({main: busy(), first: busy()}).install(monkeypatch)
+    provider.generate_structured("hi", Claim)
+    assert gemini.models_asked == [main, first, second]
+    used = provider.last_model_used()
+    assert used["name"] == second and main in used["reason"] and first in used["reason"]
+
+
+def test_all_models_busy_gives_a_friendly_error(monkeypatch):
+    from models import Claim
+    all_models = [settings.GEMINI_MODEL] + settings.GEMINI_FALLBACK_MODELS
+    gemini = FakeGemini({m: busy() for m in all_models}).install(monkeypatch)
     with pytest.raises(provider.AIError, match="having problems"):
         provider.generate_structured("hi", Claim)
-    assert len(gemini.models_asked) == 2   # exactly one retry, no endless loop
+    assert gemini.models_asked == all_models   # each model once, no endless loop
 
 
 class ConnectError(Exception):
@@ -188,6 +200,6 @@ class ConnectError(Exception):
 def test_dropped_connection_gets_a_plain_message(monkeypatch):
     """Real problem (17 Nov 2026): the connection dropped and the message said 'ConnectError'."""
     from models import Claim
-    FakeGemini({settings.GEMINI_MODEL: ConnectError(), settings.GEMINI_FALLBACK_MODEL: ConnectError()}).install(monkeypatch)
+    FakeGemini({m: ConnectError() for m in [settings.GEMINI_MODEL] + settings.GEMINI_FALLBACK_MODELS}).install(monkeypatch)
     with pytest.raises(provider.AIError, match="Couldn't reach Gemini. Check your internet connection"):
         provider.generate_structured("hi", Claim)
