@@ -1,0 +1,142 @@
+/* WhyNow — the look of the page. Colours live in one place (:root) so they're easy to change. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=block');
+
+:root {
+  --navy: #1E3A8A;
+  --teal: #0D9488;
+  --ink: #111827;
+  --muted: #6B7280;
+  --line: #E5E7EB;
+  --soft: #F5F7FB;
+  --white: #FFFFFF;
+  --green: #15803D;
+  --amber: #B45309;
+  --red: #B91C1C;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 16px rgba(17, 24, 39, 0.04);
+}
+
+/* Page: white, centred, about 1,000px wide, Inter font */
+html, body, .stApp { background: var(--white); color: var(--ink);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+.block-container, [data-testid="stMainBlockContainer"] { max-width: 1040px; padding-top: 2.5rem; padding-bottom: 3rem; }
+h1, h2, h3, h4 { font-family: 'Inter', sans-serif; letter-spacing: -0.01em; }
+/* Streamlit's own text, labels, inputs and buttons in Inter too (not its icon font) */
+.stApp p, .stApp li, .stApp label, .stApp input, .stApp textarea, .stApp button, .stApp summary,
+[data-testid="stMarkdownContainer"], [data-testid="stCaptionContainer"] { font-family: 'Inter', system-ui, sans-serif; }
+a { color: var(--navy); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.icon { font-family: 'Material Symbols Rounded'; font-weight: normal; font-style: normal; font-size: 20px;
+  line-height: 1; display: inline-block; vertical-align: middle; -webkit-font-smoothing: antialiased; }
+
+/* Streamlit's own boxes (search form, picker cards, email card): soft and rounded */
+[data-testid="stForm"], [data-testid="stVerticalBlockBorderWrapper"] {
+  border: 1px solid var(--line) !important; border-radius: var(--radius) !important;
+  box-shadow: var(--shadow); background: var(--white); }
+.stButton > button, .stLinkButton > a, [data-testid="stFormSubmitButton"] > button {
+  border-radius: 10px; font-weight: 600; }
+
+/* ---------- Landing ---------- */
+.wn-hero { text-align: center; padding: 2.5rem 0 2rem; }
+.wn-label { color: var(--teal); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.18em; }
+.wn-wordmark { font-size: 4rem; font-weight: 800; color: var(--navy); letter-spacing: -0.04em;
+  line-height: 1.05; margin: 0.6rem 0 0.4rem; }
+.wn-wordmark span { color: var(--teal); }
+.wn-slogan { font-size: 1.25rem; font-weight: 500; color: var(--ink); margin: 0.2rem 0 0.8rem; }
+.wn-intro { color: var(--muted); font-size: 1rem; max-width: 40rem; margin: 0 auto; line-height: 1.6; }
+.wn-mini { font-size: 1.4rem; font-weight: 800; color: var(--navy); letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+.wn-mini span { color: var(--teal); }
+
+.wn-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 2.5rem 0 1.5rem; }
+.wn-step { background: var(--soft); border-radius: var(--radius); padding: 1.25rem; text-align: center; }
+.wn-step .icon { color: var(--teal); font-size: 28px; }
+.wn-step-num { color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; margin-top: 0.5rem; }
+.wn-step-text { font-weight: 600; margin-top: 0.2rem; }
+
+/* ---------- Shared card ---------- */
+.wn-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--white);
+  box-shadow: var(--shadow); padding: 1.4rem 1.5rem; margin-bottom: 1rem; }
+.wn-card h4 { font-size: 1rem; font-weight: 700; margin: 0 0 0.9rem; display: flex; align-items: center; gap: 0.5rem; }
+.wn-card h4 .icon { color: var(--teal); }
+.wn-card ul { margin: 0; padding-left: 1.1rem; }
+.wn-card li { margin: 0.35rem 0; line-height: 1.55; }
+.wn-empty { color: var(--muted); }
+.wn-cite { font-size: 0.7rem; font-weight: 600; color: var(--teal); background: #F0FDFA; border-radius: 6px;
+  padding: 0.05rem 0.35rem; margin-left: 0.25rem; vertical-align: middle; white-space: nowrap; }
+.wn-chip { display: inline-block; font-size: 0.75rem; font-weight: 600; border-radius: 999px; padding: 0.15rem 0.6rem;
+  background: var(--soft); color: var(--ink); margin: 0.2rem 0.3rem 0 0; }
+.wn-chip.ok { background: #ECFDF5; color: var(--green); }
+.wn-chip.bad { background: #FEF2F2; color: var(--red); }
+.wn-quiet { color: var(--muted); font-size: 0.875rem; }
+
+/* ---------- Picker card ---------- */
+.wn-pick-name { font-weight: 700; font-size: 1rem; }
+.wn-pick-meta { color: var(--muted); font-size: 0.875rem; margin-top: 0.3rem; line-height: 1.5; }
+
+/* ---------- Banner + profile ---------- */
+.wn-banner { display: flex; gap: 1.1rem; align-items: flex-start; }
+.wn-logo { position: relative; flex: 0 0 56px; width: 56px; height: 56px; border-radius: 14px; background: var(--navy);
+  color: var(--white); font-weight: 700; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.wn-logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 10px; background: var(--white);
+  border: 1px solid var(--line); border-radius: 14px; box-sizing: border-box; }
+.wn-name { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; }
+.wn-legal { color: var(--muted); font-size: 0.85rem; margin-top: 0.2rem; }
+.wn-what { margin-top: 0.9rem; line-height: 1.6; }
+.wn-alert { margin-top: 0.9rem; color: var(--red); font-weight: 600; }
+.wn-facts { display: grid; gap: 0.7rem; }
+.wn-fact-label { color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.wn-fact-value { font-weight: 500; overflow-wrap: anywhere; }
+
+/* ---------- Stat tiles ---------- */
+.wn-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.9rem; margin: 0.4rem 0 1.4rem; }
+.wn-stat { background: var(--soft); border-radius: var(--radius); padding: 1rem 1.1rem; }
+.wn-stat-label { color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 0.35rem; }
+.wn-stat-label .icon { font-size: 16px; color: var(--teal); }
+.wn-stat-value { font-size: 1.35rem; font-weight: 700; margin-top: 0.35rem; overflow-wrap: anywhere; }
+.wn-stat-value.missing { font-size: 1rem; font-weight: 500; color: var(--muted); }
+.wn-trend { font-size: 0.8rem; font-weight: 600; margin-top: 0.2rem; }
+.wn-trend.up { color: var(--green); }
+.wn-trend.down { color: var(--red); }
+
+/* ---------- Fit badge ---------- */
+.wn-fit { display: flex; gap: 1.3rem; align-items: flex-start; }
+.wn-badge { flex: 0 0 auto; text-align: center; }
+.wn-badge-circle { width: 92px; height: 92px; border-radius: 50%; color: var(--white); display: flex; align-items: center;
+  justify-content: center; font-size: 2.1rem; font-weight: 800; }
+.wn-badge-circle small { font-size: 0.85rem; font-weight: 600; opacity: 0.85; margin-left: 2px; }
+.wn-badge-label { font-weight: 700; font-size: 0.85rem; margin-top: 0.45rem; }
+.wn-badge.strong .wn-badge-circle { background: var(--green); }  .wn-badge.strong .wn-badge-label { color: var(--green); }
+.wn-badge.possible .wn-badge-circle { background: var(--amber); } .wn-badge.possible .wn-badge-label { color: var(--amber); }
+.wn-badge.weak .wn-badge-circle { background: var(--red); }       .wn-badge.weak .wn-badge-label { color: var(--red); }
+
+/* ---------- Signal tiles ---------- */
+.wn-signals { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; }
+.wn-signal { background: var(--soft); border-radius: var(--radius); padding: 1rem 1.1rem; }
+.wn-signal-head { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.9rem; }
+.wn-signal-head .icon { color: var(--teal); background: var(--white); border-radius: 10px; padding: 6px; font-size: 20px; }
+.wn-signal.warn .wn-signal-head .icon { color: var(--red); }
+.wn-signal-text { margin-top: 0.55rem; line-height: 1.55; font-size: 0.925rem; }
+
+/* ---------- News + sources ---------- */
+.wn-news-item { padding: 0.75rem 0; border-top: 1px solid var(--line); }
+.wn-news-item:first-of-type { border-top: none; padding-top: 0; }
+.wn-news-title { font-weight: 600; line-height: 1.45; }
+.wn-news-why { color: var(--muted); font-size: 0.9rem; margin-top: 0.2rem; line-height: 1.5; }
+.wn-sources { list-style: none; padding: 0 !important; margin: 0; }
+.wn-sources li { font-size: 0.85rem; color: var(--muted); margin: 0.3rem 0; overflow-wrap: anywhere; }
+.wn-sources b { color: var(--ink); margin-right: 0.35rem; }
+
+/* ---------- Footer ---------- */
+.wn-footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 3rem 0 1rem; }
+.wn-footer a { color: var(--muted); }
+.wn-footer .dot { margin: 0 0.5rem; }
+.wn-footer a:hover { color: var(--navy); }
+
+/* Phones: smaller wordmark, badge above reasons */
+@media (max-width: 640px) {
+  .wn-wordmark { font-size: 2.8rem; }
+  .wn-fit { flex-direction: column; }
+  .wn-name { font-size: 1.4rem; }
+}

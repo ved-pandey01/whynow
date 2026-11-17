@@ -1,10 +1,11 @@
-# Look of the web page: light theme, white background, one deep-blue accent.
+# Look of the web page: white background, navy main colour, teal accent (see ui/style.css).
 [theme]
 base = "light"
 primaryColor = "#1E3A8A"
 backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F3F6FB"
-textColor = "#1F2937"
+secondaryBackgroundColor = "#F5F7FB"
+textColor = "#111827"
+font = "sans serif"
 
 [client]
 toolbarMode = "minimal"

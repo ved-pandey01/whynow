@@ -21,7 +21,7 @@ from datetime import date, timedelta
 
 import settings
 from ai.prompts import build_email_prompt, build_report_prompt, build_shorten_prompt
-from ai.provider import AIError, generate_structured
+from ai.provider import AIError, generate_structured, last_model_used
 from models import AIReport, Claim, EmailDraft
 from sources import news_tavily as tavily
 from sources import uk_companies_house as ch
@@ -252,6 +252,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
                                  (today or date.today()).isoformat())
     ai_start = time.monotonic()
     draft = ai(prompt, AIReport)
+    ai_model = _model_used(ai)
     timings = dict(research.get("timings", {}))
     timings["AI report"] = round(time.monotonic() - ai_start, 1)
 
@@ -316,8 +317,14 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
         "checks": checks,
         "warnings": research["warnings"],
         "timings": timings,
+        "ai_model": ai_model,
         "seconds": round(time.time() - started, 1),
     }
+
+
+def _model_used(ai):
+    """Which AI model answered (main or backup). Only known for the real AI, not test fakes."""
+    return last_model_used() if ai is generate_structured else getattr(ai, "model_used", None)
 
 
 LOW_FIT_SCORE = 3  # at or below this, the report says "probably not worth contacting"
@@ -516,11 +523,12 @@ def write_email(r, ai=generate_structured, today=None):
     draft = ai(build_email_prompt(name, r["offer"], email_facts(r), (today or date.today()).isoformat()),
                EmailDraft)
     timings["Email"] = round(time.monotonic() - started, 1)
+    ai_model = _model_used(ai)
     valid = {s["id"] for s in r["sources"]}   # only sources the report cites
     email = _check_email(draft, valid, ai, checks, timings)
     if r["fit_score"] <= LOW_FIT_SCORE:
         email["warnings"].insert(0, LOW_FIT_NOTE)
-    email["checks"], email["timings"] = checks, timings
+    email["checks"], email["timings"], email["ai_model"] = checks, timings, ai_model
     return email
 
 
@@ -548,6 +556,7 @@ def _closed_company_report(research):
         "not_found": [], "sources": research["sources"].items, "all_sources": research["sources"].items,
         "checks": ["Flagged by code from Companies House status. No AI used."],
         "warnings": research["warnings"], "timings": dict(research.get("timings", {})), "seconds": 0.0,
+        "ai_model": None,   # no AI used
     }
 
 

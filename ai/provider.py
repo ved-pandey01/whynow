@@ -2,11 +2,14 @@
 provider.py — the ONE place that talks to the AI.
 
 The rest of the app only calls generate_structured(prompt, Shape).
+If the main Gemini model is busy, slow or retired, the same request is tried once more
+with a backup model (GEMINI_FALLBACK_MODEL). last_model_used() says which one answered.
 To swap Gemini for another AI later, add a new _ask_<provider> function here
 and change AI_PROVIDER in settings.py. Nothing else needs to change.
 """
 
 import os
+import threading
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -20,15 +23,39 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 class AIError(Exception):
     """A problem with the AI, with a friendly message to show the user."""
 
+    def __init__(self, message, try_backup=False):
+        super().__init__(message)
+        self.try_backup = try_backup   # True if another model might work (busy, slow, retired)
+
+
+# Which model answered the last request, kept per user session (each session runs in its own thread)
+_last = threading.local()
+
+
+def last_model_used():
+    """e.g. {"name": "gemini-3.5-flash", "backup": True, "reason": "gemini-3.6-flash was busy…"}"""
+    return getattr(_last, "model", None)
+
 
 def generate_structured(prompt, shape):
     """Ask the AI and get back a filled-in Pydantic object of the given shape."""
-    if settings.AI_PROVIDER == "gemini":
-        return _ask_gemini(prompt, shape)
-    raise AIError(f"Unknown AI provider '{settings.AI_PROVIDER}' in settings.py.")
+    if settings.AI_PROVIDER != "gemini":
+        raise AIError(f"Unknown AI provider '{settings.AI_PROVIDER}' in settings.py.")
+    main, backup = settings.GEMINI_MODEL, settings.GEMINI_FALLBACK_MODEL
+    try:
+        answer = _ask_gemini(prompt, shape, main)
+        _last.model = {"name": main, "backup": False, "reason": None}
+        return answer
+    except AIError as e:
+        if not (e.try_backup and backup and backup != main):
+            raise
+        reason = f"{main} failed: {e}"
+    answer = _ask_gemini(prompt, shape, backup)   # one more try with the backup model
+    _last.model = {"name": backup, "backup": True, "reason": reason}
+    return answer
 
 
-def _ask_gemini(prompt, shape):
+def _ask_gemini(prompt, shape, model):
     from google import genai
     from google.genai import errors, types
 
@@ -47,7 +74,7 @@ def _ask_gemini(prompt, shape):
     )
     try:
         response = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
+            model=model,
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -56,12 +83,13 @@ def _ask_gemini(prompt, shape):
             ),
         )
     except errors.APIError as e:
-        raise _friendly(e)
+        raise _friendly(e, model)
     except (ConnectionError, TimeoutError, OSError):
         raise AIError("Couldn't reach Gemini. Check your internet connection and try again.")
     except Exception as e:
         if "timeout" in type(e).__name__.lower():
-            raise AIError(f"Gemini took longer than {settings.GEMINI_TIMEOUT_SECONDS} seconds. Please try again.")
+            raise AIError(f"Gemini took longer than {settings.GEMINI_TIMEOUT_SECONDS} seconds. Please try again.",
+                          try_backup=True)
         # Name the error type (never the key) so problems are easy to diagnose
         raise AIError(f"Something went wrong talking to Gemini ({type(e).__name__}). Please try again.")
 
@@ -71,20 +99,19 @@ def _ask_gemini(prompt, shape):
     try:
         return shape.model_validate_json(response.text or "")
     except ValidationError:
-        raise AIError("The AI's answer came back in the wrong format. Please try again.")
+        raise AIError("The AI's answer came back in the wrong format. Please try again.", try_backup=True)
 
 
-def _friendly(error):
+def _friendly(error, model):
+    """A plain-English message. Key problems never try the backup model (it wouldn't help)."""
     code = getattr(error, "code", None)
     if code in (401, 403):
         return AIError("Gemini rejected the API key. Check GEMINI_API_KEY in your .env file.")
     if code == 404:
-        return AIError(
-            f"Gemini model '{settings.GEMINI_MODEL}' isn't available. "
-            "Google retires models over time: update GEMINI_MODEL in settings.py."
-        )
+        return AIError(f"Gemini model '{model}' isn't available. "
+                       "Google retires models over time: update GEMINI_MODEL in settings.py.", try_backup=True)
     if code == 429:
-        return AIError("Gemini's free-tier limit was reached. Wait a minute and try again.")
+        return AIError("Gemini's free-tier limit was reached. Wait a minute and try again.", try_backup=True)
     if code and code >= 500:
-        return AIError("Gemini is having problems right now. Try again in a few minutes.")
+        return AIError("Gemini is having problems right now. Try again in a few minutes.", try_backup=True)
     return AIError("Gemini couldn't answer this request. Please try again.")

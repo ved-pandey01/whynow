@@ -364,3 +364,12 @@ def test_profile_falls_back_to_companies_house_without_a_card():
     assert p["industry"] == {"value": "Business and domestic software development", "source": "S1"}
     assert p["founded"] == {"value": "2015", "source": "S1"}
     assert p["headcount"] is None and p["website"] is None and p["domain"] is None
+
+
+def test_report_and_email_say_which_model_wrote_them():
+    backup = {"name": "gemini-3.5-flash", "backup": True, "reason": "gemini-3.6-flash failed: busy"}
+    ai = FakeAI(make_draft(), make_email())
+    ai.model_used = backup
+    r = report.build_report(make_research(), ai=ai, today=date(2026, 11, 16))
+    assert r["ai_model"] == backup
+    assert report.write_email(r, ai=ai)["ai_model"] == backup

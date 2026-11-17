@@ -103,3 +103,79 @@ def test_steps_after_the_time_budget_are_skipped(fake_sources):
     research = report.research_company("123", "Acme")
     skipped = [w for w in research["warnings"] if "skipped to keep the report under a minute" in w]
     assert len(skipped) == 4  # profile, website, news, signals
+
+
+# --- Backup model ------------------------------------------------------------
+class FakeGemini:
+    """Pretends to be Gemini. `failures` maps a model name to the error it raises."""
+
+    def __init__(self, failures):
+        self.failures, self.models_asked = failures, []
+
+    def install(self, monkeypatch):
+        from google import genai
+        fake = self
+
+        class Client:
+            def __init__(self, api_key, http_options):
+                self.models = self
+
+            def generate_content(self, model, **kwargs):
+                fake.models_asked.append(model)
+                if model in fake.failures:
+                    raise fake.failures[model]
+
+                class Answer:
+                    parsed = None
+                    text = '{"text": "hello", "source_ids": []}'
+                return Answer()
+
+        monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+        monkeypatch.setattr(genai, "Client", Client)
+        return self
+
+
+def busy():
+    from google.genai import errors
+    return errors.ServerError(503, {"error": {"message": "high demand"}})
+
+
+def bad_key():
+    from google.genai import errors
+    return errors.ClientError(403, {"error": {"message": "bad key"}})
+
+
+def test_busy_main_model_falls_back_to_backup(monkeypatch):
+    """Real problem (17 Nov 2026): gemini-3.6-flash returned '503 high demand' for several minutes."""
+    from models import Claim
+    gemini = FakeGemini({settings.GEMINI_MODEL: busy()}).install(monkeypatch)
+    answer = provider.generate_structured("hi", Claim)
+    assert answer.text == "hello"
+    assert gemini.models_asked == [settings.GEMINI_MODEL, settings.GEMINI_FALLBACK_MODEL]
+    used = provider.last_model_used()
+    assert used["name"] == settings.GEMINI_FALLBACK_MODEL and used["backup"] is True
+    assert "having problems" in used["reason"]
+
+
+def test_main_model_used_when_it_works(monkeypatch):
+    from models import Claim
+    gemini = FakeGemini({}).install(monkeypatch)
+    provider.generate_structured("hi", Claim)
+    assert gemini.models_asked == [settings.GEMINI_MODEL]
+    assert provider.last_model_used() == {"name": settings.GEMINI_MODEL, "backup": False, "reason": None}
+
+
+def test_key_problem_does_not_try_the_backup(monkeypatch):
+    from models import Claim
+    gemini = FakeGemini({settings.GEMINI_MODEL: bad_key()}).install(monkeypatch)
+    with pytest.raises(provider.AIError, match="rejected the API key"):
+        provider.generate_structured("hi", Claim)
+    assert gemini.models_asked == [settings.GEMINI_MODEL]
+
+
+def test_both_models_busy_gives_a_friendly_error(monkeypatch):
+    from models import Claim
+    gemini = FakeGemini({settings.GEMINI_MODEL: busy(), settings.GEMINI_FALLBACK_MODEL: busy()}).install(monkeypatch)
+    with pytest.raises(provider.AIError, match="having problems"):
+        provider.generate_structured("hi", Claim)
+    assert len(gemini.models_asked) == 2   # exactly one retry, no endless loop

@@ -106,3 +106,17 @@ AI_PROVIDER = "gemini"
 #   gemini-3.6-flash: tested working (full report shape in ~6s). Using this for now;
 #   try 3.8-flash again once Google's service is stable.
 GEMINI_MODEL = "gemini-3.6-flash"
+GEMINI_FALLBACK_MODEL = "gemini-3.5-flash"   # tried once if the main model is busy, slow or retired
+
+
+# ---------------------------------------------------------------------------
+# Page wording and author links (shown on the web page)
+# ---------------------------------------------------------------------------
+APP_NAME = "WhyNow"
+APP_LABEL = "AI ACCOUNT RESEARCH AGENT"
+APP_SLOGAN = "Before you reach out, WhyNow."
+APP_INTRO = "Type any UK company. See who they are, if they fit, and why to reach out now."
+AUTHOR_NAME = "Ved Prakash Pandey"
+AUTHOR_LINKEDIN = "https://www.linkedin.com/in/ved-prakash-pandey-954493202/"
+AUTHOR_GITHUB = "https://github.com/ved-pandey01"
+SAMPLE_REPORT_FILE = "data/sample_report_paddle.json"   # the saved example behind "See a sample report"

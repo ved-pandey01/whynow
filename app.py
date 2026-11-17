@@ -1,16 +1,19 @@
 """
-app.py — the web page.
+app.py — the WhyNow web page.
 
-  1. Type a company name or website (and, optionally, what you're selling).
-  2. Pick the right company from the Companies House matches.
-  3. Get the report as 8 cards: snapshot, news, signals, fit score, who to contact,
-     email, what we couldn't find, and sources.
+  1. Landing: type a UK company (and, optionally, what you're selling), or open the sample report.
+  2. Pick the right company from the Companies House matches (one card each).
+  3. The report: banner, key stats, fit score, who to contact, "why now" signals, news,
+     what we couldn't find, sources, and an email written only when you ask.
+
+The look lives in ui/style.css and ui/components.py; this file only arranges the pieces.
 
 Run it with:
     .venv/bin/streamlit run app.py
 """
 
-import re
+import json
+from pathlib import Path
 
 import streamlit as st
 
@@ -18,16 +21,14 @@ import report
 import settings
 from ai.provider import AIError
 from sources import uk_companies_house as ch
+from sources.news_tavily import domain_of
+from ui import components as ui
 
-SIGNAL_LABELS = {
-    "hiring_sales": "Hiring for sales", "funding": "Funding", "new_sales_leader": "New sales leader",
-    "expansion": "Expansion", "layoffs": "Layoffs / cost-cutting", "headcount_growth": "Headcount growing",
-    "headcount_decline": "Headcount shrinking", "new_director": "New director",
-}
+SAMPLE_FILE = Path(__file__).parent / settings.SAMPLE_REPORT_FILE
 
 
 # ---------------------------------------------------------------------------
-# Fetching (cached, so searching the same company again costs no API credits)
+# Fetching (cached, so looking at the same company again costs no API credits)
 # ---------------------------------------------------------------------------
 @st.cache_data(ttl=3600, show_spinner=False)
 def find_companies(typed):
@@ -45,93 +46,132 @@ def make_email(r):
     return report.write_email(r)
 
 
-# ---------------------------------------------------------------------------
-# Small helpers for showing text
-# ---------------------------------------------------------------------------
+def load_sample():
+    """The saved real report behind "See a sample report" (no API calls, no keys needed)."""
+    try:
+        return json.loads(SAMPLE_FILE.read_text())
+    except (OSError, ValueError):
+        return None
+
+
 def safe(text):
-    """Stop '$' in text (e.g. '$50m') being read as a maths formula by Streamlit."""
+    """Stop '$' in text (e.g. '$50m') being read as a maths formula in Streamlit messages."""
     return (text or "").replace("$", "\\$")
 
 
-def cite(ids, sources_by_id):
-    """Turn ['S1', 'S3'] into clickable links: [S1] [S3]."""
-    links = [f"[{i}]({sources_by_id[i]['url']})" for i in ids if i in sources_by_id]
-    return " " + " ".join(links) if links else ""
-
-
-def claim_line(claim, sources_by_id):
-    return f"- {safe(claim['text'])}{cite(claim['sources'], sources_by_id)}"
-
-
-def card(title):
-    """A bordered box with a heading. Use it with 'with card(...):'."""
-    box = st.container(border=True)
-    box.markdown(f"#### {title}")
-    return box
+def friendly_error(e):
+    """Our own errors already have friendly wording; anything else gets a general message."""
+    if isinstance(e, (ch.CompaniesHouseError, AIError)):
+        st.error(safe(str(e)))
+    else:
+        print(f"Unexpected error: {type(e).__name__}: {e}")  # shown in the terminal, for fixing
+        st.error("Something unexpected went wrong. Please try again in a minute.")
 
 
 # ---------------------------------------------------------------------------
-# The 8 result cards
+# Landing page
 # ---------------------------------------------------------------------------
-def show_header(r):
-    c = r["company"]
-    st.subheader(c["name"])
-    st.caption(f"Company number [{c['number']}]({c['source']}) · status: {c['status'] or 'not found'}")
-    if r["not_worth_contacting"]:
-        st.error("**Not worth contacting.** " + safe(r["fit_reasons"][0]["text"]))
-    for w in r["warnings"]:
-        st.warning(safe(w))
+def search_form():
+    """What company, and what are we selling?"""
+    with st.form("search"):
+        typed = st.text_input("Company name or website", placeholder="e.g. Cognism or paddle.com")
+        offer = st.text_area("What are you selling?", value=settings.DEFAULT_OFFER, height=80)
+        if st.form_submit_button("Find company", type="primary"):
+            for key in ("report", "email", "sample"):
+                st.session_state.pop(key, None)
+            st.session_state["offer"] = offer
+            st.session_state["typed"] = typed
+            try:
+                st.session_state["matches"] = find_companies(typed)
+            except Exception as e:
+                st.session_state["matches"] = None
+                friendly_error(e)
+                return
+            st.rerun()   # redraw with the compact header and the picker
 
 
-def show_snapshot(r, by_id):
-    with card("1 · Snapshot"):
-        if r["what_they_do"]:
-            st.markdown(f"**What they do:** {safe(r['what_they_do']['text'])}"
-                        f"{cite(r['what_they_do']['sources'], by_id)}")
-        else:
-            st.markdown("**What they do:** not found")
-        st.markdown("\n".join(claim_line(c, by_id) for c in r["snapshot"]) or "Nothing else found.")
+def open_sample_from_link():
+    """A link ending in ?sample=1 opens the sample report straight away (handy for a portfolio)."""
+    if st.query_params.get("sample") == "1" and "report" not in st.session_state:
+        sample = load_sample()
+        if sample:
+            st.session_state.update(report=sample, sample=True, matches=None)
 
 
-def show_news(r, by_id):
-    with card("2 · Recent news"):
-        if not r["news"]:
-            st.markdown("No relevant news found in the last 6 months.")
-        for n in r["news"]:
-            s = by_id[n["source"]]
-            st.markdown(f"**[{safe(s['title'])}]({s['url']})** · {s['date'] or 'no date'}  \n"
-                        f"{safe(n['why_it_matters'])}")
+def landing_extras():
+    """'How it works' and the sample button, only before any search."""
+    st.html(ui.how_it_works())
+    sample = load_sample()
+    _, middle, _ = st.columns([1, 1, 1])
+    if middle.button("See a sample report", icon=":material/visibility:", disabled=sample is None,
+                     use_container_width=True):
+        st.session_state.update(report=sample, sample=True, matches=None)
+        st.session_state.pop("email", None)
+        st.rerun()
 
 
-def show_signals(r, by_id):
-    with card("3 · \"Why now\" signals"):
-        if not r["signals"]:
-            st.markdown("No buying signals found.")
-        for s in r["signals"]:
-            label = SIGNAL_LABELS.get(s["type"], s["type"])
-            st.markdown(f"- **{label}:** {safe(s['text'])}{cite(s['sources'], by_id)}")
+# ---------------------------------------------------------------------------
+# Company picker
+# ---------------------------------------------------------------------------
+def pick_company():
+    """One card per Companies House match, each with its own button."""
+    matches, typed = st.session_state.get("matches"), st.session_state.get("typed")
+    if matches is None:
+        return
+    if not matches:
+        st.info(f'No companies found for "{safe(typed)}". Check the spelling or try the website.')
+        return
+    if not matches[0]["close_match"]:
+        st.warning(f'No close match found for "{safe(typed)}". Only pick one below if you\'re sure it\'s right.')
+    st.markdown("##### Which company did you mean?")
+    st.caption("Biggest first. Size is a guide from the accounts each company files, not a staff count.")
+    typed_domain = domain_of(typed) if report.looks_like_website(typed) else None
+    for m in matches:
+        with st.container(border=True):
+            text, button = st.columns([4, 1.4], vertical_alignment="center")
+            text.html(ui.picker_card(m, typed_domain))
+            if button.button("Research this company", key=f"pick_{m['company_number']}",
+                             type="primary", use_container_width=True):
+                run_report(m)
 
 
-def show_fit_and_role(r, by_id):
-    left, right = st.columns([3, 2])
-    with left, card("4 · ICP fit score"):
-        st.metric("Fit score", f"{r['fit_score']}/10", label_visibility="collapsed")
-        st.markdown("\n".join(claim_line(c, by_id) for c in r["fit_reasons"]))
-    with right, card("5 · Who to contact"):
-        if r["suggested_role"]:
-            st.markdown(f"**{safe(r['suggested_role'])}**  \n{safe(r['role_reason'])}")
-        else:
-            st.markdown("No one: this company isn't worth contacting.")
+def run_report(choice):
+    with st.spinner(f"Researching {choice['name']}… this usually takes 20–40 seconds."):
+        try:
+            r = make_report(choice["company_number"], st.session_state["typed"], st.session_state["offer"])
+        except Exception as e:
+            friendly_error(e)
+            return
+    st.session_state.update(report=r, matches=None, sample=False)
+    st.session_state.pop("email", None)
+    st.rerun()
+
+
+# ---------------------------------------------------------------------------
+# Report
+# ---------------------------------------------------------------------------
+def show_contact(r):
+    """Who to contact, with a LinkedIn people search (we only build the link)."""
+    with st.container(border=True):
+        st.html(f'<div class="wn-card" style="border:none;box-shadow:none;padding:0;margin:0">'
+                f'<h4>{ui.icon("person_search")}Who to contact</h4>{ui.role_html(r)}</div>')
+        role = r.get("suggested_role")
+        if role:
+            brand = (r["profile"].get("brand") or {}).get("value") or r["company"]["name"]
+            st.link_button(f"Find {role} at {brand} on LinkedIn", ui.linkedin_search_url(role, brand),
+                           icon=":material/open_in_new:", use_container_width=True)
 
 
 def show_email(r, by_id):
     """The email is written only when asked, so we don't spend AI time on companies we skip."""
-    with card("Outreach email"):
+    with st.container(border=True):
+        st.html(f'<div class="wn-card" style="border:none;box-shadow:none;padding:0;margin:0">'
+                f'<h4>{ui.icon("mail")}Outreach email</h4></div>')
         if r["not_worth_contacting"]:
-            st.markdown("No email: this company isn't worth contacting.")
+            st.caption("No email: this company isn't worth contacting.")
             return
         button, note = st.columns([2, 3], vertical_alignment="center")
-        clicked = button.button("Create email for this company", type="primary")
+        clicked = button.button("Create email for this company", type="primary", use_container_width=True)
         if r["fit_score"] <= report.LOW_FIT_SCORE:
             note.caption(report.LOW_FIT_NOTE)
         if clicked:
@@ -145,11 +185,8 @@ def create_email(r):
     with st.spinner("Writing the email…"):
         try:
             st.session_state["email"] = r.get("saved_email") or make_email(r)
-        except AIError as e:
-            st.error(safe(str(e)))
         except Exception as e:
-            print(f"Unexpected error: {type(e).__name__}: {e}")  # shown in the terminal, for fixing
-            st.error("Something unexpected went wrong. Please try again in a minute.")
+            friendly_error(e)
 
 
 def show_email_text(e, by_id):
@@ -158,22 +195,10 @@ def show_email_text(e, by_id):
             st.warning(safe(w))
     st.markdown(f"**Subject:** {safe(e['subject'])}")
     st.code(e["body"], language=None, wrap_lines=True)
-    trigger = cite(e["trigger_sources"], by_id) or " none"
-    st.caption(f"{e['word_count']} words · opening trigger:{trigger} · "
-               "click the copy icon (top right of the email) to copy it")
-
-
-def show_not_found(r):
-    with card("7 · What we couldn't find"):
-        st.markdown("\n".join(f"- {safe(x)}" for x in r["not_found"]) or "Nothing missing.")
-
-
-def show_sources(r):
-    with card("8 · Sources"):
-        for s in r["sources"]:
-            dated = f" · {s['date']}" if s.get("date") else ""
-            title = re.sub(r"^\[\w+\]\s*", "", s["title"])  # drop internal tags like "[hiring_sales]"
-            st.markdown(f"**{s['id']}** [{safe(title)}]({s['url']}){dated}")
+    st.html(f'<div class="wn-quiet">{e["word_count"]} words · opening trigger '
+            f'{ui.cite(e["trigger_sources"], by_id) or "none"} · use the copy icon on the email</div>')
+    if e.get("ai_model"):
+        st.html(ui.model_note(e["ai_model"], "Email"))
 
 
 def show_behind_the_scenes(r):
@@ -186,13 +211,28 @@ def show_behind_the_scenes(r):
 
 def show_report(r):
     by_id = {s["id"]: s for s in r["all_sources"]}
-    show_header(r)
-    show_snapshot(r, by_id)
-    show_news(r, by_id)
-    show_signals(r, by_id)
-    show_fit_and_role(r, by_id)
-    show_not_found(r)
-    show_sources(r)
+    if st.session_state.get("sample"):
+        st.info(f"Saved example from {r.get('saved_on', 'an earlier run')}. "
+                "Search above to research any UK company live.", icon=":material/history:")
+
+    left, right = st.columns([2, 1])
+    left.html(ui.banner(r, by_id))
+    right.html(ui.profile_card(r, by_id))
+    for w in r["warnings"]:
+        st.caption(safe(w))
+    st.html(ui.stats_row(r, by_id))
+
+    left, right = st.columns([3, 2])
+    left.html(ui.fit_card(r, by_id))
+    with right:
+        show_contact(r)
+
+    st.html(ui.signals_card(r, by_id))
+    st.html(ui.news_card(r, by_id))
+    st.html(ui.not_found_card(r))
+    st.html(ui.sources_card(r))
+    if r.get("ai_model"):
+        st.html(ui.model_note(r["ai_model"]))
     show_email(r, by_id)
     show_behind_the_scenes(r)
 
@@ -200,68 +240,30 @@ def show_report(r):
 # ---------------------------------------------------------------------------
 # The page
 # ---------------------------------------------------------------------------
-def search_form():
-    """Step 1: what company, and what are we selling?"""
-    with st.form("search"):
-        typed = st.text_input("Company name or website", placeholder="e.g. Cognism or paddle.com")
-        offer = st.text_area("What are you selling?", value=settings.DEFAULT_OFFER, height=80)
-        if st.form_submit_button("Find company", type="primary"):
-            st.session_state.pop("report", None)
-            st.session_state.pop("email", None)
-            st.session_state["offer"] = offer
-            st.session_state["typed"] = typed
-            try:
-                st.session_state["matches"] = find_companies(typed)
-            except ch.CompaniesHouseError as e:
-                st.session_state["matches"] = None
-                st.error(safe(str(e)))
-
-
-def match_label(m):
-    size = m.get("size") or "size unknown"
-    return (f"{m['name']} · {size} · {m['company_number']} · {m['status'] or 'status unknown'} · "
-            f"{m['address'] or ''}")
-
-
-def pick_company():
-    """Step 2: choose the right company from the Companies House matches."""
-    matches, typed = st.session_state.get("matches"), st.session_state.get("typed")
-    if matches is None:
-        return
-    if not matches:
-        st.info(f'No companies found for "{safe(typed)}". Check the spelling or try the website.')
-        return
-    if not matches[0]["close_match"]:
-        st.warning(f'No close match found for "{safe(typed)}". Only pick one below if you\'re sure it\'s right.')
-    choice = st.radio("Which company did you mean?", matches, format_func=match_label)
-    st.caption("Biggest companies first. Size is a guide from the type of accounts each company "
-               "files with Companies House, not a staff count.")
-    if st.button("Research this company", type="primary"):
-        run_report(choice)
-
-
-def run_report(choice):
-    with st.spinner(f"Researching {choice['name']}… this usually takes 20–40 seconds."):
-        try:
-            st.session_state.pop("email", None)
-            st.session_state["report"] = make_report(
-                choice["company_number"], st.session_state["typed"], st.session_state["offer"])
-        except (ch.CompaniesHouseError, AIError) as e:
-            st.error(safe(str(e)))
-        except Exception as e:
-            print(f"Unexpected error: {type(e).__name__}: {e}")  # shown in the terminal, for fixing
-            st.error("Something unexpected went wrong. Please try again in a minute.")
-
-
 def main():
-    st.set_page_config(page_title="Account Research Agent", page_icon="🔎", layout="centered")
-    st.title("Account Research Agent")
-    st.caption("Type a UK company and get a sourced research report, ICP fit score and outreach email.")
-    search_form()
+    st.set_page_config(page_title=f"{settings.APP_NAME} · {settings.APP_SLOGAN}",
+                       page_icon=":material/bolt:", layout="wide")
+    st.html(ui.css())
+    open_sample_from_link()
+    has_results = "report" in st.session_state or st.session_state.get("matches") is not None
+
+    if has_results:
+        st.html(ui.mini_brand())
+        # Once a report is showing, the search folds away so the report gets the space
+        with st.expander("New search", icon=":material/search:", expanded="report" not in st.session_state):
+            search_form()
+    else:
+        st.html(ui.hero())
+        _, middle, _ = st.columns([1, 4, 1])
+        with middle:
+            search_form()
+        if st.session_state.get("matches") is None:
+            landing_extras()
+
     pick_company()
     if "report" in st.session_state:
-        st.divider()
         show_report(st.session_state["report"])
+    st.html(ui.footer())
 
 
 main()
