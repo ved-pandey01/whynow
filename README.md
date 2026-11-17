@@ -43,7 +43,7 @@ Your browser opens at http://localhost:8501. Then:
 Results are cached: looking up the same company again within 6 hours costs no API credits. Stop the app with `Ctrl + C` in the terminal.
 
 ## Design
-- Our own look in [ui/style.css](ui/style.css): navy and teal on white, the Inter font, soft tiles, and lots of white space. The layout works on phones too.
+- Our own look in [ui/style.css](ui/style.css): a premium dark theme with royal blue, emerald and an amber typing line, the Inter font, and dark cards with soft shadows. The landing page has a two-column hero, a Google-style search bar and a subtle grid and line-chart background. The layout stacks on phones.
 - Each part of the page is a small function in [ui/components.py](ui/components.py).
 - **Safety:** all text fetched from the internet is escaped before it goes on the page, and links only allow http(s), so a web page title can never add code to WhyNow.
 - Logos come from the company website's icon (DuckDuckGo's icon service), with the company's initials behind it as a fallback.

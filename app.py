@@ -72,27 +72,28 @@ def friendly_error(e):
 # Landing page
 # ---------------------------------------------------------------------------
 def search_form():
-    """What company, and what are we selling?"""
-    with st.form("search"):
-        typed = st.text_input("Company name or website", placeholder="e.g. cognism.com or Paddle")
-        # The offer keeps its default unless the user opens "Change offer"
-        with st.expander("Change offer"):
-            offer = st.text_area("What are you selling?", value=settings.DEFAULT_OFFER, height=80)
-        submitted = st.form_submit_button("Find company", type="primary", icon=":material/search:",
-                                          use_container_width=True)
-        st.html(ui.search_tip())
-        if submitted:
-            for key in ("report", "email", "sample"):
-                st.session_state.pop(key, None)
-            st.session_state["offer"] = offer
-            st.session_state["typed"] = typed
-            try:
-                st.session_state["matches"] = find_companies(typed)
-            except Exception as e:
-                st.session_state["matches"] = None
-                friendly_error(e)
-                return
-            st.rerun()   # redraw with the compact header and the picker
+    """One rounded search bar with the button inside, and a tiny "Change offer" link under it."""
+    with st.container(key="wn_search"):
+        with st.form("search", border=False):
+            text, button = st.columns([5, 1.3], vertical_alignment="center")
+            typed = text.text_input("Company name or website", placeholder=settings.SEARCH_PLACEHOLDER,
+                                    label_visibility="collapsed")
+            submitted = button.form_submit_button("Research →", type="primary")
+    # The offer keeps its default unless the user opens "Change offer"
+    with st.expander("Change offer", key="wn_offer"):
+        st.text_area("What are you selling?", value=settings.DEFAULT_OFFER, height=80, key="offer_text")
+    if submitted:
+        for key in ("report", "email", "sample"):
+            st.session_state.pop(key, None)
+        st.session_state["offer"] = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
+        st.session_state["typed"] = typed
+        try:
+            st.session_state["matches"] = find_companies(typed)
+        except Exception as e:
+            st.session_state["matches"] = None
+            friendly_error(e)
+            return
+        st.rerun()   # redraw with the picker
 
 
 def open_sample_from_link():
@@ -103,17 +104,23 @@ def open_sample_from_link():
             st.session_state.update(report=sample, sample=True, matches=None)
 
 
-def landing_extras():
-    """The report preview, 'How it works' and the sample button, only before any search."""
+def landing():
+    """Two columns: wordmark, lines and search on the left; the report preview on the right.
+    Then the three step cards and the sample button."""
     sample = load_sample()
-    st.html(ui.preview_strip(sample))
-    _, middle, _ = st.columns([1, 1.2, 1])
+    st.html(ui.landing_background())
+    left, right = st.columns([1.5, 1], gap="large")
+    with left:
+        st.html(ui.hero())
+        search_form()
+    right.html(ui.preview_card(sample))
+    st.html(ui.how_it_works())
+    _, middle, _ = st.columns([1, 1, 1])
     if middle.button("See a sample report", type="primary", icon=":material/visibility:",
                      disabled=sample is None, use_container_width=True):
         st.session_state.update(report=sample, sample=True, matches=None)
         st.session_state.pop("email", None)
         st.rerun()
-    st.html(ui.how_it_works())
 
 
 # ---------------------------------------------------------------------------
@@ -248,29 +255,18 @@ def show_report(r):
 # The page
 # ---------------------------------------------------------------------------
 def main():
-    st.set_page_config(page_title=f"{settings.APP_NAME} · {settings.APP_SLOGAN}",
+    st.set_page_config(page_title=f"{settings.APP_NAME} · {settings.APP_LABEL}",
                        page_icon=":material/bolt:", layout="wide")
     st.html(ui.css())
     open_sample_from_link()
-    has_results = "report" in st.session_state or st.session_state.get("matches") is not None
-
-    if has_results:
-        st.html(ui.mini_brand())
-        # Once a report is showing, the search folds away so the report gets the space
-        with st.expander("New search", icon=":material/search:", expanded="report" not in st.session_state):
-            search_form()
+    st.html(ui.topbar())
+    if "report" in st.session_state or st.session_state.get("matches") is not None:
+        search_form()          # the same search bar, above the picker or report
+        pick_company()
+        if "report" in st.session_state:
+            show_report(st.session_state["report"])
     else:
-        st.html(ui.hero())
-        _, middle, _ = st.columns([1, 4, 1])
-        with middle:
-            search_form()
-        if st.session_state.get("matches") is None:
-            landing_extras()
-
-    pick_company()
-    if "report" in st.session_state:
-        show_report(st.session_state["report"])
+        landing()
     st.html(ui.footer())
-
 
 main()

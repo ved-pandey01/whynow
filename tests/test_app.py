@@ -79,7 +79,7 @@ def html(at):
 def search(at, typed="Acme"):
     at.run()
     at.text_input[0].input(typed)
-    button(at, "Find company").click().run()
+    button(at, "Research →").click().run()
     return at
 
 

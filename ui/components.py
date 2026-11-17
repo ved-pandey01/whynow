@@ -95,41 +95,81 @@ def wordmark(css_class="wn-wordmark"):
     return f'<div class="{css_class}">{esc(name)}</div>'
 
 
+def topbar():
+    """Slim top bar: brand and label on the left, author on the right."""
+    return (f'<div class="wn-topbar"><div class="wn-topbar-brand">{wordmark("wn-mini")}'
+            f'<span class="wn-topbar-label">· {esc(settings.APP_LABEL)}</span></div>'
+            f'<a class="wn-topbar-by" href="{safe_url(settings.AUTHOR_LINKEDIN)}" target="_blank" '
+            f'rel="noopener noreferrer">by {esc(settings.AUTHOR_NAME)}</a></div>')
+
+
 def hero():
-    """Header: glow, amber label, wordmark, byline, slogan, one line, and the animated 'Because…' line."""
+    """Left column: wordmark, slogan, one line, and the animated 'Because…' line (pure CSS)."""
     typing = "".join(f"<span>{esc(line)}</span>" for line in settings.APP_TYPING_LINES[:4])
-    byline = f'<div class="wn-byline">by {link(settings.AUTHOR_LINKEDIN, settings.AUTHOR_NAME)}</div>'
-    return (f'<div class="wn-hero"><div class="wn-aurora"></div>'
-            f'<div class="wn-label">{esc(settings.APP_LABEL)}</div>{wordmark()}{byline}'
+    return (f'<div class="wn-hero">{wordmark()}'
             f'<div class="wn-slogan">{esc(settings.APP_SLOGAN)}</div>'
             f'<p class="wn-intro">{esc(settings.APP_INTRO)}</p>'
             f'<div class="wn-typing" aria-label="{esc(settings.APP_TYPING_LINES[0])}">{typing}</div></div>')
 
 
-def search_tip():
-    tip = settings.SEARCH_TIP
-    if tip.startswith("Tip:"):
-        return f'<p class="wn-tip"><b>Tip:</b>{esc(tip[4:])}</p>'
-    return f'<p class="wn-tip">{esc(tip)}</p>'
+def _background_svg():
+    """
+    The landing background, drawn as one picture: a faint grid that fades towards the edges,
+    a soft blue-green glow behind the wordmark, and a thin glowing line chart rising
+    from bottom-left to top-right with 4 dots. Being a background, it can never cover content.
+    """
+    dots = [(560, 598), (940, 470), (1300, 262), (1530, 128)]
+    dot_svg = "".join(f'<circle cx="{x}" cy="{y}" r="11" fill="url(#dotglow)"/>'
+                      f'<circle cx="{x}" cy="{y}" r="3.5" fill="#E2F8F0"/>' for x, y in dots)
+    path = "M 30 780 C 260 740, 380 650, 560 598 S 820 560, 940 470 S 1180 380, 1300 262 S 1460 160, 1600 110"
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="860" viewBox="0 0 1600 860">
+<defs>
+  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#94A3B8" stroke-opacity="0.09" stroke-width="1"/></pattern>
+  <radialGradient id="fade" cx="50%" cy="40%" r="60%">
+    <stop offset="0%" stop-color="#fff" stop-opacity="1"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient>
+  <mask id="gridmask"><rect width="1600" height="860" fill="url(#fade)"/></mask>
+  <radialGradient id="auroraBlue" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.32"/><stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/></radialGradient>
+  <radialGradient id="auroraGreen" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#10B981" stop-opacity="0.24"/><stop offset="100%" stop-color="#10B981" stop-opacity="0"/></radialGradient>
+  <linearGradient id="line" x1="0" y1="1" x2="1" y2="0">
+    <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.15"/><stop offset="45%" stop-color="#3B82F6" stop-opacity="0.75"/>
+    <stop offset="100%" stop-color="#10B981" stop-opacity="0.9"/></linearGradient>
+  <radialGradient id="dotglow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#34D399" stop-opacity="0.75"/><stop offset="100%" stop-color="#34D399" stop-opacity="0"/></radialGradient>
+  <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+</defs>
+<ellipse cx="430" cy="210" rx="420" ry="190" fill="url(#auroraBlue)"/>
+<ellipse cx="650" cy="250" rx="380" ry="170" fill="url(#auroraGreen)"/>
+<rect width="1600" height="860" fill="url(#grid)" mask="url(#gridmask)"/>
+<path d="{path}" fill="none" stroke="url(#line)" stroke-width="7" stroke-opacity="0.35" filter="url(#blur)"/>
+<path d="{path}" fill="none" stroke="url(#line)" stroke-width="2.2" stroke-linecap="round"/>
+{dot_svg}
+</svg>"""
 
 
-def mini_brand():
-    return wordmark("wn-mini")
+def landing_background():
+    """CSS that puts the background picture behind the top of the landing page only."""
+    import base64
+    data = base64.b64encode(_background_svg().encode()).decode()
+    return (f'<style>.stApp {{ background-image: url("data:image/svg+xml;base64,{data}"); '
+            f'background-repeat: no-repeat; background-position: center -40px; background-size: 1600px auto; }}</style>')
 
 
 def how_it_works():
+    """Three compact step cards, one short line each."""
     steps = [("search", "Find the company", "Official UK company data"),
              ("radar", "Research the signals", "Hiring, funding, new leaders"),
              ("speed", "Score the fit", "1–10 with reasons")]
-    tiles = "".join(f'<div class="wn-step"><div class="wn-step-top">{icon(i)}<span class="wn-step-num">STEP {n}</span></div>'
-                    f'<div class="wn-step-text">{esc(t)}</div><div class="wn-step-sub">{esc(sub)}</div></div>'
-                    for n, (i, t, sub) in enumerate(steps, 1))
-    return f'<div class="wn-band blue"><div class="wn-band-title">HOW IT WORKS</div><div class="wn-steps">{tiles}</div></div>'
+    tiles = "".join(f'<div class="wn-step">{icon(i)}<div><div class="wn-step-text">{esc(t)}</div>'
+                    f'<div class="wn-step-sub">{esc(sub)}</div></div></div>' for i, t, sub in steps)
+    return f'<div class="wn-steps">{tiles}</div>'
 
 
-def preview_strip(sample=None):
+def preview_card(sample=None):
     """
-    What a report looks like. With the saved sample, it shows that real report's facts;
+    Right column: what a report looks like. With the saved sample, it shows that real report's facts;
     without it, a neutral example layout with no company facts at all.
     """
     if sample:
@@ -139,7 +179,7 @@ def preview_strip(sample=None):
         score = sample["fit_score"]
         signals = [SIGNALS.get(s["type"], (s["type"], "bolt")) for s in sample["signals"][:3]]
         source_count = len(sample["sources"])
-        logo_html, note = logo(p), f"From the saved {esc(name)} example. Click “See a sample report” to open it."
+        logo_html, note = logo(p), f"From the saved {esc(name)} example."
     else:
         name, meta, score, source_count = "Your target company", "Industry · Headquarters", 8, 12
         signals = [SIGNALS["hiring_sales"], SIGNALS["funding"], SIGNALS["new_sales_leader"]]
@@ -147,14 +187,15 @@ def preview_strip(sample=None):
     kind, label = fit_band(score)
     lines = "".join(f'<div class="wn-pv-line">{icon(i)}{esc(t)}</div>' for t, i in signals) \
         or '<div class="wn-pv-line wn-empty">None found</div>'
-    return (f'<div class="wn-band green"><div class="wn-band-title">WHAT YOU GET</div><div class="wn-preview">'
-            f'<div class="wn-pv"><div class="wn-pv-label">Company</div><div class="wn-pv-company">{logo_html}'
+    return (f'<div class="wn-preview"><div class="wn-preview-title">WHAT YOU GET</div>'
+            f'<div class="wn-pv"><div class="wn-pv-company">{logo_html}'
             f'<div><div class="wn-pv-name">{esc(name)}</div><div class="wn-pv-meta">{meta}</div></div></div></div>'
+            f'<div class="wn-pv-grid">'
             f'<div class="wn-pv"><div class="wn-pv-label">Fit score</div><div class="wn-pv-score">'
             f'<div class="wn-badge {kind}"><div class="wn-badge-circle">{int(score)}</div></div>'
             f'<div class="wn-badge {kind}"><div class="wn-badge-label">{esc(label)}</div></div></div></div>'
-            f'<div class="wn-pv"><div class="wn-pv-label">Why now signals</div>{lines}</div>'
-            f'<div class="wn-pv"><div class="wn-pv-label">Sources</div><div class="wn-stat-value">{source_count}</div>'
+            f'<div class="wn-pv"><div class="wn-pv-label">Why now</div>{lines}</div>'
+            f'<div class="wn-pv"><div class="wn-pv-label">Sources</div><div class="wn-pv-big">{source_count}</div>'
             f'<div class="wn-pv-meta">every fact linked</div></div>'
             f'</div><div class="wn-pv-note">{note}</div></div>')
 

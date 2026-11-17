@@ -79,10 +79,9 @@ def test_model_note_mentions_backup():
     assert ui.model_note(None) == ""
 
 
-def test_header_has_byline_slogan_and_typing_lines():
+def test_header_has_slogan_and_typing_lines():
     import settings
     out = ui.hero()
-    assert f'by <a href="{settings.AUTHOR_LINKEDIN}"' in out
     assert "Before you reach out, WhyNow." in out
     assert "Know the company. Know the fit. Know the moment." in out
     for line in settings.APP_TYPING_LINES:
@@ -90,17 +89,29 @@ def test_header_has_byline_slogan_and_typing_lines():
     assert "<script" not in out   # the animation is pure CSS
 
 
-def test_preview_strip_without_sample_shows_no_company_facts():
-    out = ui.preview_strip(None)
+def test_top_bar_has_label_and_byline():
+    import settings
+    out = ui.topbar()
+    assert "AI account research agent" in out
+    assert f'href="{settings.AUTHOR_LINKEDIN}"' in out and "by Ved Prakash Pandey" in out
+
+
+def test_landing_background_is_a_safe_embedded_picture():
+    out = ui.landing_background()
+    assert "data:image/svg+xml;base64," in out and "<script" not in out
+
+
+def test_preview_card_without_sample_shows_no_company_facts():
+    out = ui.preview_card(None)
     assert "Your target company" in out and "Example layout" in out
 
 
-def test_preview_strip_uses_the_saved_sample():
+def test_preview_card_uses_the_saved_sample():
     sample = {"profile": {"brand": {"value": "Paddle"}, "industry": {"value": "Software Development"},
                           "headquarters": {"value": "London"}, "domain": "paddle.com"},
               "company": {"name": "PADDLE.COM MARKET LIMITED"}, "fit_score": 9,
               "signals": [{"type": "funding"}], "sources": [1, 2, 3]}
-    out = ui.preview_strip(sample)
+    out = ui.preview_card(sample)
     assert "Paddle" in out and "Software Development · London" in out
     assert 'wn-badge strong' in out and ">9<" in out and ">3<" in out
 

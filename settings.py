@@ -113,7 +113,7 @@ GEMINI_FALLBACK_MODEL = "gemini-3.5-flash"   # tried once if the main model is b
 # Page wording and author links (shown on the web page)
 # ---------------------------------------------------------------------------
 APP_NAME = "WhyNow"
-APP_LABEL = "AI ACCOUNT RESEARCH AGENT"
+APP_LABEL = "AI account research agent"
 APP_SLOGAN = "Before you reach out, WhyNow."
 APP_INTRO = "Know the company. Know the fit. Know the moment."
 APP_TYPING_LINES = [             # the animated amber line on the landing page
@@ -122,7 +122,7 @@ APP_TYPING_LINES = [             # the animated amber line on the landing page
     "Because they hired a new sales leader…",
     "Because they're expanding to new markets…",
 ]
-SEARCH_TIP = "Tip: searching by website (e.g. cognism.com) finds the right company fastest."
+SEARCH_PLACEHOLDER = "Type a company or website, e.g. cognism.com"
 AUTHOR_NAME = "Ved Prakash Pandey"
 AUTHOR_LINKEDIN = "https://www.linkedin.com/in/ved-prakash-pandey-954493202/"
 AUTHOR_GITHUB = "https://github.com/ved-pandey01"
