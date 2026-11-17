@@ -1,6 +1,6 @@
 # WhyNow
 
-**Before you reach out, WhyNow.**
+**Know the company. Know the fit. Know the moment.**
 
 WhyNow is an AI account research agent for SDRs and sales teams. Type any UK company and, in under a minute, see:
 - **who they are:** a short, sourced snapshot with key stats (headcount and trend, founded, funding, revenue)
@@ -39,7 +39,7 @@ Your browser opens at http://localhost:8501. Then:
 3. Click **Research this company** (usually 20–45 seconds). The report shows:
    - a banner with the logo, a one-line summary, and a profile card (industry, HQ, website, LinkedIn followers)
    - key stat tiles, and the fit score as a colour-coded badge (green 7–10, amber 4–6, red 1–3)
-   - who to contact, "why now" signal tiles with icons, recent news, what we couldn't find, and sources
+   - who to contact, "Why reach out now" tiles with icons, recent news, what we couldn't find, and sources
 
    Every small `S1`-style tag links to its source.
 4. Click **Create email for this company** to write the email. For scores of 3 or under, a note says it's probably not worth contacting.
@@ -65,7 +65,7 @@ Results are cached: looking up the same company again within 6 hours costs no AP
 - **News, signals and company card** ([sources/news_tavily.py](sources/news_tavily.py)), using Tavily:
   - **Company card:** headcount and its yearly trend, funding rounds, B2B/SaaS, website. It's only used if one of these confirms it's the company we found: its legal name matches, its website matches, or its name *and* head office city both match Companies House. Each report says how its card was confirmed. If the full name finds no card (e.g. "Sage Group"), one more search tries the short name ("Sage").
   - **News:** recent articles with the company in the headline.
-  - **"Why now" signals:** targeted searches for sales hiring, funding, new sales leaders, expansion and layoffs.
+  - **"Why reach out now" signals:** targeted searches for sales hiring, funding, new sales leaders, expansion and layoffs.
   - **Website:** homepage text, so the AI knows what the company actually does.
   - Searches include the website and a topic word from the company card. That stops brands that are ordinary words ("Paddle") pulling in unrelated stories.
   - Try it (about 9 Tavily credits): `.venv/bin/python -m sources.news_tavily "Paddle" "PADDLE.COM MARKET LIMITED" "paddle.com"`
@@ -75,7 +75,7 @@ Results are cached: looking up the same company again within 6 hours costs no AP
   - **Code checks the AI's work:**
     - claims citing sources we didn't fetch are removed
     - news picks must be real stories from the last 6 months
-    - any recent story used as a "why now" signal also appears under "Recent news", so the two never disagree
+    - any recent story used as a "Why reach out now" signal also appears under "Recent news", so the two never disagree
     - the email (written only when asked) may only use facts already in the report, must be under 120 words and must open with a cited trigger
     - common American spellings in the email are corrected to British (e.g. personalize → personalise)
     - every change is listed under "Code checks"

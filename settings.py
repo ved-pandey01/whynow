@@ -114,8 +114,8 @@ GEMINI_FALLBACK_MODEL = "gemini-3.5-flash"   # tried once if the main model is b
 # ---------------------------------------------------------------------------
 APP_NAME = "WhyNow"
 APP_LABEL = "AI account research agent"
-APP_SLOGAN = "Before you reach out, WhyNow."
-APP_INTRO = "Know the company. Know the fit. Know the moment."
+APP_HEADLINE = "Know the company. Know the fit. Know the moment."
+SIGNALS_TITLE = "Why reach out now"   # the heading for "why now" signals, in the report and the landing preview
 APP_TYPING_LINES = [             # the animated amber line on the landing page
     "Because they're hiring SDRs…",
     "Because they just raised funding…",

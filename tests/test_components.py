@@ -82,8 +82,9 @@ def test_model_note_mentions_backup():
 def test_header_has_slogan_and_typing_lines():
     import settings
     out = ui.hero()
-    assert "Before you reach out, WhyNow." in out
-    assert "Know the company. Know the fit. Know the moment." in out
+    assert "Before you reach out" not in out                       # the old tagline is gone
+    assert ('<h2 class="wn-headline"><span>Know the company.</span> <span>Know the fit.</span> '
+            '<span>Know the moment.</span></h2>') in out
     for line in settings.APP_TYPING_LINES:
         assert ui.esc(line) in out
     assert "<script" not in out   # the animation is pure CSS
@@ -113,6 +114,7 @@ def test_preview_card_uses_the_saved_sample():
               "signals": [{"type": "funding"}], "sources": [1, 2, 3]}
     out = ui.preview_card(sample)
     assert "Paddle" in out and "Software Development · London" in out
+    assert "Why reach out now" in out
     assert 'wn-badge strong' in out and ">9<" in out and ">3<" in out
 
 

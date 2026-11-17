@@ -104,11 +104,13 @@ def topbar():
 
 
 def hero():
-    """Left column: wordmark, slogan, one line, and the animated 'Because…' line (pure CSS)."""
+    """Left column: wordmark, headline, and the animated 'Because…' line (pure CSS)."""
     typing = "".join(f"<span>{esc(line)}</span>" for line in settings.APP_TYPING_LINES[:4])
+    # Each sentence in its own span, so a line only ever breaks between sentences
+    sentences = [x.strip() for x in settings.APP_HEADLINE.replace(". ", ".|").split("|")]
+    headline = " ".join(f"<span>{esc(x)}</span>" for x in sentences)
     return (f'<div class="wn-hero">{wordmark()}'
-            f'<div class="wn-slogan">{esc(settings.APP_SLOGAN)}</div>'
-            f'<p class="wn-intro">{esc(settings.APP_INTRO)}</p>'
+            f'<h2 class="wn-headline">{headline}</h2>'
             f'<div class="wn-typing" aria-label="{esc(settings.APP_TYPING_LINES[0])}">{typing}</div></div>')
 
 
@@ -118,7 +120,7 @@ def _background_svg():
     a soft blue-green glow behind the wordmark, and a thin glowing line chart rising
     from bottom-left to top-right with 4 dots. Being a background, it can never cover content.
     """
-    dots = [(560, 598), (940, 470), (1300, 262), (1530, 128)]
+    dots = [(200, 742), (560, 598), (1300, 262), (1500, 148)]   # none under the "What you get" card
     dot_svg = "".join(f'<circle cx="{x}" cy="{y}" r="11" fill="url(#dotglow)"/>'
                       f'<circle cx="{x}" cy="{y}" r="3.5" fill="#E2F8F0"/>' for x, y in dots)
     path = "M 30 780 C 260 740, 380 650, 560 598 S 820 560, 940 470 S 1180 380, 1300 262 S 1460 160, 1600 110"
@@ -194,7 +196,7 @@ def preview_card(sample=None):
             f'<div class="wn-pv"><div class="wn-pv-label">Fit score</div><div class="wn-pv-score">'
             f'<div class="wn-badge {kind}"><div class="wn-badge-circle">{int(score)}</div></div>'
             f'<div class="wn-badge {kind}"><div class="wn-badge-label">{esc(label)}</div></div></div></div>'
-            f'<div class="wn-pv"><div class="wn-pv-label">Why now</div>{lines}</div>'
+            f'<div class="wn-pv"><div class="wn-pv-label">{esc(settings.SIGNALS_TITLE)}</div>{lines}</div>'
             f'<div class="wn-pv"><div class="wn-pv-label">Sources</div><div class="wn-pv-big">{source_count}</div>'
             f'<div class="wn-pv-meta">every fact linked</div></div>'
             f'</div><div class="wn-pv-note">{note}</div></div>')
@@ -358,10 +360,10 @@ def signal_tile(s, by_id):
 
 def signals_card(r, by_id):
     if not r["signals"]:
-        body = '<p class="wn-empty">No buying signals found.</p>'
+        body = f'<p class="wn-empty">No reasons to reach out now were found.</p>'
     else:
         body = f'<div class="wn-signals">{"".join(signal_tile(s, by_id) for s in r["signals"])}</div>'
-    return card("Why now", "bolt", body)
+    return card(settings.SIGNALS_TITLE, "bolt", body)
 
 
 def news_card(r, by_id):

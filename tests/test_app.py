@@ -93,7 +93,7 @@ def research_and_open(at):
 def test_landing_shows_brand_slogan_and_how_it_works(app):
     app.run()
     page = html(app)
-    for text in [settings.APP_LABEL, "Why<span>Now</span>", settings.APP_SLOGAN, settings.APP_INTRO,
+    for text in [settings.APP_LABEL, "Why<span>Now</span>", "Know the company.", "Know the fit.", "Know the moment.",
                  "Find the company", "Research the signals", "Score the fit"]:
         assert text in page
     assert app.text_area[0].value.startswith("An AI tool that helps SDR teams")
@@ -161,7 +161,7 @@ def test_full_report_shows_every_section(app):
     research_and_open(app)
     assert not app.exception
     page = html(app)
-    for heading in ["ICP fit", "Why now", "Recent news", "What we couldn&#x27;t find", "Sources"]:
+    for heading in ["ICP fit", "Why reach out now", "Recent news", "What we couldn&#x27;t find", "Sources"]:
         assert heading in page
     assert 'class="wn-badge strong"' in page                  # 8/10 → green
     assert '<span class="icon" aria-hidden="true">payments</span>Funding' in page   # signal icon
