@@ -1,17 +1,20 @@
-# Account Research Agent
+# WhyNow
 
-Type a UK company name and get, in under a minute:
-- a short research report with sources
-- "why now" buying signals
-- an ICP fit score (1–10) with reasons
-- a personalised outreach email (under 120 words)
+**Before you reach out, WhyNow.**
 
-**Why:** SDRs often spend 20–30 minutes researching each account. This tool aims to cut that to under a minute, and every fact links to its source.
+WhyNow is an AI account research agent for SDRs and sales teams. Type any UK company and, in under a minute, see:
+- **who they are:** a short, sourced snapshot with key stats (headcount and trend, founded, funding, revenue)
+- **if they fit:** an ICP fit score from 1 to 10, colour-coded, with 2–3 reasons
+- **why to reach out now:** buying signals such as sales hiring, funding, new leaders or expansion
+- **who to contact:** a suggested role, plus a one-click LinkedIn people search
+- **an outreach email:** under 120 words, opening with a real trigger, written only when you ask
+
+**Why:** SDRs often spend 20–30 minutes researching each account. WhyNow aims to cut that to under a minute, and every fact links to its source.
 
 > 🚧 Work in progress: Stage 1 is being built.
 
 ## Tech stack
-Python · Streamlit · Companies House API · Tavily · Gemini · Pydantic · pytest
+Python · Streamlit (with custom CSS) · Companies House API · Tavily · Gemini · Pydantic · pytest
 
 ## Setup
 *(Full setup steps coming as features are added.)*
@@ -25,12 +28,25 @@ Python · Streamlit · Companies House API · Tavily · Gemini · Pydantic · py
 ```
 Your browser opens at http://localhost:8501. Then:
 1. Type a company name or website. The "What are you selling?" box is pre-filled from [settings.py](settings.py), and you can edit it.
-2. Pick the right company from the Companies House matches. The biggest companies come first, each with a size guide, e.g. "Large: parent of a group" or "Very small (micro)". You get a warning if none of them is a close match.
-3. Click **Research this company** (usually 20–45 seconds). The report shows 8 cards: snapshot, recent news, "why now" signals, ICP fit score, who to contact, outreach email (with a copy icon), what we couldn't find, and sources. Every `[S1]` citation links to its source.
-   - Low-fit companies (score 3 or under) have their email hidden behind a **Show email anyway** switch.
-4. Open "Behind the scenes" to see what code changed in the AI's answer and how long each step took.
+2. Pick the right company. Each Companies House match is a small card showing its industry, size, founded year and city. The biggest companies come first. You get a warning if none of them is a close match.
+3. Click **Research this company** (usually 20–45 seconds). The report shows:
+   - a banner with the logo, a one-line summary, and a profile card (industry, HQ, website, LinkedIn followers)
+   - key stat tiles, and the fit score as a colour-coded badge (green 7–10, amber 4–6, red 1–3)
+   - who to contact, "why now" signal tiles with icons, recent news, what we couldn't find, and sources
+
+   Every small `S1`-style tag links to its source.
+4. Click **Create email for this company** to write the email. For scores of 3 or under, a note says it's probably not worth contacting.
+5. Open "Behind the scenes" to see what code changed in the AI's answer and how long each step took.
+
+**See a sample report:** the landing page has a button for a saved real report. You can also link straight to it with `http://localhost:8501/?sample=1`. It uses no API calls and needs no keys. To refresh it: `.venv/bin/python -m scripts.save_sample`
 
 Results are cached: looking up the same company again within 6 hours costs no API credits. Stop the app with `Ctrl + C` in the terminal.
+
+## Design
+- Our own look in [ui/style.css](ui/style.css): navy and teal on white, the Inter font, soft tiles, and lots of white space. The layout works on phones too.
+- Each part of the page is a small function in [ui/components.py](ui/components.py).
+- **Safety:** all text fetched from the internet is escaped before it goes on the page, and links only allow http(s), so a web page title can never add code to WhyNow.
+- Logos come from the company website's icon (DuckDuckGo's icon service), with the company's initials behind it as a fallback.
 
 ## Features so far
 - **Companies House lookup** ([sources/uk_companies_house.py](sources/uk_companies_house.py)): finds UK companies by name or website, ranks exact name matches first, and fetches status, industry codes, founded date, address and recently appointed directors. Every fact links to its public Companies House page. Dissolved, insolvent or dormant companies are flagged as "not worth contacting" by code, not by the AI.
@@ -53,7 +69,7 @@ Results are cached: looking up the same company again within 6 hours costs no AP
     - claims citing sources we didn't fetch are removed
     - news picks must be real stories from the last 6 months
     - any recent story used as a "why now" signal also appears under "Recent news", so the two never disagree
-    - the email must be under 120 words and open with a cited trigger
+    - the email (written only when asked) may only use facts already in the report, must be under 120 words and must open with a cited trigger
     - common American spellings in the email are corrected to British (e.g. personalize → personalise)
     - every change is listed under "Code checks"
   - **Hard rules in code, not AI:**
@@ -68,6 +84,7 @@ Results are cached: looking up the same company again within 6 hours costs no AP
 
     - if headcount isn't found, the AI judges size only from evidence in the sources
   - The AI provider sits behind one function ([ai/provider.py](ai/provider.py)), so swapping Gemini for another model is a settings change.
+  - **Backup model:** if the main Gemini model is busy, slow, rate-limited or retired, the request is tried once more with `GEMINI_FALLBACK_MODEL`. Key problems don't trigger it, because another model wouldn't help. The report and the email each say which model wrote them.
   - Try it (about 9 Tavily credits + 1–2 Gemini requests): `.venv/bin/python -m report "paddle.com"`
 
 - **Time limits** (set in [settings.py](settings.py)):
