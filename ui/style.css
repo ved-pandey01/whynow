@@ -66,22 +66,30 @@ a:hover { text-decoration: underline; }
 .wn-mini { font-size: 1.25rem; font-weight: 800; color: var(--blue); letter-spacing: -0.03em; }
 .wn-mini span { color: var(--emerald); }
 .wn-topbar-label { color: var(--muted); font-size: 0.82rem; }
-.wn-topbar-by { color: var(--muted) !important; font-size: 0.82rem; }
-.wn-topbar-by:hover { color: var(--head) !important; text-decoration: none; }
+.wn-built { display: inline-flex; align-items: center; gap: 0.55rem; padding: 0.3rem 0.8rem 0.3rem 0.3rem; border-radius: 999px;
+  border: 1px solid var(--line-strong); background: rgba(17, 24, 39, 0.7); color: var(--body) !important; font-size: 0.82rem;
+  font-weight: 600; transition: border-color .15s, box-shadow .15s, color .15s; }
+.wn-built:hover { text-decoration: none; color: var(--head) !important; border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 0 18px rgba(16, 185, 129, 0.18); }
+.wn-vp { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--blue), var(--emerald)); color: #FFFFFF; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.02em; }
+.wn-built-short { display: none; }
+.wn-arrow { color: var(--muted); font-size: 0.8rem; }
+.wn-built:hover .wn-arrow { color: var(--emerald-bright); }
 .wn-home:hover { text-decoration: none; opacity: 0.85; }
 .wn-back { display: inline-block; color: var(--muted) !important; font-size: 0.85rem; font-weight: 600; margin: 0.2rem 0 0.4rem; }
 .wn-back:hover { color: var(--head) !important; text-decoration: none; }
 
 /* ---------- Hero (left column) ---------- */
 .wn-hero { padding: 1.4rem 0 0.2rem; }
-.wn-wordmark { font-size: 4.6rem; font-weight: 800; color: var(--blue); letter-spacing: -0.045em; line-height: 1;
+.wn-wordmark { font-size: 5.3rem; font-weight: 800; color: var(--blue); letter-spacing: -0.045em; line-height: 1;
   text-shadow: 0 0 40px rgba(59, 130, 246, 0.25); }
 .wn-wordmark span { color: var(--emerald); text-shadow: 0 0 40px rgba(16, 185, 129, 0.25); }
 /* Title block: as wide as the "WhyNow" title, so the headline under it can match its width */
 .wn-title { display: inline-block; }
 .wn-title .wn-wordmark { display: inline-block; }
-/* Headline: one line, no wider than the title (about 0.17 x the title's size), white, lighter weight */
-.stApp .wn-headline, .wn-headline { font-size: calc(4.6rem * 0.168); font-weight: 600; color: var(--head); margin: 0.7rem 0 0;
+/* Headline: one line, white and bold, sized to fill close to the title's width without going past it */
+.stApp .wn-headline, .wn-headline { font-size: calc(5.3rem * 0.268); font-weight: 700; color: var(--head); margin: 1rem 0 0;
   padding: 0; letter-spacing: 0; line-height: 1.3; white-space: nowrap; }
 .wn-headline span { white-space: nowrap; }  /* each short sentence stays on one line */
 
@@ -125,14 +133,24 @@ a:hover { text-decoration: underline; }
 .st-key-wn_search [data-testid="stFormSubmitButton"] > button { border-radius: 999px; padding: 0 1.4rem; min-height: 2.75rem; white-space: nowrap; }
 /* "Change offer": a tiny link under the bar */
 .st-key-wn_offer details { background: transparent !important; border: none !important; box-shadow: none !important; }
+.st-key-wn_offer summary, .st-key-wn_offer summary:hover { background: transparent !important; }
 .st-key-wn_offer summary { padding: 0.35rem 0 0 1.25rem; color: var(--blue-bright); font-size: 0.8rem; font-weight: 600; }
 .st-key-wn_offer summary svg { width: 14px; height: 14px; }
+.st-key-wn_offer [data-testid="stExpanderDetails"] { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 0.9rem 1rem 0.7rem !important; margin-top: 0.4rem; box-shadow: var(--shadow); }
+.st-key-wn_offer [data-testid="stCaptionContainer"] { color: var(--muted); font-size: 0.78rem; }
 
 /* ---------- Preview card (right column) ---------- */
 /* Solid (not see-through), so the growth line passes fully behind it */
 .wn-preview { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 1.1rem 1.2rem;
   box-shadow: var(--shadow), 0 30px 80px rgba(16, 185, 129, 0.08); margin-top: 1.2rem; position: relative; }
-.wn-preview-title { color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; margin-bottom: 0.7rem; }
+.wn-preview-title { color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; }
+.wn-preview-sub { color: var(--muted); font-size: 0.78rem; margin: 0.25rem 0 0.8rem; }
+a.wn-preview-link { display: block; color: inherit !important; transition: border-color .15s, box-shadow .15s, transform .15s; }
+a.wn-preview-link:hover { text-decoration: none; border-color: rgba(59, 130, 246, 0.55); transform: translateY(-2px);
+  box-shadow: var(--shadow), 0 0 0 3px rgba(59, 130, 246, 0.10), 0 30px 80px rgba(16, 185, 129, 0.14); }
+.wn-pv-view { color: var(--blue-bright); font-size: 0.82rem; font-weight: 700; margin-top: 0.8rem; text-align: right; }
+a.wn-preview-link:hover .wn-pv-view { color: var(--emerald-bright); }
 .wn-pv { background: var(--tile); border: 1px solid var(--line); border-radius: 14px; padding: 0.8rem 0.9rem; }
 .wn-pv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-top: 0.7rem; }
 /* Fit score and sources side by side; "why now" full width underneath, its signals in one row */
@@ -259,13 +277,15 @@ a:hover { text-decoration: underline; }
 
 /* ---------- Phones: stack, smaller type ---------- */
 @media (max-width: 760px) {
-  .wn-wordmark { font-size: 3.4rem; }
   .stApp .wn-headline, .wn-headline { font-size: 1.05rem; white-space: normal; }
   .wn-typing span { font-size: 0.98rem; }
   .wn-steps { grid-template-columns: 1fr; }
   .wn-fit { flex-direction: column; }
   .wn-name { font-size: 1.4rem; }
   .wn-topbar-label { display: none; }
+  .wn-built-full { display: none; }
+  .wn-built-short { display: inline; }
+  .wn-wordmark { font-size: 3.6rem; }
   .st-key-wn_search [data-testid="stHorizontalBlock"] { padding-left: 14px; }
   .st-key-wn_search [data-testid="stFormSubmitButton"] > button { padding: 0 1rem; }
 }

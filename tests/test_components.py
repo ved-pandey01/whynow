@@ -83,18 +83,20 @@ def test_header_has_slogan_and_typing_lines():
     import settings
     out = ui.hero()
     assert "Before you reach out" not in out                       # the old tagline is gone
-    assert ('<h2 class="wn-headline"><span>Know the company.</span> <span>Know the fit.</span> '
-            '<span>Know the moment.</span></h2>') in out
+    assert '<h2 class="wn-headline"><span>Know the fit.</span> <span>Know the moment.</span></h2>' in out
+    assert "Know the company" not in out
     for line in settings.APP_TYPING_LINES:
         assert ui.esc(line) in out
     assert "<script" not in out   # the animation is pure CSS
 
 
-def test_top_bar_has_label_and_byline():
+def test_top_bar_has_label_and_author_pill():
     import settings
     out = ui.topbar()
     assert "AI account research agent" in out
-    assert f'href="{settings.AUTHOR_LINKEDIN}"' in out and "by Ved Prakash Pandey" in out
+    assert f'class="wn-built" href="{settings.AUTHOR_LINKEDIN}" target="_blank"' in out
+    assert '<span class="wn-vp">VP</span>' in out
+    assert "Built by Ved Prakash Pandey" in out and "Built by Ved<" in out and "↗" in out
 
 
 def test_landing_background_is_a_safe_embedded_picture():
@@ -105,16 +107,21 @@ def test_landing_background_is_a_safe_embedded_picture():
 def test_preview_card_without_sample_shows_no_company_facts():
     out = ui.preview_card(None)
     assert "Your target company" in out and "Example layout" in out
+    assert "<a " not in out              # nothing to open without a saved sample
 
 
 def test_preview_card_uses_the_saved_sample():
     sample = {"profile": {"brand": {"value": "Paddle"}, "industry": {"value": "Software Development"},
                           "headquarters": {"value": "London"}, "domain": "paddle.com"},
-              "company": {"name": "PADDLE.COM MARKET LIMITED"}, "fit_score": 9,
+              "company": {"name": "PADDLE.COM MARKET LIMITED"}, "fit_score": 9, "saved_on": "17 Nov 2026",
               "signals": [{"type": "funding"}], "sources": [1, 2, 3]}
     out = ui.preview_card(sample)
     assert "Paddle" in out and "Software Development · London" in out
     assert "Why reach out now" in out
+    assert "EXAMPLE REPORT" in out and "WHAT YOU GET" not in out
+    assert out.startswith('<a class="wn-preview wn-preview-link" href="./?sample=1"')   # whole card opens the sample
+    assert "View full report →" in out and "From the saved" not in out
+    assert "Real result for Paddle, saved 17 Nov 2026" in out
     assert 'wn-badge strong' in out and ">9<" in out and ">3<" in out
 
 

@@ -93,10 +93,11 @@ def research_and_open(at):
 def test_landing_shows_brand_slogan_and_how_it_works(app):
     app.run()
     page = html(app)
-    for text in [settings.APP_LABEL, "Why<span>Now</span>", "Know the company.", "Know the fit.", "Know the moment.",
+    for text in [settings.APP_LABEL, "Why<span>Now</span>", "Know the fit.", "Know the moment.",
                  "Find the company", "Research the signals", "Score the fit"]:
         assert text in page
     assert app.text_area[0].value.startswith("An AI tool that helps SDR teams")
+    assert any(c.value == settings.OFFER_HINT for c in app.caption)
 
 
 def test_footer_has_author_links(app):
@@ -122,6 +123,7 @@ def test_sample_report_loads_with_no_api_calls(app, monkeypatch, tmp_path):
     button(app, "See a sample report").click().run()
     assert not app.exception
     assert "Saved example from 17 Nov 2026" in app.info[0].value
+    assert "← Back to home" in html(app)
     button(app, "Create email for this company").click().run()
     assert app.code[0].value.startswith("Hi [First name]")
 

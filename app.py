@@ -82,6 +82,7 @@ def search_form():
     # The offer keeps its default unless the user opens "Change offer"
     with st.expander("Change offer", key="wn_offer"):
         st.text_area("What are you selling?", value=settings.DEFAULT_OFFER, height=80, key="offer_text")
+        st.caption(settings.OFFER_HINT)
     if submitted:
         for key in ("report", "email", "sample"):
             st.session_state.pop(key, None)
@@ -109,7 +110,7 @@ def landing():
     Then the three step cards and the sample button."""
     sample = load_sample()
     st.html(ui.landing_background())
-    left, right = st.columns([1.5, 1], gap="large")
+    left, right = st.columns([1.5, 1], gap="large", vertical_alignment="center")
     with left:
         st.html(ui.hero())
         search_form()

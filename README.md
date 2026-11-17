@@ -1,6 +1,6 @@
 # WhyNow
 
-**Know the company. Know the fit. Know the moment.**
+**Know the fit. Know the moment.**
 
 WhyNow is an AI account research agent for SDRs and sales teams. Type any UK company and, in under a minute, see:
 - **who they are:** a short, sourced snapshot with key stats (headcount and trend, founded, funding, revenue)
@@ -34,23 +34,24 @@ Python · Streamlit (with custom CSS) · Companies House API · Tavily · Gemini
 .venv/bin/streamlit run app.py
 ```
 Your browser opens at http://localhost:8501. Then:
-1. Type a company name or website. The "What are you selling?" box is pre-filled from [settings.py](settings.py), and you can edit it.
+1. Type a company name or website in the search bar and press **Research →** (or Enter). What you're selling is pre-filled from [settings.py](settings.py). Open the small **Change offer** link to edit it, because WhyNow uses it to score the fit and write your email.
 2. Pick the right company. Each Companies House match is a small card showing its industry, size, founded year and city. The biggest companies come first. You get a warning if none of them is a close match.
 3. Click **Research this company** (usually 20–45 seconds). The report shows:
    - a banner with the logo, a one-line summary, and a profile card (industry, HQ, website, LinkedIn followers)
-   - key stat tiles, and the fit score as a colour-coded badge (green 7–10, amber 4–6, red 1–3)
+   - key stat tiles (if funding is reported in more than one currency, the first is shown as the total and the others in small grey text), and the fit score as a colour-coded badge (green 7–10, amber 4–6, red 1–3)
    - who to contact, "Why reach out now" tiles with icons, recent news, what we couldn't find, and sources
 
    Every small `S1`-style tag links to its source.
 4. Click **Create email for this company** to write the email. For scores of 3 or under, a note says it's probably not worth contacting.
 5. Open "Behind the scenes" to see what code changed in the AI's answer and how long each step took.
+6. To start again, click the **WhyNow** logo in the top bar or **← Back to home** above the report. Both clear the current report.
 
-**See a sample report:** the landing page has a button for a saved real report. You can also link straight to it with `http://localhost:8501/?sample=1`. It uses no API calls and needs no keys. To refresh it: `.venv/bin/python -m scripts.save_sample`. The research is saved first in `.cache/` (git-ignored), so if the AI step fails, running it again costs no Tavily credits.
+**See a sample report:** on the landing page, click the **Example report** card (a real result for Paddle, saved 17 Nov 2026) or the **See a sample report** button. You can also link straight to it with `http://localhost:8501/?sample=1`. It uses no API calls and needs no keys. To refresh it: `.venv/bin/python -m scripts.save_sample`. The research is saved first in `.cache/` (git-ignored), so if the AI step fails, running it again costs no Tavily credits.
 
 Results are cached: looking up the same company again within 6 hours costs no API credits. Stop the app with `Ctrl + C` in the terminal.
 
 ## Design
-- Our own look in [ui/style.css](ui/style.css): a premium dark theme with royal blue, emerald and an amber typing line, the Inter font, and dark cards with soft shadows. The landing page has a two-column hero, a Google-style search bar and a subtle grid and line-chart background. The layout stacks on phones.
+- Our own look in [ui/style.css](ui/style.css): a premium dark theme with royal blue, emerald and an amber typing line, the Inter font, and dark cards with soft shadows. The landing page has a two-column hero (the WhyNow title, "Know the fit. Know the moment.", an animated "Because…" line and a Google-style search bar on the left; a clickable example report on the right), a subtle grid and line-chart background, and a "Built by Ved Prakash Pandey" pill linking to LinkedIn. The layout stacks on phones.
 - Each part of the page is a small function in [ui/components.py](ui/components.py).
 - **Safety:** all text fetched from the internet is escaped before it goes on the page, and links only allow http(s), so a web page title can never add code to WhyNow.
 - Logos come from the company website's icon (DuckDuckGo's icon service), with the company's initials behind it as a fallback.

@@ -100,11 +100,20 @@ def topbar():
     return (f'<div class="wn-topbar"><div class="wn-topbar-brand">'
             f'<a class="wn-home" href="{HOME_URL}" target="_self" title="Back to home">{wordmark("wn-mini")}</a>'
             f'<span class="wn-topbar-label">· {esc(settings.APP_LABEL)}</span></div>'
-            f'<a class="wn-topbar-by" href="{safe_url(settings.AUTHOR_LINKEDIN)}" target="_blank" '
-            f'rel="noopener noreferrer">by {esc(settings.AUTHOR_NAME)}</a></div>')
+            f'{author_pill()}</div>')
+
+
+def author_pill():
+    """Top-right pill: 'VP' badge, 'Built by …' and ↗, linking to LinkedIn in a new tab."""
+    return (f'<a class="wn-built" href="{safe_url(settings.AUTHOR_LINKEDIN)}" target="_blank" rel="noopener noreferrer">'
+            f'<span class="wn-vp">{esc(settings.AUTHOR_INITIALS)}</span>'
+            f'<span class="wn-built-full">Built by {esc(settings.AUTHOR_NAME)}</span>'
+            f'<span class="wn-built-short">Built by {esc(settings.AUTHOR_SHORT_NAME)}</span>'
+            f'<span class="wn-arrow" aria-hidden="true">↗</span></a>')
 
 
 HOME_URL = "./"   # the home page without "?sample=1"; loading it starts fresh, so the report is cleared
+SAMPLE_URL = "./?sample=1"   # opens the saved sample report
 
 
 def back_link():
@@ -151,8 +160,8 @@ def _background_svg():
     <stop offset="0%" stop-color="#34D399" stop-opacity="0.75"/><stop offset="100%" stop-color="#34D399" stop-opacity="0"/></radialGradient>
   <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
 </defs>
-<ellipse cx="430" cy="210" rx="420" ry="190" fill="url(#auroraBlue)"/>
-<ellipse cx="650" cy="250" rx="380" ry="170" fill="url(#auroraGreen)"/>
+<ellipse cx="430" cy="290" rx="420" ry="190" fill="url(#auroraBlue)"/>
+<ellipse cx="650" cy="320" rx="380" ry="170" fill="url(#auroraGreen)"/>
 <rect width="1600" height="860" fill="url(#grid)" mask="url(#gridmask)"/>
 <path d="{path}" fill="none" stroke="url(#line)" stroke-width="7" stroke-opacity="0.35" filter="url(#blur)"/>
 <path d="{path}" fill="none" stroke="url(#line)" stroke-width="2.2" stroke-linecap="round"/>
@@ -190,15 +199,23 @@ def preview_card(sample=None):
         score = sample["fit_score"]
         signals = [SIGNALS.get(s["type"], (s["type"], "bolt")) for s in sample["signals"][:3]]
         source_count = len(sample["sources"])
-        logo_html, note = logo(p), f"From the saved {esc(name)} example."
+        logo_html = logo(p)
+        subtitle = f"Real result for {esc(name)}, saved {esc(sample.get('saved_on', ''))}"
+        note = '<div class="wn-pv-view">View full report →</div>'
     else:
         name, meta, score, source_count = "Your target company", "Industry · Headquarters", 8, 12
         signals = [SIGNALS["hiring_sales"], SIGNALS["funding"], SIGNALS["new_sales_leader"]]
-        logo_html, note = f'<div class="wn-logo">{icon("domain")}</div>', "Example layout. Every report is built from live, sourced data."
+        logo_html = f'<div class="wn-logo">{icon("domain")}</div>'
+        subtitle = "Example layout. Every report is built from live, sourced data."
+        note = ""
     kind, label = fit_band(score)
     lines = "".join(f'<div class="wn-pv-line">{icon(i)}{esc(t)}</div>' for t, i in signals) \
         or '<div class="wn-pv-line wn-empty">None found</div>'
-    return (f'<div class="wn-preview"><div class="wn-preview-title">WHAT YOU GET</div>'
+    opening = (f'<a class="wn-preview wn-preview-link" href="{SAMPLE_URL}" title="Open the full sample report">'
+               if sample else '<div class="wn-preview">')
+    closing = "</a>" if sample else "</div>"
+    return (f'{opening}<div class="wn-preview-title">EXAMPLE REPORT</div>'
+            f'<div class="wn-preview-sub">{subtitle}</div>'
             f'<div class="wn-pv"><div class="wn-pv-company">{logo_html}'
             f'<div><div class="wn-pv-name">{esc(name)}</div><div class="wn-pv-meta">{meta}</div></div></div></div>'
             f'<div class="wn-pv-grid">'
@@ -208,7 +225,7 @@ def preview_card(sample=None):
             f'<div class="wn-pv"><div class="wn-pv-label">{esc(settings.SIGNALS_TITLE)}</div>{lines}</div>'
             f'<div class="wn-pv"><div class="wn-pv-label">Sources</div><div class="wn-pv-big">{source_count}</div>'
             f'<div class="wn-pv-meta">every fact linked</div></div>'
-            f'</div><div class="wn-pv-note">{note}</div></div>')
+            f'</div>{note}{closing}')
 
 
 def footer():

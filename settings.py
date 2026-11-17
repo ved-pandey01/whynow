@@ -118,7 +118,7 @@ GEMINI_FALLBACK_MODELS = [          # tried in order, once each, if the main mod
 # ---------------------------------------------------------------------------
 APP_NAME = "WhyNow"
 APP_LABEL = "AI account research agent"
-APP_HEADLINE = "Know the company. Know the fit. Know the moment."
+APP_HEADLINE = "Know the fit. Know the moment."
 SIGNALS_TITLE = "Why reach out now"   # the heading for "why now" signals, in the report and the landing preview
 APP_TYPING_LINES = [             # the animated amber line on the landing page
     "Because they're hiring SDRs…",
@@ -127,7 +127,10 @@ APP_TYPING_LINES = [             # the animated amber line on the landing page
     "Because they're expanding to new markets…",
 ]
 SEARCH_PLACEHOLDER = "Type a company or website, e.g. cognism.com"
+OFFER_HINT = "WhyNow uses this to score the fit and write your email."
 AUTHOR_NAME = "Ved Prakash Pandey"
+AUTHOR_SHORT_NAME = "Ved"          # used in the header pill on phones
+AUTHOR_INITIALS = "VP"
 AUTHOR_LINKEDIN = "https://www.linkedin.com/in/ved-prakash-pandey-954493202/"
 AUTHOR_GITHUB = "https://github.com/ved-pandey01"
 SAMPLE_REPORT_FILE = "data/sample_report_paddle.json"   # the saved example behind "See a sample report"
