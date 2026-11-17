@@ -10,7 +10,7 @@ from datetime import date
 import pytest
 
 import report
-from models import AIReport, Claim, NewsPick, Signal
+from models import AIReport, Claim, EmailDraft, NewsPick, Signal
 
 
 def make_research(headcount=300, status="active", accounts="full"):
@@ -37,9 +37,6 @@ def make_draft(**changes):
         fit_score=8,
         fit_reasons=[Claim(text="300 staff, in the ideal range.", source_ids=["S2"])],
         suggested_role="Head of Sales", role_reason="Owns the SDR team.",
-        email_subject="Your new SDR hire",
-        email_body="Hi [First name], saw Acme is hiring an SDR. Worth a quick chat? [Your name]",
-        email_trigger_source_ids=["S4"],
         not_found=["No funding news in the last 12 months"],
     )
     fields.update(changes)
@@ -58,6 +55,14 @@ class FakeAI:
         return self.answers.pop(0)
 
 
+def make_email(**changes):
+    fields = dict(subject="Your new SDR hire",
+                  body="Hi [First name], saw Acme is hiring an SDR. Worth a quick chat? [Your name]",
+                  trigger_source_ids=["S4"])
+    fields.update(changes)
+    return EmailDraft(**fields)
+
+
 def build(research, *answers):
     ai = FakeAI(*answers)
     return report.build_report(research, ai=ai, today=date(2026, 11, 16)), ai
@@ -69,9 +74,9 @@ def test_good_answer_passes_all_checks():
     assert r["fit_score"] == 8
     assert r["news"][0]["source"] == "S3"
     assert r["signals"][0]["type"] == "hiring_sales"
-    assert r["email"]["warnings"] == []
     assert r["checks"] == []
-    assert len(ai.prompts) == 1
+    assert len(ai.prompts) == 1   # the report only: no email until the user asks
+    assert "email" not in r
     # Only cited sources are listed under "Sources used"
     assert {s["id"] for s in r["sources"]} == {"S1", "S2", "S3", "S4"}
 
@@ -203,7 +208,6 @@ def test_weak_fit_size_caps_at_3(headcount, side):
     r, _ = build(make_research(headcount=headcount), make_draft(fit_score=9))
     assert r["fit_score"] == 3
     assert side in r["fit_reasons"][0]["text"]
-    assert r["email"]["warnings"][0].startswith("Low fit")
 
 
 def test_unknown_headcount_has_no_size_rule():
@@ -215,9 +219,6 @@ def test_unknown_headcount_has_no_size_rule():
     assert r["fit_score"] == 7
 
 
-def test_low_score_adds_do_not_contact_warning():
-    r, _ = build(make_research(), make_draft(fit_score=2))
-    assert r["email"]["warnings"][0].startswith("Low fit")
 
 
 def test_closed_company_skips_ai_and_scores_1():
@@ -225,7 +226,7 @@ def test_closed_company_skips_ai_and_scores_1():
     r = report.build_report(make_research(status="dissolved"), ai=ai)
     assert r["not_worth_contacting"] is True
     assert r["fit_score"] == 1
-    assert r["email"] is None
+    assert report.write_email(r, ai=ai) is None   # no email for a closed company
     assert ai.prompts == []
 
 
@@ -235,49 +236,75 @@ def test_dormant_company_is_flagged():
     assert "dormant" in r["fit_reasons"][0]["text"]
 
 
-# --- Email checks ---------------------------------------------------------
+# --- Email (written only when the user asks) ------------------------------
+def email_for(report_draft, *email_answers, research=None):
+    """Build a report, then write its email with the given fake AI answers."""
+    r, _ = build(research or make_research(), report_draft)
+    ai = FakeAI(*email_answers)
+    return report.write_email(r, ai=ai, today=date(2026, 11, 16)), ai
+
+
+def test_email_uses_only_facts_from_the_report():
+    email, ai = email_for(make_draft(), make_email())
+    assert email["trigger_sources"] == ["S4"]
+    assert email["warnings"] == []
+    prompt = ai.prompts[0]
+    assert "Hiring an SDR. [S4]" in prompt                 # the report's own signal, with its source
+    assert "Do not use your own knowledge" in prompt
+
+
+def test_email_cannot_cite_sources_outside_the_report():
+    """S3 was fetched, but the report doesn't use it, so the email can't use it either."""
+    email, _ = email_for(make_draft(news=[]), make_email(trigger_source_ids=["S3"]))
+    assert any("couldn't be matched to a source" in w for w in email["warnings"])
+
+
+def test_low_fit_email_gets_the_note():
+    email, _ = email_for(make_draft(fit_score=2), make_email())
+    assert email["warnings"][0] == report.LOW_FIT_NOTE
+
+
 def test_long_email_is_shortened():
-    long_body = "word " * 150
     short = Claim(text="Hi [First name], short version. [Your name]", source_ids=[])
-    r, ai = build(make_research(), make_draft(email_body=long_body), short)
-    assert r["email"]["word_count"] <= 120
+    email, ai = email_for(make_draft(), make_email(body="word " * 150), short)
+    assert email["word_count"] <= 120
     assert len(ai.prompts) == 2
-    assert any("shortened" in c for c in r["checks"])
+    assert any("shortened" in c for c in email["checks"])
 
 
 def test_email_shortening_is_timed_and_failures_are_noted():
     """Real problem: a failing shortening call added ~58 hidden seconds to the Sage report."""
+    r, _ = build(make_research(), make_draft())
+
     def failing_ai(prompt, shape):
-        if shape is AIReport:
-            return make_draft(email_body="word " * 150)
+        if shape is EmailDraft:
+            return make_email(body="word " * 150)
         raise report.AIError("Gemini is having problems right now.")
 
-    r = report.build_report(make_research(), ai=failing_ai, today=date(2026, 11, 16))
-    assert "Email shortening" in r["timings"]
-    assert any("Couldn't shorten the email" in c for c in r["checks"])
-    assert any("over the 120-word limit" in w for w in r["email"]["warnings"])
+    email = report.write_email(r, ai=failing_ai)
+    assert "Email shortening" in email["timings"]
+    assert any("Couldn't shorten the email" in c for c in email["checks"])
+    assert any("over the 120-word limit" in w for w in email["warnings"])
 
 
 def test_email_still_too_long_gets_a_warning():
-    long_body = "word " * 150
-    r, _ = build(make_research(), make_draft(email_body=long_body),
-                 Claim(text="still " * 130, source_ids=[]))
-    assert any("over the 120-word limit" in w for w in r["email"]["warnings"])
+    email, _ = email_for(make_draft(), make_email(body="word " * 150), Claim(text="still " * 130, source_ids=[]))
+    assert any("over the 120-word limit" in w for w in email["warnings"])
 
 
 def test_email_without_a_real_trigger_gets_a_warning():
-    r, _ = build(make_research(), make_draft(email_trigger_source_ids=["S77"]))
-    assert any("couldn't be matched to a source" in w for w in r["email"]["warnings"])
+    email, _ = email_for(make_draft(), make_email(trigger_source_ids=["S77"]))
+    assert any("couldn't be matched to a source" in w for w in email["warnings"])
 
 
 def test_email_spelling_is_made_british():
     """Real problem: a Sage email said 'personalization'."""
-    r, _ = build(make_research(), make_draft(
-        email_subject="Personalized outreach",
-        email_body="Hi [First name], manual research can slow down personalization. [Your name]"))
-    assert r["email"]["subject"] == "Personalised outreach"
-    assert "personalisation" in r["email"]["body"]
-    assert any(c.startswith("British spelling") for c in r["checks"])
+    email, _ = email_for(make_draft(), make_email(
+        subject="Personalized outreach",
+        body="Hi [First name], manual research can slow down personalization. [Your name]"))
+    assert email["subject"] == "Personalised outreach"
+    assert "personalisation" in email["body"]
+    assert any(c.startswith("British spelling") for c in email["checks"])
 
 
 @pytest.mark.parametrize("us, uk", [

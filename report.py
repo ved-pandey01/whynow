@@ -6,7 +6,8 @@ report.py — puts everything together:
        - drop any claim whose source IDs we didn't actually fetch
        - only allow news picks that are real news sources
        - apply hard ICP rules (closed company, size limits) in code, not by the AI
-       - make sure the email is under the word limit
+  3. write_email()        → only when the user asks: the outreach email, using only facts
+                            already in the report, checked for length, spelling and trigger
   The result is a plain dictionary the web page (Step 6) can show.
 
 Try it (about 9 Tavily credits + 1–2 Gemini requests):
@@ -19,9 +20,9 @@ import time
 from datetime import date, timedelta
 
 import settings
-from ai.prompts import build_report_prompt, build_shorten_prompt
+from ai.prompts import build_email_prompt, build_report_prompt, build_shorten_prompt
 from ai.provider import AIError, generate_structured
-from models import AIReport, Claim
+from models import AIReport, Claim, EmailDraft
 from sources import news_tavily as tavily
 from sources import uk_companies_house as ch
 
@@ -248,14 +249,10 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
     score = max(1, min(10, draft.fit_score))
     score, fit_reasons = _apply_size_rule(score, fit_reasons, research, checks)
 
-    email = _check_email(draft, valid, ai, checks, timings)
-    if score <= LOW_FIT_SCORE:
-        email["warnings"].insert(0, "Low fit: we don't recommend contacting this company.")
 
     used = set(n["source"] for n in news)
     for group in ([what_they_do] if what_they_do else []) + snapshot + fit_reasons + signals:
         used.update(group["sources"])
-    used.update(email["trigger_sources"])
 
     not_found = list(draft.not_found)
     if not research["card"]:
@@ -276,7 +273,6 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
         "fit_reasons": fit_reasons,
         "suggested_role": draft.suggested_role,
         "role_reason": draft.role_reason,
-        "email": email,
         "not_found": not_found,
         "sources": [s for s in sources.items if s["id"] in used],
         "all_sources": sources.items,
@@ -287,7 +283,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
     }
 
 
-LOW_FIT_SCORE = 3  # at or below this, the email gets a "don't recommend contacting" warning
+LOW_FIT_SCORE = 3  # at or below this, the report says "probably not worth contacting"
 
 
 def _recent_story_ids(sources, today):
@@ -410,7 +406,7 @@ def to_british(text):
 
 def _check_email(draft, valid, ai, checks, timings=None):
     """Make sure the email is short enough and opens with a trigger we can verify."""
-    body = draft.email_body.strip()
+    body = draft.body.strip()
     words = word_count(body)
     if words > settings.EMAIL_MAX_WORDS:
         shorten_start = time.monotonic()
@@ -425,18 +421,70 @@ def _check_email(draft, valid, ai, checks, timings=None):
             timings["Email shortening"] = round(time.monotonic() - shorten_start, 1)
     # British spelling, enforced by code as well as asked for in the prompt
     body, fixed_body = to_british(body)
-    subject, fixed_subject = to_british(draft.email_subject.strip())
+    subject, fixed_subject = to_british(draft.subject.strip())
     if fixed_body or fixed_subject:
         checks.append("British spelling: " + ", ".join(fixed_subject + fixed_body))
 
     warnings = []
     if words > settings.EMAIL_MAX_WORDS:
         warnings.append(f"Email is {words} words, over the {settings.EMAIL_MAX_WORDS}-word limit. Trim before sending.")
-    triggers = [i for i in draft.email_trigger_source_ids if i in valid]
+    triggers = [i for i in draft.trigger_source_ids if i in valid]
     if not triggers:
         warnings.append("The email's opening trigger couldn't be matched to a source. Check it before sending.")
     return {"subject": subject, "body": body, "word_count": words,
             "trigger_sources": triggers, "warnings": warnings}
+
+
+# ---------------------------------------------------------------------------
+# 3. The email (only when the user clicks "Create email")
+# ---------------------------------------------------------------------------
+LOW_FIT_NOTE = "Low fit: probably not worth contacting."
+
+
+def email_facts(r):
+    """The report's own facts, with their sources, written out for the email prompt."""
+    by_id = {s["id"]: s for s in r["all_sources"]}
+
+    def cited(text, ids):
+        return f"- {text} " + " ".join(f"[{i}]" for i in ids)
+
+    lines = ["WHAT THEY DO"]
+    if r["what_they_do"]:
+        lines.append(cited(r["what_they_do"]["text"], r["what_they_do"]["sources"]))
+    lines.append("\nWHY NOW SIGNALS")
+    lines += [cited(s["text"], s["sources"]) for s in r["signals"]] or ["- none found"]
+    lines.append("\nRECENT NEWS")
+    for n in r["news"]:
+        s = by_id[n["source"]]
+        lines.append(cited(f"{s['title']} ({s.get('date') or 'no date'}): {n['why_it_matters']}", [n["source"]]))
+    if not r["news"]:
+        lines.append("- none found")
+    lines.append("\nFIT")
+    lines += [cited(c["text"], c["sources"]) for c in r["fit_reasons"]]
+    lines.append(f"\nWHO WE'RE WRITING TO: {r['suggested_role'] or 'Head of Sales'}")
+    return "\n".join(lines)
+
+
+def write_email(r, ai=generate_structured, today=None):
+    """
+    Write the outreach email for a finished report. Code then checks it:
+    under 120 words (shortened once if not), British spelling, and an opening
+    trigger that cites a source the report actually uses.
+    """
+    if r["not_worth_contacting"]:
+        return None
+    checks, timings = [], {}
+    started = time.monotonic()
+    name = r.get("profile", {}).get("brand", {}).get("value") or r["company"]["name"]
+    draft = ai(build_email_prompt(name, r["offer"], email_facts(r), (today or date.today()).isoformat()),
+               EmailDraft)
+    timings["Email"] = round(time.monotonic() - started, 1)
+    valid = {s["id"] for s in r["sources"]}   # only sources the report cites
+    email = _check_email(draft, valid, ai, checks, timings)
+    if r["fit_score"] <= LOW_FIT_SCORE:
+        email["warnings"].insert(0, LOW_FIT_NOTE)
+    email["checks"], email["timings"] = checks, timings
+    return email
 
 
 def _closed_company_report(research):
@@ -458,7 +506,7 @@ def _closed_company_report(research):
         "news": [], "signals": [],
         "fit_score": 1,
         "fit_reasons": [{"text": reason + " Not worth contacting.", "sources": [source_id]}],
-        "suggested_role": None, "role_reason": None, "email": None,
+        "suggested_role": None, "role_reason": None,
         "not_found": [], "sources": research["sources"].items, "all_sources": research["sources"].items,
         "checks": ["Flagged by code from Companies House status. No AI used."],
         "warnings": research["warnings"], "timings": dict(research.get("timings", {})), "seconds": 0.0,
@@ -496,7 +544,7 @@ def _print_report(r, sources_by_id):
         print(f"  - {c['text']}{cite(c['sources'])}")
     if r["suggested_role"]:
         print(f"\nCONTACT: {r['suggested_role']}: {r['role_reason']}")
-    if r["email"]:
+    if r.get("email"):
         e = r["email"]
         print(f"\nEMAIL ({e['word_count']} words, trigger{cite(e['trigger_sources']) or ' none'}):")
         print(f"  Subject: {e['subject']}\n")
@@ -531,6 +579,7 @@ if __name__ == "__main__":
         research = research_company(matches[0]["company_number"], typed)
         research["timings"] = {"Company search": search_seconds, **research["timings"]}
         result = build_report(research)
+        result["email"] = write_email(result)
         _print_report(result, {s["id"]: s for s in result["all_sources"]})
         print(f"\nTotal time: {time.time() - started:.1f} seconds")
     except (ch.CompaniesHouseError, AIError) as e:

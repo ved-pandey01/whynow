@@ -40,6 +40,11 @@ def make_report(company_number, typed, offer):
     return report.build_report(research, offer=offer)
 
 
+@st.cache_data(ttl=6 * 3600, show_spinner=False)
+def make_email(r):
+    return report.write_email(r)
+
+
 # ---------------------------------------------------------------------------
 # Small helpers for showing text
 # ---------------------------------------------------------------------------
@@ -120,21 +125,42 @@ def show_fit_and_role(r, by_id):
 
 
 def show_email(r, by_id):
-    with card("6 · Outreach email"):
-        e = r["email"]
-        if not e:
-            st.markdown("No email written: this company isn't worth contacting.")
+    """The email is written only when asked, so we don't spend AI time on companies we skip."""
+    with card("Outreach email"):
+        if r["not_worth_contacting"]:
+            st.markdown("No email: this company isn't worth contacting.")
             return
-        for w in e["warnings"]:
+        button, note = st.columns([2, 3], vertical_alignment="center")
+        clicked = button.button("Create email for this company", type="primary")
+        if r["fit_score"] <= report.LOW_FIT_SCORE:
+            note.caption(report.LOW_FIT_NOTE)
+        if clicked:
+            create_email(r)
+        e = st.session_state.get("email")
+        if e:
+            show_email_text(e, by_id)
+
+
+def create_email(r):
+    with st.spinner("Writing the email…"):
+        try:
+            st.session_state["email"] = r.get("saved_email") or make_email(r)
+        except AIError as e:
+            st.error(safe(str(e)))
+        except Exception as e:
+            print(f"Unexpected error: {type(e).__name__}: {e}")  # shown in the terminal, for fixing
+            st.error("Something unexpected went wrong. Please try again in a minute.")
+
+
+def show_email_text(e, by_id):
+    for w in e["warnings"]:
+        if w != report.LOW_FIT_NOTE:   # already shown beside the button
             st.warning(safe(w))
-        # Low-fit companies: hide the email unless the user really wants it
-        if r["fit_score"] <= report.LOW_FIT_SCORE and not st.toggle("Show email anyway"):
-            return
-        st.markdown(f"**Subject:** {safe(e['subject'])}")
-        st.code(e["body"], language=None, wrap_lines=True)
-        trigger = cite(e["trigger_sources"], by_id) or " none"
-        st.caption(f"{e['word_count']} words · opening trigger:{trigger} · "
-                   "click the copy icon (top right of the email) to copy it")
+    st.markdown(f"**Subject:** {safe(e['subject'])}")
+    st.code(e["body"], language=None, wrap_lines=True)
+    trigger = cite(e["trigger_sources"], by_id) or " none"
+    st.caption(f"{e['word_count']} words · opening trigger:{trigger} · "
+               "click the copy icon (top right of the email) to copy it")
 
 
 def show_not_found(r):
@@ -165,9 +191,9 @@ def show_report(r):
     show_news(r, by_id)
     show_signals(r, by_id)
     show_fit_and_role(r, by_id)
-    show_email(r, by_id)
     show_not_found(r)
     show_sources(r)
+    show_email(r, by_id)
     show_behind_the_scenes(r)
 
 
@@ -181,6 +207,7 @@ def search_form():
         offer = st.text_area("What are you selling?", value=settings.DEFAULT_OFFER, height=80)
         if st.form_submit_button("Find company", type="primary"):
             st.session_state.pop("report", None)
+            st.session_state.pop("email", None)
             st.session_state["offer"] = offer
             st.session_state["typed"] = typed
             try:
@@ -216,6 +243,7 @@ def pick_company():
 def run_report(choice):
     with st.spinner(f"Researching {choice['name']}… this usually takes 20–40 seconds."):
         try:
+            st.session_state.pop("email", None)
             st.session_state["report"] = make_report(
                 choice["company_number"], st.session_state["typed"], st.session_state["offer"])
         except (ch.CompaniesHouseError, AIError) as e:

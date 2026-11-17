@@ -9,7 +9,7 @@ import settings
 
 
 def build_report_prompt(company_name, offer, sources_text, today):
-    """The full instruction for writing the research report, score and email."""
+    """The full instruction for writing the research report and fit score (not the email)."""
     strong = "\n".join(f"  - {s}" for s in settings.STRONG_FIT_SIGNALS)
     weak = "\n".join(f"  - {s}" for s in settings.BAD_FIT_SIGNALS)
     roles = ", ".join(settings.TARGET_BUYER_ROLES)
@@ -68,13 +68,34 @@ YOUR SCORE MUST MATCH YOUR OWN REASONS. If any reason you give says the company 
 enterprise-scale, very large or global (e.g. hundreds of thousands of customers), you are
 saying it's a weak fit on size, so the score must be {settings.WEAK_FIT_MAX_SCORE} or lower.
 
+KEEP IT SHORT
+"what_they_do" is one sentence under 25 words. Every other claim, reason and signal is
+under 20 words. Plain words, no filler.
+
 SUGGESTED ROLE
 Suggest ONE job title to contact, usually one of: {roles}. Give a role, never a person's name.
+
+"""
+
+
+def build_email_prompt(company_name, offer, facts_text, today):
+    """The instruction for the outreach email. It may only use facts already in the report."""
+    return f"""You are writing a short cold email for an SDR (sales development rep).
+Today's date is {today}. Write in British English.
+
+COMPANY: {company_name}
+WHAT THE SDR IS SELLING: {offer}
+
+=== THE ONLY FACTS YOU MAY USE (from the research report) ===
+Each fact cites source IDs like [S1]. Use ONLY these. Do not use your own knowledge.
+
+{facts_text}
+=== END OF FACTS ===
 
 EMAIL
 - Under {settings.EMAIL_MAX_WORDS} words in the body. Short, plain and human.
 - The FIRST sentence must mention a real, specific trigger from the sources
-  (a hire, launch, funding round, growth figure). Cite it in email_trigger_source_ids.
+  (a hire, launch, funding round, growth figure). Cite it in trigger_source_ids.
 - Link the trigger to what the SDR is selling in one sentence.
 - End with a low-pressure question (e.g. "Worth a quick chat?").
 - No flattery ("I love what you're doing"), no "I hope this finds you well", no buzzwords.

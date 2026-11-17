@@ -32,7 +32,7 @@ class Signal(BaseModel):
 
 
 class AIReport(BaseModel):
-    """Everything the AI writes. Code checks all of it before it's shown."""
+    """The research report the AI writes. Code checks all of it before it's shown."""
     what_they_do: Claim
     snapshot: list[Claim] = Field(description="Industry, size, location, founded. Only facts found in the sources.")
     news: list[NewsPick] = Field(description="Up to 3 news items that are really about this company.")
@@ -41,7 +41,11 @@ class AIReport(BaseModel):
     fit_reasons: list[Claim] = Field(description="2 or 3 reasons for the score, each with sources.")
     suggested_role: str = Field(description="The job title to contact (a role, never a person's name).")
     role_reason: str = Field(description="One sentence on why this role.")
-    email_subject: str = Field(description="Short subject line, under 8 words.")
-    email_body: str = Field(description="The outreach email, under 120 words, signed '[Your name]'.")
-    email_trigger_source_ids: list[str] = Field(description="Source IDs for the trigger the email opens with.")
     not_found: list[str] = Field(description="Useful things we couldn't find, e.g. 'No funding news in the last 12 months'.")
+
+
+class EmailDraft(BaseModel):
+    """The outreach email, written only when the user asks for it."""
+    subject: str = Field(description="Short subject line, under 8 words.")
+    body: str = Field(description="The outreach email, under 120 words, signed '[Your name]'.")
+    trigger_source_ids: list[str] = Field(description="Source IDs for the trigger the email opens with.")

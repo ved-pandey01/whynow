@@ -24,6 +24,9 @@ SOURCES = [
      "date": "2026-11-01", "content": ""},
 ]
 
+EMAIL = {"subject": "Your $5m round", "body": "Hi [First name], congrats on the round. [Your name]",
+         "word_count": 9, "trigger_sources": ["S2"], "warnings": [], "checks": [], "timings": {}}
+
 REPORT = {
     "company": {"name": "ACME LTD", "number": "123", "status": "active", "source": "https://ch/acme"},
     "not_worth_contacting": False, "offer": "x",
@@ -33,8 +36,6 @@ REPORT = {
     "signals": [{"type": "funding", "text": "Raised $5m.", "sources": ["S2"]}],
     "fit_score": 8, "fit_reasons": [{"text": "B2B software in the UK.", "sources": ["S1"]}],
     "suggested_role": "Head of Sales", "role_reason": "Owns the sales team.",
-    "email": {"subject": "Your $5m round", "body": "Hi [First name], congrats on the round. [Your name]",
-              "word_count": 9, "trigger_sources": ["S2"], "warnings": []},
     "not_found": ["Headcount not found"], "sources": SOURCES, "all_sources": SOURCES,
     "checks": [], "warnings": [], "timings": {"AI report": 10.0}, "seconds": 10.0,
 }
@@ -48,6 +49,7 @@ def app(monkeypatch):
     monkeypatch.setattr(ch, "search_companies", lambda typed: MATCHES)
     monkeypatch.setattr(report, "research_company", lambda number, typed: {"number": number})
     monkeypatch.setattr(report, "build_report", lambda research, offer=None: REPORT)
+    monkeypatch.setattr(report, "write_email", lambda r: EMAIL)
     return AppTest.from_file("../app.py", default_timeout=30)
 
 
@@ -79,12 +81,11 @@ def test_full_report_shows_all_8_cards(app):
     assert not app.exception
     text = all_text(app)
     for heading in ["1 · Snapshot", "2 · Recent news", "3 · \"Why now\" signals", "4 · ICP fit score",
-                    "5 · Who to contact", "6 · Outreach email", "7 · What we couldn't find", "8 · Sources"]:
+                    "5 · Who to contact", "Outreach email", "7 · What we couldn't find", "8 · Sources"]:
         assert heading in text
     assert app.metric[0].value == "8/10"
     assert "[S1](https://ch/acme)" in text            # citations are clickable links
     assert "Raised \\$5m" in text                     # '$' is escaped, not read as maths
-    assert app.code[0].value.startswith("Hi [First name]")
 
 
 def test_picker_shows_company_size(app, monkeypatch):
@@ -93,23 +94,35 @@ def test_picker_shows_company_size(app, monkeypatch):
     assert "Large: parent of a group" in app.radio[0].options[0]
 
 
-def test_low_fit_email_is_hidden_until_toggled(app, monkeypatch):
-    low = dict(REPORT, fit_score=2,
-               email=dict(REPORT["email"], warnings=["Low fit: we don't recommend contacting this company."]))
-    monkeypatch.setattr(report, "build_report", lambda research, offer=None: low)
+def research_and_open(app):
     search(app)
-    app.button[1].click().run()
-    assert not app.code                          # email hidden
-    assert "Low fit" in app.warning[0].value
-    app.toggle[0].set_value(True).run()          # "Show email anyway"
+    app.button[1].click().run()  # "Research this company"
+
+
+def email_button(app):
+    return next(b for b in app.button if b.label == "Create email for this company")
+
+
+def test_email_is_written_only_when_asked(app, monkeypatch):
+    calls = []
+    monkeypatch.setattr(report, "write_email", lambda r: calls.append(1) or EMAIL)
+    research_and_open(app)
+    assert not app.code and calls == []          # no email yet, no AI call
+    email_button(app).click().run()
     assert app.code[0].value.startswith("Hi [First name]")
+    assert calls == [1]
 
 
-def test_good_fit_email_shows_without_toggle(app):
-    search(app)
-    app.button[1].click().run()
-    assert not app.toggle
-    assert app.code
+def test_low_fit_shows_note_beside_email_button(app, monkeypatch):
+    monkeypatch.setattr(report, "build_report", lambda research, offer=None: dict(REPORT, fit_score=2))
+    research_and_open(app)
+    assert any(c.value == report.LOW_FIT_NOTE for c in app.caption)
+    assert not app.code
+
+
+def test_good_fit_has_no_low_fit_note(app):
+    research_and_open(app)
+    assert not any(c.value == report.LOW_FIT_NOTE for c in app.caption)
 
 
 def test_no_matches_gives_friendly_message(app, monkeypatch):
