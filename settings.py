@@ -91,7 +91,7 @@ CALL_OPENER_MAX_LINES = 2
 COMPETITORS_SHOWN = 4           # "More about": similar companies shown
 HIRING_EXAMPLES_SHOWN = 6       # "More about": example open roles shown
 OVERVIEW_SENTENCES = 4          # the overview card: 3–4 sentences
-OVERVIEW_MORE_SENTENCES = 7     # "Read more": 5–7 sentences
+OVERVIEW_MORE_SENTENCES = 7     # overview + "Read more" together: 5–7 sentences (Read more only adds new ones)
 EMAIL_MAX_WORDS = 120        # outreach email length limit
 
 # ---------------------------------------------------------------------------

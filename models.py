@@ -37,8 +37,8 @@ class AIReport(BaseModel):
         "3 to 4 sentences, one per claim: what the company does and its main products, who its customers are, "
         "and one notable fact (size, growth, ownership or recent news). Fewer if the sources don't support more."))
     overview_more: list[Claim] = Field(description=(
-        "A longer description for 'Read more': 5 to 7 sentences, one per claim, adding detail beyond the overview. "
-        "Fewer if the sources don't support more."))
+        "For 'Read more': 2 to 4 ADDITIONAL sentences, one per claim, with new detail that is NOT already in the "
+        "overview (never repeat or reword an overview sentence). Fewer, or none, if the sources don't support more."))
     snapshot: list[Claim] = Field(description="Industry, size, location, founded. Only facts found in the sources.")
     news: list[NewsPick] = Field(description="Up to 3 news items that are really about this company.")
     signals: list[Signal] = Field(description="Only signals clearly shown by a source. Empty list if none.")

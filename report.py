@@ -349,7 +349,17 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
 
     # Overview: every sentence needs a real source; 3–4 sentences, and 5–7 for "Read more"
     overview = [c for c in (check_claim(x) for x in draft.overview) if c][:settings.OVERVIEW_SENTENCES]
-    overview_more = [c for c in (check_claim(x) for x in draft.overview_more) if c][:settings.OVERVIEW_MORE_SENTENCES]
+    overview_more = [c for c in (check_claim(x) for x in draft.overview_more) if c]
+    # "Read more" only adds sentences: drop any that repeat (or closely reword) one already shown
+    shown = list(overview)
+    extra = []
+    for c in overview_more:
+        if any(_same_sentence(c["text"], s["text"]) for s in shown):
+            checks.append(f"Removed a 'Read more' sentence that repeated the overview: \"{c['text'][:60]}\"")
+            continue
+        extra.append(c)
+        shown.append(c)
+    overview_more = extra[:settings.OVERVIEW_MORE_SENTENCES - len(overview)]
     what_they_do = overview[0] if overview else None   # the one-line summary, used by the email and older code
     snapshot = [c for c in (check_claim(x) for x in draft.snapshot) if c]
     fit_reasons = [c for c in (check_claim(x) for x in draft.fit_reasons) if c]
@@ -517,6 +527,15 @@ def _more_about_ids(m):
     ids = [m["directors"]["source"], m["owners"]["source"], m["competitors"]["source"],
            m["hiring"]["open_roles_source"]] + [r["source"] for r in m["hiring"]["roles"]]
     return {i for i in ids if i}
+
+
+def _same_sentence(a, b, overlap=0.8):
+    """True if two sentences say the same thing: most of the shorter one's words appear in the other."""
+    words = lambda t: set(re.findall(r"[a-z0-9]+", t.lower())) - {"the", "a", "an", "and", "of", "to", "in", "for", "its", "is"}  # noqa: E731
+    wa, wb = words(a), words(b)
+    if not wa or not wb:
+        return False
+    return len(wa & wb) / min(len(wa), len(wb)) >= overlap
 
 
 def _about_link(sources, research):

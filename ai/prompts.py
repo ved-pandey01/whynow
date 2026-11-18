@@ -78,8 +78,9 @@ saying it's a weak fit on size, so the score must be {settings.WEAK_FIT_MAX_SCOR
 
 KEEP IT SHORT
 OVERVIEW: "overview" is 3–4 sentences (what they do and their main products, who their customers are,
-one notable fact such as size, growth, ownership or recent news). "overview_more" is 5–7 sentences for
-"Read more". One sentence per claim, each with its own source IDs, each under 30 words. If the sources
+one notable fact such as size, growth, ownership or recent news). "overview_more" is shown under "Read more"
+AFTER the overview, so it must only ADD 2–4 new sentences (overview + Read more = 5–7 in total): never repeat
+or reword an overview sentence. One sentence per claim, each with its own source IDs, each under 30 words. If the sources
 don't support that many sentences, write fewer: never pad or guess. Every other claim, reason and signal is
 under 20 words. Plain words, no filler.
 

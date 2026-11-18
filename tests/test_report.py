@@ -527,7 +527,7 @@ def test_overview_is_capped_and_every_sentence_needs_a_source():
         overview=[Claim(text="Unsourced.", source_ids=[])] + many,
         overview_more=[Claim(text=f"More {i}.", source_ids=["S2"]) for i in range(9)]))
     assert [c["text"] for c in r["overview"]] == ["Fact 0.", "Fact 1.", "Fact 2.", "Fact 3."]   # 4 at most
-    assert len(r["overview_more"]) == 7
+    assert len(r["overview"]) + len(r["overview_more"]) == 7                                      # 7 in total
     assert r["what_they_do"]["text"] == "Fact 0."          # the one-line summary is the first sentence
 
 
@@ -584,3 +584,16 @@ def test_more_about_with_nothing_found():
     m = r["more_about"]
     assert m["directors"]["people"] == [] and m["owners"]["owners"] == [] and m["competitors"]["names"] == []
     assert m["hiring"]["open_roles"] is None and m["competitors"]["source"] is None
+
+
+
+def test_read_more_never_repeats_the_overview():
+    """Real problem: 'Read more' showed the overview sentences again."""
+    r, _ = build(make_research(), make_draft(
+        overview=[Claim(text="Acme makes billing software for SaaS firms.", source_ids=["S2"]),
+                  Claim(text="Acme employs about 300 people.", source_ids=["S2"])],
+        overview_more=[Claim(text="Acme makes billing software for SaaS firms.", source_ids=["S2"]),        # repeat
+                       Claim(text="Acme makes the billing software for SaaS firms worldwide.", source_ids=["S2"]),   # reworded
+                       Claim(text="Its customers include online retailers.", source_ids=["S2"])]))
+    assert [c["text"] for c in r["overview_more"]] == ["Its customers include online retailers."]
+    assert sum("repeated the overview" in c for c in r["checks"]) == 2
