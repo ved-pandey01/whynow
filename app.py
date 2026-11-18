@@ -124,10 +124,13 @@ def search_form():
             typed = text.text_input("Company name or website", placeholder=settings.SEARCH_PLACEHOLDER,
                                     label_visibility="collapsed")
             submitted = button.form_submit_button("Research →", type="primary")
+    tried = try_chips()
     # The offer keeps its default unless the user opens "Change offer"
     with st.expander("Change offer", key="wn_offer"):
         st.text_area("What are you selling?", value=settings.DEFAULT_OFFER, height=80, key="offer_text")
         st.caption(settings.OFFER_HINT)
+    if tried:
+        run_try(tried)
     if submitted:
         for key in ("report", "email", "sample"):
             st.session_state.pop(key, None)
@@ -140,6 +143,34 @@ def search_form():
             friendly_error(e)
             return
         st.rerun()   # redraw with the picker
+
+
+def try_chips():
+    """'Try: Cognism · Darktrace · Paddle' as small chips. Returns the website clicked, or None."""
+    clicked = None
+    with st.container(key="wn_try", horizontal=True, vertical_alignment="center", gap="small"):
+        st.html('<span class="wn-try-label">Try:</span>')
+        for name, website in settings.TRY_COMPANIES:
+            if st.button(name, key=f"wn_try_{website}", type="tertiary"):
+                clicked = website
+    return clicked
+
+
+def run_try(website):
+    """Research a 'Try' company straight away: search by its website and take the top close match."""
+    for key in ("report", "email", "sample", "matches"):
+        st.session_state.pop(key, None)
+    st.session_state["offer"] = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
+    st.session_state["typed"] = website
+    try:
+        matches = find_companies(website)
+    except Exception as e:
+        friendly_error(e)
+        return
+    if not matches or not matches[0]["close_match"]:
+        st.info(f'No close match found for "{safe(website)}" on Companies House.')
+        return
+    run_report(matches[0])
 
 
 def open_sample_from_link():
@@ -185,6 +216,7 @@ def pick_company():
     st.markdown("##### Which company did you mean?")
     st.caption("Biggest first. Size is a guide from the accounts each company files, not a staff count.")
     typed_domain = domain_of(typed) if report.looks_like_website(typed) else None
+    chosen = None
     for m in matches:
         with st.container(border=True, key=f"wn_box_pick_{m['company_number']}"):
             text, button = st.columns([4, 1.4], vertical_alignment="center")
@@ -192,7 +224,9 @@ def pick_company():
             closed = (m.get("status") or "active") != "active"
             if button.button("Research this company", key=f"pick_{m['company_number']}",
                              type="secondary" if closed else "primary", use_container_width=True):
-                run_report(m)
+                chosen = m
+    if chosen:
+        run_report(chosen)   # after the cards, so the live progress shows as its own card
 
 
 def run_report(choice):

@@ -35,6 +35,7 @@ Python · Streamlit (with custom CSS) · Companies House API · Tavily · Gemini
 ```
 Your browser opens at http://localhost:8501. Then:
 1. Type a company name or website in the search bar and press **Research →** (or Enter). What you're selling is pre-filled from [settings.py](settings.py). Open the small **Change offer** link to edit it, because WhyNow uses it to score the fit and write your email.
+   - Or click one of the **Try:** chips under the search bar (Cognism, Darktrace, Paddle). It searches by the company's website and goes straight to the report. The chips are set in `TRY_COMPANIES` in settings.py. The first click on each costs about 10 Tavily credits, then it's cached for 6 hours.
 2. Pick the right company. Each Companies House match is a small card showing its industry, size, founded year and city. The biggest companies come first. You get a warning if none of them is a close match.
 3. Click **Research this company** (usually 20–45 seconds). While it runs, a card ticks off the live steps: finding the company on Companies House, reading recent news, checking reasons to reach out, scoring the fit and writing the report. The report shows:
    - a banner with the logo, a one-line summary, and a profile card (industry, HQ, website, LinkedIn followers)

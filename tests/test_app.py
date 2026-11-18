@@ -217,3 +217,30 @@ def test_same_company_again_comes_from_the_6_hour_cache(app, monkeypatch):
     app.button(key="pick_123").click().run()
     assert calls == ["123"]          # researched once; the second time came from the cache
     assert not app.exception
+
+
+# --- Try chips -----------------------------------------------------------------
+def test_try_chips_are_shown_under_the_search(app):
+    app.run()
+    labels = [b.label for b in app.button]
+    assert all(name in labels for name in ("Cognism", "Darktrace", "Paddle"))
+    assert "Try:" in html(app)
+
+
+def test_try_chip_goes_straight_to_the_report(app, monkeypatch):
+    searched = []
+    monkeypatch.setattr(ch, "search_companies", lambda typed: searched.append(typed) or MATCHES)
+    app.run()
+    button(app, "Cognism").click().run()
+    assert searched == ["cognism.com"]                  # searched by website, for accuracy
+    assert not app.exception
+    assert 'class="wn-badge strong"' in html(app)      # the report is showing
+    assert not [b for b in app.button if b.label == "Research this company"]   # no picker step
+
+
+def test_try_chip_with_no_close_match_says_so(app, monkeypatch):
+    monkeypatch.setattr(ch, "search_companies", lambda typed: [dict(MATCHES[1], close_match=False)])
+    app.run()
+    button(app, "Paddle").click().run()
+    assert "No close match found" in app.info[0].value
+    assert not app.exception

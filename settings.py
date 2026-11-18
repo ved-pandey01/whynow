@@ -128,6 +128,11 @@ APP_TYPING_LINES = [             # the animated amber line on the landing page
 ]
 SEARCH_PLACEHOLDER = "Type a company or website, e.g. cognism.com"
 OFFER_HINT = "WhyNow uses this to score the fit and write your email."
+TRY_COMPANIES = [                  # the "Try:" chips under the search bar: (name shown, website searched)
+    ("Cognism", "cognism.com"),
+    ("Darktrace", "darktrace.com"),
+    ("Paddle", "paddle.com"),
+]
 AUTHOR_NAME = "Ved Prakash Pandey"
 AUTHOR_SHORT_NAME = "Ved"          # used in the header pill on phones
 AUTHOR_INITIALS = "VP"
