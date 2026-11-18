@@ -545,9 +545,14 @@ def strip_source_tags(text):
     return _INLINE_TAGS.sub("", text or "").strip()
 
 
-def clean_ai_text(text):
-    """Every piece of AI-written text: typed source tags removed, numbers given commas."""
+def _tidy(text):
+    """Typed source tags removed and numbers given commas (the outreach checks fix and list spelling themselves)."""
     return with_commas(strip_source_tags(text))
+
+
+def clean_ai_text(text):
+    """Every piece of AI-written text: typed source tags removed, numbers given commas, British spelling."""
+    return to_british(with_commas(strip_source_tags(text)))[0]
 
 
 _CODE_BEFORE = re.compile(r"\b(?:sic|codes?|numbers?|no\.?|ref(?:erence)?|id|account|postcode|tel(?:ephone)?|phone)\b"
@@ -711,6 +716,8 @@ US_TO_UK = [
     ("prioritiz", "prioritis", _IZE), ("realiz", "realis", _IZE), ("recogniz", "recognis", _IZE),
     ("maximiz", "maximis", _IZE), ("minimiz", "minimis", _IZE), ("customiz", "customis", _IZE),
     ("standardiz", "standardis", _IZE), ("centraliz", "centralis", _IZE), ("utiliz", "utilis", _IZE),
+    ("specializ", "specialis", _IZE), ("modeliz", "modelis", _IZE), ("monetiz", "monetis", _IZE),
+    ("automatiz", "automatis", _IZE), ("emphasiz", "emphasis", _IZE),
     ("analyz", "analys", r"(?:e|es|ed|ing|er|ers)"),
     ("favorite", "favourite", r"(?:s)?"), ("behavior", "behaviour", r"(?:s|al)?"),
     ("color", "colour", r"(?:s|ed|ful)?"), ("center", "centre", r"(?:s|d)?"),
@@ -751,7 +758,7 @@ def trim_email(body, max_words):
 
 def _check_email(draft, valid, ai, checks, timings=None):
     """Make sure the email is short enough and opens with a trigger we can verify."""
-    body = clean_ai_text(draft.body.strip())
+    body = _tidy(draft.body.strip())
     words = word_count(body)
     if words > settings.EMAIL_MAX_WORDS:
         # No second AI request (it costs money): code removes whole middle sentences instead
@@ -762,7 +769,7 @@ def _check_email(draft, valid, ai, checks, timings=None):
             body, words = trimmed, word_count(trimmed)
     # British spelling, enforced by code as well as asked for in the prompt
     body, fixed_body = to_british(body)
-    subject, fixed_subject = to_british(clean_ai_text(draft.subject.strip()))
+    subject, fixed_subject = to_british(_tidy(draft.subject.strip()))
     if fixed_body or fixed_subject:
         checks.append("British spelling: " + ", ".join(fixed_subject + fixed_body))
 
@@ -778,7 +785,7 @@ def _check_email(draft, valid, ai, checks, timings=None):
 
 def _check_linkedin_note(note, checks):
     """British spelling, and no more than 300 characters (cut at the last full sentence that fits)."""
-    note, fixed = to_british(clean_ai_text((note or "").strip()))
+    note, fixed = to_british(_tidy((note or "").strip()))
     if fixed:
         checks.append("British spelling (LinkedIn note): " + ", ".join(fixed))
     limit = settings.LINKEDIN_NOTE_MAX_CHARS
@@ -792,7 +799,7 @@ def _check_linkedin_note(note, checks):
 
 def _check_call_opener(opener, checks, company=None):
     """British spelling, the caller is never 'from' the company being called, and exactly 2 lines at most."""
-    opener, fixed = to_british(clean_ai_text((opener or "").strip()))
+    opener, fixed = to_british(_tidy((opener or "").strip()))
     if fixed:
         checks.append("British spelling (call opener): " + ", ".join(fixed))
     # Real problem: "[Your name] here from Paddle" — the caller doesn't work at the company they're calling

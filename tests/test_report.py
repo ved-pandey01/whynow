@@ -641,3 +641,11 @@ def test_call_opener_never_says_the_caller_is_from_the_target_company():
 def test_one_line_opener_is_split_into_two_lines():
     email, _ = email_for(make_draft(), make_email(call_opener="[Your name] here, from [Your company]. Saw the news. Got a minute?"))
     assert email["call_opener"] == "[Your name] here, from [Your company].\nSaw the news. Got a minute?"
+
+
+
+def test_all_ai_text_uses_british_spelling():
+    """Real case: the Paddle sample's 'Read more' said 'specialized'."""
+    r, _ = build(make_research(), make_draft(
+        overview=[Claim(text="Acme provides specialized tools to optimize billing.", source_ids=["S2"])]))
+    assert r["overview"][0]["text"] == "Acme provides specialised tools to optimise billing."

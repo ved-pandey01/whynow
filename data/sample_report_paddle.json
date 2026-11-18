@@ -67,7 +67,7 @@
     }
   },
   "what_they_do": {
-    "text": "Paddle provides a merchant of record platform that manages payments, billing, tax, and compliance for digital product businesses.",
+    "text": "Paddle is a B2B SaaS company providing a Merchant of Record platform that handles payments, billing, tax and compliance.",
     "sources": [
       "S2",
       "S3"
@@ -75,37 +75,37 @@
   },
   "overview": [
     {
-      "text": "Paddle provides a merchant of record platform that manages payments, billing, tax, and compliance for digital product businesses.",
+      "text": "Paddle is a B2B SaaS company providing a Merchant of Record platform that handles payments, billing, tax and compliance.",
       "sources": [
         "S2",
         "S3"
       ]
     },
     {
-      "text": "Their solutions serve SaaS and mobile app companies globally, including brands like MacPaw and Fortinet.",
+      "text": "Its platform serves over 10,000 digital product and SaaS businesses globally, including MacPaw and Renderforest.",
       "sources": [
-        "S2",
         "S3"
       ]
     },
     {
-      "text": "The company currently employs 430 staff and is headquartered in London.",
+      "text": "Headquartered in London, the company employs 430 people and grew its headcount by ten percent over the past year.",
       "sources": [
+        "S1",
         "S2"
       ]
     }
   ],
   "overview_more": [
     {
-      "text": "Paddle recently launched an AI Toolkit to help developers manage billing directly from AI tools like Claude Code and Gemini CLI.",
+      "text": "The company provides specialised tools including ProfitWell Metrics for revenue analytics and Retain for automatic subscription recovery.",
       "sources": [
-        "S8"
+        "S2",
+        "S3"
       ]
     },
     {
-      "text": "The firm operates across more than 300 markets to support revenue performance and operational efficiency for its customers.",
+      "text": "Paddle maintains active business operations across more than 300 global markets.",
       "sources": [
-        "S3",
         "S4"
       ]
     }
@@ -194,13 +194,14 @@
   },
   "snapshot": [
     {
-      "text": "Industry: Software Development.",
+      "text": "Industry: Software Development with official SIC code 47910: Retail sale via mail order houses or via Internet.",
       "sources": [
+        "S1",
         "S2"
       ]
     },
     {
-      "text": "Size: 430 employees.",
+      "text": "Headcount: 430 employees.",
       "sources": [
         "S2"
       ]
@@ -213,63 +214,68 @@
       ]
     },
     {
-      "text": "Founded: 2012.",
+      "text": "Founded: 8 August 2012.",
       "sources": [
-        "S1",
-        "S2"
+        "S1"
       ]
     }
   ],
   "news": [
     {
       "source": "S8",
-      "why_it_matters": "The recent launch of their AI Toolkit suggests a strategic focus on AI-native customers, creating opportunities for AI-driven sales tools."
+      "why_it_matters": "The launch of the AI Toolkit shows active product expansion, offering a strong angle for pitching AI productivity tools."
+    },
+    {
+      "source": "S4",
+      "why_it_matters": "Coverage of Paddle scaling across 300 markets highlights focus on unit economics and operational efficiency."
     }
   ],
   "signals": [
     {
-      "type": "expansion",
-      "text": "Paddle launched its AI Toolkit on 20 October 2026 to integrate billing with AI developer tools.",
+      "type": "hiring_sales",
+      "text": "Paddle is actively recruiting Business Development Representatives and Senior Account Executives.",
       "sources": [
-        "S8"
+        "S5",
+        "S6",
+        "S7"
       ]
     },
     {
-      "type": "hiring_sales",
-      "text": "The company is actively hiring for Business Development Representative roles to support its sales efforts.",
+      "type": "expansion",
+      "text": "Paddle launched its AI Toolkit on 20 October 2026 for developer billing management.",
       "sources": [
-        "S5",
-        "S6"
+        "S8"
       ]
     }
   ],
   "fit_score": 9,
   "fit_reasons": [
     {
-      "text": "Paddle is a B2B SaaS company with 430 employees, placing it in the ideal size band.",
+      "text": "Paddle is a UK-based B2B SaaS company with 430 staff, matching the ideal 200–2,000 employee target range.",
       "sources": [
+        "S1",
         "S2"
       ]
     },
     {
-      "text": "The company is actively hiring sales staff, indicating a need for improved lead generation and outreach efficiency.",
+      "text": "The company is actively recruiting Business Development Representatives to generate sales pipeline.",
       "sources": [
         "S5",
         "S6"
       ]
     },
     {
-      "text": "Recent product expansion into AI-integrated billing demonstrates a focus on growth and innovation.",
+      "text": "Paddle demonstrated recent growth by launching a new AI Toolkit product on 20 October 2026.",
       "sources": [
         "S8"
       ]
     }
   ],
   "suggested_role": "Head of Sales",
-  "role_reason": "They are actively scaling their sales team and would benefit from tools that improve SDR productivity and meeting bookings.",
+  "role_reason": "The Head of Sales oversees BDR performance and would benefit directly from tools that improve rep prospecting efficiency.",
   "not_found": [
-    "No funding news in the last 6 months",
-    "No new sales leader appointment in the last 6 months"
+    "No funding rounds reported in the last 6 months (last round was debt financing in August 2025).",
+    "No new sales leadership appointments in the last 6 months."
   ],
   "sources": [
     {
@@ -494,39 +500,34 @@
   "checks": [],
   "warnings": [],
   "timings": {
-    "Companies House": 0.5,
-    "Company profile": 1.8,
-    "Website": 0.2,
-    "News": 2.0,
-    "Signals": 18.9,
-    "Jobs": 1.9,
-    "AI report": 128.1
+    "AI report": 22.7
   },
   "ai_model": {
-    "name": "gemini-3.1-flash-lite",
-    "backup": true,
-    "reason": "gemini-3.6-flash failed: Gemini is having problems right now. Try again in a few minutes.; gemini-3.5-flash failed: Gemini is having problems right now. Try again in a few minutes.; gemini-3.5-flash-lite failed: Gemini is having problems right now. Try again in a few minutes."
+    "name": "gemini-3.6-flash",
+    "backup": false,
+    "reason": null
   },
   "created_on": "18 Nov 2026",
-  "seconds": 128.2,
+  "seconds": 22.7,
   "saved_email": {
-    "subject": "Paddle's AI Toolkit launch",
-    "body": "Hi [First name], I saw that Paddle recently launched its AI Toolkit on 20 October 2026. With the team actively hiring Business Development Representatives to support your sales efforts, I imagine your reps are looking for ways to book more meetings and build pipeline more efficiently. We provide an AI tool that helps SDR teams research accounts and personalise outreach, so your reps can book more meetings. Worth a quick chat? [Your name]",
-    "word_count": 73,
+    "subject": "Scaling your BDR team at Paddle",
+    "body": "Hi [First name],\n\nI noticed Paddle is currently recruiting new Business Development Representatives to generate sales pipeline.\n\nAs you expand the team, getting new reps to research accounts quickly and personalise outreach is key to booking meetings faster. We provide an AI tool that helps SDR teams automate account research and personalise outreach so reps book more meetings.\n\nWould it be worth a quick chat to see how this could help your team build more pipeline?\n\n[Your name]",
+    "word_count": 78,
     "trigger_sources": [
-      "S8"
+      "S5",
+      "S6"
     ],
     "warnings": [],
-    "linkedin_note": "Hi [First name], saw Paddle launched its AI Toolkit recently and is growing the sales team. Thought it'd be great to connect.",
-    "call_opener": "[Your name] here, calling because Paddle recently launched its AI Toolkit and is hiring new sales reps.\nHow are you currently helping the team research accounts to book more meetings?",
+    "linkedin_note": "Hi [First name], I noticed Paddle is recruiting new Business Development Representatives. I connect with sales leaders to share how AI helps reps research accounts faster and personalise outreach to book more meetings. Hope to connect.",
+    "call_opener": "[Your name] here, from [Your company] — I noticed Paddle is currently recruiting new Business Development Representatives.\nHow are you helping your reps quickly personalise outreach so they can book more meetings?",
     "checks": [],
     "timings": {
-      "Email": 69.3
+      "Email": 10.8
     },
     "ai_model": {
-      "name": "gemini-3.5-flash-lite",
-      "backup": true,
-      "reason": "gemini-3.6-flash failed: Gemini is having problems right now. Try again in a few minutes.; gemini-3.5-flash failed: Gemini is having problems right now. Try again in a few minutes."
+      "name": "gemini-3.6-flash",
+      "backup": false,
+      "reason": null
     },
     "persona": "Head of Sales"
   },
