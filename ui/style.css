@@ -177,6 +177,19 @@ a.wn-preview-link:hover .wn-pv-view { color: var(--emerald-bright); }
 .wn-step-text { font-weight: 700; color: var(--head); font-size: 0.95rem; }
 .wn-step-sub { color: var(--muted); font-size: 0.82rem; margin-top: 0.1rem; }
 
+/* ---------- Live progress ---------- */
+.wn-progress { max-width: 560px; }
+.wn-progress-list { list-style: none; padding: 0 !important; margin: 0 0 0.8rem; }
+.wn-step-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.42rem 0; color: var(--muted); font-weight: 500; }
+.wn-step-row .icon { font-size: 20px; color: var(--line-strong); }
+.wn-step-row.done { color: var(--body); }
+.wn-step-row.done .icon { color: var(--emerald-bright); }
+.wn-step-row.active { color: var(--head); font-weight: 700; }
+.wn-spin { width: 16px; height: 16px; margin: 2px; border-radius: 50%; border: 2px solid rgba(59, 130, 246, 0.25);
+  border-top-color: var(--blue-bright); animation: wn-rotate 0.8s linear infinite; flex: 0 0 auto; }
+@keyframes wn-rotate { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .wn-spin { animation-duration: 2.4s; } }
+
 /* ---------- Shared card ---------- */
 .wn-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card);
   box-shadow: var(--shadow); padding: 1.4rem 1.5rem; margin-bottom: 1rem; color: var(--body); }

@@ -203,3 +203,25 @@ def test_dropped_connection_gets_a_plain_message(monkeypatch):
     FakeGemini({m: ConnectError() for m in [settings.GEMINI_MODEL] + settings.GEMINI_FALLBACK_MODELS}).install(monkeypatch)
     with pytest.raises(provider.AIError, match="Couldn't reach Gemini. Check your internet connection"):
         provider.generate_structured("hi", Claim)
+
+
+# --- Live progress -------------------------------------------------------------
+def test_progress_steps_start_and_finish_in_order(fake_sources):
+    """Each of the 5 steps on the page starts, then finishes, in order, matching the real work."""
+    from tests.test_report import FakeAI, make_draft
+    events = []
+    research = report.research_company("123", "Acme", on_step=lambda step, state: events.append((step, state)))
+    report.build_report(research, ai=FakeAI(make_draft()), on_step=lambda step, state: events.append((step, state)))
+    expected = [(i, s) for i in range(len(report.STEPS)) for s in (report.START, report.DONE)]
+    assert events == expected
+    assert report.STEPS[0] == "Finding the company on Companies House"
+    assert report.STEPS[-1] == "Writing the report"
+
+
+def test_closed_company_ticks_every_step_without_research(fake_sources):
+    fake_sources.setattr(report.ch, "get_company_profile",
+                         lambda n: dict(PROFILE, status="dissolved", not_worth_contacting=True))
+    events = []
+    research = report.research_company("123", "Acme", on_step=lambda step, state: events.append((step, state)))
+    report.build_report(research, on_step=lambda step, state: events.append((step, state)))
+    assert {step for step, state in events if state == report.DONE} == set(range(len(report.STEPS)))

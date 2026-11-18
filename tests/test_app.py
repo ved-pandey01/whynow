@@ -59,10 +59,11 @@ EMAIL = {"subject": "Your $5m round", "body": "Hi [First name], congrats on the 
 def app(monkeypatch):
     """The page with fake Companies House search, a fake report and a fake email."""
     import streamlit as st
-    st.cache_data.clear()  # don't reuse results from another test
+    st.cache_data.clear()      # don't reuse results from another test
+    st.cache_resource.clear()  # including the 6-hour report cache
     monkeypatch.setattr(ch, "search_companies", lambda typed: MATCHES)
-    monkeypatch.setattr(report, "research_company", lambda number, typed: {"number": number})
-    monkeypatch.setattr(report, "build_report", lambda research, offer=None: REPORT)
+    monkeypatch.setattr(report, "research_company", lambda number, typed, **k: {"number": number})
+    monkeypatch.setattr(report, "build_report", lambda research, offer=None, **k: REPORT)
     monkeypatch.setattr(report, "write_email", lambda r: EMAIL)
     return AppTest.from_file("../app.py", default_timeout=30)
 
@@ -186,7 +187,7 @@ def test_email_is_written_only_when_asked(app, monkeypatch):
 
 
 def test_low_fit_shows_note_beside_email_button(app, monkeypatch):
-    monkeypatch.setattr(report, "build_report", lambda research, offer=None: dict(REPORT, fit_score=2))
+    monkeypatch.setattr(report, "build_report", lambda research, offer=None, **k: dict(REPORT, fit_score=2))
     research_and_open(app)
     assert any(c.value == report.LOW_FIT_NOTE for c in app.caption)
     assert 'class="wn-badge weak"' in html(app)
@@ -199,9 +200,20 @@ def test_good_fit_has_no_low_fit_note(app):
 
 
 def test_ai_error_is_shown_kindly(app, monkeypatch):
-    def broken(research, offer=None):
+    def broken(research, offer=None, **k):
         raise AIError("Gemini is having problems right now.")
     monkeypatch.setattr(report, "build_report", broken)
     research_and_open(app)
     assert "Gemini is having problems" in app.error[0].value
+    assert not app.exception
+
+
+def test_same_company_again_comes_from_the_6_hour_cache(app, monkeypatch):
+    calls = []
+    monkeypatch.setattr(report, "research_company", lambda number, typed, **k: calls.append(number) or {})
+    research_and_open(app)
+    app.html  # first report made
+    search(app)
+    app.button(key="pick_123").click().run()
+    assert calls == ["123"]          # researched once; the second time came from the cache
     assert not app.exception

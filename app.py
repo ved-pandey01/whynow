@@ -12,7 +12,9 @@ Run it with:
     .venv/bin/streamlit run app.py
 """
 
+import hashlib
 import json
+import time
 from pathlib import Path
 
 import streamlit as st
@@ -35,10 +37,53 @@ def find_companies(typed):
     return ch.search_companies(typed)
 
 
-@st.cache_data(ttl=6 * 3600, show_spinner=False)
-def make_report(company_number, typed, offer):
-    research = report.research_company(company_number, typed)
-    return report.build_report(research, offer=offer)
+REPORT_CACHE_SECONDS = 6 * 3600
+
+
+@st.cache_resource
+def report_store():
+    """Finished reports, shared by everyone using this app for 6 hours: {report_id: (saved_at, report)}.
+    Our own cache (not st.cache_data) so the live progress can be shown while a report is made."""
+    return {}
+
+
+def report_id(company_number, typed, offer):
+    return hashlib.sha1(f"{company_number}|{typed}|{offer}".encode()).hexdigest()[:12]
+
+
+def cached_report(rid):
+    saved = report_store().get(rid)
+    if saved and time.time() - saved[0] < REPORT_CACHE_SECONDS:
+        return saved[1]
+    return None
+
+
+def make_report(company_number, typed, offer, on_step=report._no_progress):
+    """A report from the cache if we made it in the last 6 hours (no API credits), otherwise a new one."""
+    rid = report_id(company_number, typed, offer)
+    r = cached_report(rid)
+    if r is None:
+        research = report.research_company(company_number, typed, on_step=on_step)
+        r = report.build_report(research, offer=offer, on_step=on_step)
+        r["report_id"] = rid
+        report_store()[rid] = (time.time(), r)
+    else:
+        for step in range(len(report.STEPS)):   # cached: every step is already done
+            on_step(step, report.DONE)
+    return r
+
+
+def live_progress(company_name):
+    """Show the steps as a card that ticks off live. Returns the on_step function for the report code."""
+    box = st.empty()
+    states = ["todo"] * len(report.STEPS)
+
+    def on_step(step, state):
+        states[step] = "done" if state == report.DONE else "active"
+        box.html(ui.progress_card(company_name, report.STEPS, states))
+
+    box.html(ui.progress_card(company_name, report.STEPS, states))
+    return on_step
 
 
 @st.cache_data(ttl=6 * 3600, show_spinner=False)
@@ -151,12 +196,12 @@ def pick_company():
 
 
 def run_report(choice):
-    with st.spinner(f"Researching {choice['name']}… this usually takes 20–40 seconds."):
-        try:
-            r = make_report(choice["company_number"], st.session_state["typed"], st.session_state["offer"])
-        except Exception as e:
-            friendly_error(e)
-            return
+    on_step = live_progress(choice["name"])
+    try:
+        r = make_report(choice["company_number"], st.session_state["typed"], st.session_state["offer"], on_step)
+    except Exception as e:
+        friendly_error(e)
+        return
     st.session_state.update(report=r, matches=None, sample=False)
     st.session_state.pop("email", None)
     st.rerun()

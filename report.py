@@ -26,6 +26,21 @@ from models import AIReport, Claim, EmailDraft
 from sources import news_tavily as tavily
 from sources import uk_companies_house as ch
 
+# The live progress steps shown on the page, in order. Each one matches real work below.
+STEPS = [
+    "Finding the company on Companies House",   # profile and directors
+    "Reading recent news",                      # company profile card, website, news
+    "Checking reasons to reach out",            # the signal searches
+    "Scoring the fit",                          # the AI request
+    "Writing the report",                       # code checks and building the report
+]
+START, DONE = "start", "done"
+
+
+def _no_progress(step, state):
+    """Default: nobody is watching the progress (command line, tests)."""
+
+
 ALLOWED_SIGNAL_TYPES = {
     "hiring_sales", "funding", "new_sales_leader", "expansion", "layoffs",
     "headcount_growth", "headcount_decline", "new_director",
@@ -97,12 +112,14 @@ def looks_like_website(typed):
     return t.startswith(("http://", "https://", "www.")) or ("." in t and " " not in t)
 
 
-def research_company(company_number, typed):
+def research_company(company_number, typed, on_step=_no_progress):
     """
     Fetch everything we know about one company. Never crashes on a Tavily problem.
     Stops starting new searches after RESEARCH_TIME_BUDGET_SECONDS, and records how long each part took.
+    on_step(step_number, "start"/"done") is called as each of the STEPS begins and ends (for live progress).
     """
     started = time.monotonic()
+    on_step(0, START)
     sources = SourceList()
     warnings = []
 
@@ -119,6 +136,7 @@ def research_company(company_number, typed):
     research = {"profile": profile, "card": None, "website": None,
                 "sources": sources, "warnings": warnings, "typed": typed, "timings": {}}
     if profile["not_worth_contacting"]:
+        on_step(0, DONE)
         return research  # no point spending credits on a closed company
 
     directors = ch.get_recent_directors(company_number)
@@ -128,6 +146,7 @@ def research_company(company_number, typed):
                               f"appointed {d['appointed_on']}" for d in directors))
 
     research["timings"]["Companies House"] = round(time.monotonic() - started, 1)
+    on_step(0, DONE)
     brand = brand_from(typed)
     website = typed if looks_like_website(typed) else None
 
@@ -151,6 +170,7 @@ def research_company(company_number, typed):
             research["timings"][label] = round(time.monotonic() - step_start, 1)
 
     try:
+        on_step(1, START)
         # Order matters: the card gives the website and topic word that make later searches accurate.
         # The website comes before news and signals because the AI needs it to spot lookalike results.
         card = run_step("Company profile", lambda: tavily.get_company_card(
@@ -168,7 +188,9 @@ def research_company(company_number, typed):
 
         for item in run_step("News", lambda: tavily.get_recent_news(brand, website, topic)) or []:
             sources.add("news", item["title"], item["source"], item["snippet"], item["date"])
+        on_step(1, DONE)
 
+        on_step(2, START)
         signals = run_step("Signals", lambda: tavily.get_signals(
             brand, website, topic, out_of_time=out_of_time)) or {}
         skipped = [t for t in tavily.SIGNAL_SEARCHES if t not in signals]
@@ -178,8 +200,11 @@ def research_company(company_number, typed):
             for item in items:
                 sources.add("signal", f"[{signal_type}] {item['title']}", item["source"],
                             item["snippet"], item["date"])
+        on_step(2, DONE)
     except tavily.NewsError as e:
         warnings.append(f"News and signals unavailable: {e}")
+        on_step(1, DONE)
+        on_step(2, DONE)
 
     return research
 
@@ -238,20 +263,25 @@ def company_profile(research):
 # ---------------------------------------------------------------------------
 # 2. Build and check the report
 # ---------------------------------------------------------------------------
-def build_report(research, offer=None, ai=generate_structured, today=None):
-    """Ask the AI for the report, then check every part of it in code."""
+def build_report(research, offer=None, ai=generate_structured, today=None, on_step=_no_progress):
+    """Ask the AI for the report, then check every part of it in code. on_step: see research_company()."""
     started = time.time()
     offer = (offer or "").strip() or settings.DEFAULT_OFFER
     sources = research["sources"]
     profile = research["profile"]
 
     if profile["not_worth_contacting"]:
+        for step in range(1, len(STEPS)):   # nothing more to do: tick the remaining steps
+            on_step(step, DONE)
         return _closed_company_report(research)
 
     prompt = build_report_prompt(profile["name"], offer, sources.as_prompt_text(),
                                  (today or date.today()).isoformat())
     ai_start = time.monotonic()
+    on_step(3, START)
     draft = ai(prompt, AIReport)
+    on_step(3, DONE)
+    on_step(4, START)
     ai_model = _model_used(ai)
     timings = dict(research.get("timings", {}))
     timings["AI report"] = round(time.monotonic() - ai_start, 1)
@@ -297,6 +327,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None):
     if not research["website"]:
         not_found.append("Company website couldn't be read")
 
+    on_step(4, DONE)
     return {
         "company": {"name": profile["name"], "number": profile["company_number"],
                     "status": profile["status"], "source": profile["source"]},

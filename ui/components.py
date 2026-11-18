@@ -435,3 +435,20 @@ def model_note(model, what="Report"):
     if model.get("backup"):
         note += f" (backup model, because {model['reason']})"
     return f'<div class="wn-quiet" style="margin:0.4rem 0 1rem">{icon("smart_toy")} {esc(note)}</div>'
+
+
+def progress_card(company_name, steps, states):
+    """Live research steps: a tick when done, a small spinner on the current one, later ones dimmed."""
+    rows = []
+    for step, state in zip(steps, states):
+        if state == "done":
+            mark = icon("check_circle")
+        elif state == "active":
+            mark = '<span class="wn-spin" aria-hidden="true"></span>'
+        else:
+            mark = icon("radio_button_unchecked")
+        rows.append(f'<li class="wn-step-row {state}">{mark}<span>{esc(step)}</span></li>')
+    done = states.count("done")
+    return (f'<div class="wn-card wn-progress"><h4>{icon("travel_explore")}Researching {esc(company_name)}</h4>'
+            f'<ul class="wn-progress-list">{"".join(rows)}</ul>'
+            f'<div class="wn-quiet">{done} of {len(steps)} done · usually 20–40 seconds</div></div>')

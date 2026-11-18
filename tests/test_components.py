@@ -150,3 +150,11 @@ def test_funding_shows_one_main_total(value, main, note):
     out = ui.stats_row({"profile": {"total_raised": {"value": value, "source": None}}}, {})
     assert f">{main}<" in out
     assert (note in out) if note else ("Also reported" not in out)
+
+
+def test_progress_card_shows_ticks_spinner_and_waiting_steps():
+    out = ui.progress_card("Acme <Ltd>", ["One", "Two", "Three"], ["done", "active", "todo"])
+    assert 'class="wn-step-row done"><span class="icon" aria-hidden="true">check_circle</span>' in out
+    assert 'class="wn-step-row active"><span class="wn-spin"' in out
+    assert 'class="wn-step-row todo"><span class="icon" aria-hidden="true">radio_button_unchecked</span>' in out
+    assert "Researching Acme &lt;Ltd&gt;" in out and "1 of 3 done" in out
