@@ -345,7 +345,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
         if not good:
             checks.append(f"Removed a claim with no valid source: \"{claim.text[:60]}\"")
             return None
-        return {"text": claim.text, "sources": good}
+        return {"text": with_commas(claim.text), "sources": good}
 
     # Overview: every sentence needs a real source; 3–4 sentences, and 5–7 for "Read more"
     overview = [c for c in (check_claim(x) for x in draft.overview) if c][:settings.OVERVIEW_SENTENCES]
@@ -374,7 +374,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
                           f"{research['card']['last_round']['date']}, older than {settings.EVENT_WINDOW_MONTHS} months")
             continue
         if s.signal_type in ALLOWED_SIGNAL_TYPES and good and not (dates and too_old(max(dates), today)):
-            signals.append({"type": s.signal_type, "text": s.text, "sources": good})
+            signals.append({"type": s.signal_type, "text": with_commas(s.text), "sources": good})
         elif dates and too_old(max(dates), today):
             checks.append(f"Removed a reason to reach out older than {settings.EVENT_WINDOW_MONTHS} months: \"{s.text[:60]}\"")
         else:
@@ -395,7 +395,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
         used.update(group["sources"])
     used.update(f["source"] for f in profile_facts.values() if isinstance(f, dict) and f.get("source"))
 
-    not_found = list(draft.not_found)
+    not_found = [with_commas(x) for x in draft.not_found]
     if not research["card"]:
         not_found.append("Company profile (headcount, funding) not found or couldn't be confirmed")
     if not research["website"]:
@@ -419,7 +419,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
         "fit_score": score,
         "fit_reasons": fit_reasons,
         "suggested_role": draft.suggested_role,
-        "role_reason": draft.role_reason,
+        "role_reason": with_commas(draft.role_reason),
         "not_found": not_found,
         "sources": [s for s in sources.items if s["id"] in used],
         "all_sources": sources.items,
@@ -529,6 +529,20 @@ def _more_about_ids(m):
     return {i for i in ids if i}
 
 
+# A whole number of 4+ digits that isn't part of a date, decimal, code, ID or longer number
+_BIG_NUMBER = re.compile(r"(?<![\w.,/:#+-])(?<!\d,)([1-9]\d{3,8})(?![\w/-]|[.,]\d)")   # 4–9 digits: longer is a phone number or code
+
+
+def with_commas(text):
+    """'2604 employees' → '2,604 employees'. Years (1900–2099), dates, decimals, IDs and phone numbers are left alone."""
+    def add(m):
+        n = int(m.group(1))
+        if len(m.group(1)) == 4 and 1900 <= n <= 2099:
+            return m.group(1)          # most likely a year
+        return f"{n:,}"
+    return _BIG_NUMBER.sub(add, text or "")
+
+
 def _same_sentence(a, b, overlap=0.8):
     """True if two sentences say the same thing: most of the shorter one's words appear in the other."""
     words = lambda t: set(re.findall(r"[a-z0-9]+", t.lower())) - {"the", "a", "an", "and", "of", "to", "in", "for", "its", "is"}  # noqa: E731
@@ -580,7 +594,7 @@ def _pick_news(picks, signals, sources, today, checks):
     ai_reasons = {}
     for pick in picks:
         if pick.source_id in allowed:
-            ai_reasons.setdefault(pick.source_id, pick.why_it_matters)
+            ai_reasons.setdefault(pick.source_id, with_commas(pick.why_it_matters))
         else:
             checks.append(f"Removed a news pick that wasn't a recent news story ({pick.source_id})")
 
@@ -694,7 +708,7 @@ def to_british(text):
 
 def _check_email(draft, valid, ai, checks, timings=None):
     """Make sure the email is short enough and opens with a trigger we can verify."""
-    body = draft.body.strip()
+    body = with_commas(draft.body.strip())
     words = word_count(body)
     if words > settings.EMAIL_MAX_WORDS:
         shorten_start = time.monotonic()
@@ -709,7 +723,7 @@ def _check_email(draft, valid, ai, checks, timings=None):
             timings["Email shortening"] = round(time.monotonic() - shorten_start, 1)
     # British spelling, enforced by code as well as asked for in the prompt
     body, fixed_body = to_british(body)
-    subject, fixed_subject = to_british(draft.subject.strip())
+    subject, fixed_subject = to_british(with_commas(draft.subject.strip()))
     if fixed_body or fixed_subject:
         checks.append("British spelling: " + ", ".join(fixed_subject + fixed_body))
 
@@ -725,7 +739,7 @@ def _check_email(draft, valid, ai, checks, timings=None):
 
 def _check_linkedin_note(note, checks):
     """British spelling, and no more than 300 characters (cut at the last full sentence that fits)."""
-    note, fixed = to_british((note or "").strip())
+    note, fixed = to_british(with_commas((note or "").strip()))
     if fixed:
         checks.append("British spelling (LinkedIn note): " + ", ".join(fixed))
     limit = settings.LINKEDIN_NOTE_MAX_CHARS
@@ -739,7 +753,7 @@ def _check_linkedin_note(note, checks):
 
 def _check_call_opener(opener, checks):
     """British spelling, and at most 2 lines."""
-    opener, fixed = to_british((opener or "").strip())
+    opener, fixed = to_british(with_commas((opener or "").strip()))
     if fixed:
         checks.append("British spelling (call opener): " + ", ".join(fixed))
     lines = [line.strip() for line in opener.splitlines() if line.strip()]

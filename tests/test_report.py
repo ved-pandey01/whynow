@@ -597,3 +597,28 @@ def test_read_more_never_repeats_the_overview():
                        Claim(text="Its customers include online retailers.", source_ids=["S2"])]))
     assert [c["text"] for c in r["overview_more"]] == ["Its customers include online retailers."]
     assert sum("repeated the overview" in c for c in r["checks"]) == 2
+
+
+
+# --- Numbers with commas ----------------------------------------------------------------
+@pytest.mark.parametrize("text, expected", [
+    ("Darktrace employs 2604 staff.", "Darktrace employs 2,604 staff."),
+    ("Headcount grew by 4972 to 16382 in 2026.", "Headcount grew by 4,972 to 16,382 in 2026."),
+    ("About 10000 customers and 131651 followers.", "About 10,000 customers and 131,651 followers."),
+    ("Raised $25000000.", "Raised $25,000,000."),
+    ("Founded in 2013.", "Founded in 2013."),                                 # a year
+    ("Company number 08562035.", "Company number 08562035."),                 # starts with 0
+    ("Revenue 26.49M GBP, 1500.5 units, dated 2026-10-13, see S12.", "Revenue 26.49M GBP, 1500.5 units, dated 2026-10-13, see S12."),
+    ("Already 1,200 staff.", "Already 1,200 staff."),
+    ("Call 2038580822 or +441234567.", "Call 2038580822 or +441234567."),     # phone numbers
+])
+def test_numbers_get_commas(text, expected):
+    assert report.with_commas(text) == expected
+
+
+def test_ai_text_in_the_report_gets_commas():
+    r, _ = build(make_research(), make_draft(
+        overview=[Claim(text="Acme employs 2604 people.", source_ids=["S2"])],
+        signals=[Signal(signal_type="hiring_sales", text="Hiring 1200 SDRs.", source_ids=["S4"])]))
+    assert r["overview"][0]["text"] == "Acme employs 2,604 people."
+    assert r["signals"][0]["text"] == "Hiring 1,200 SDRs."
