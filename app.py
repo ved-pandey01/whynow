@@ -373,6 +373,10 @@ def show_report(r):
     for w in r["warnings"]:
         st.caption(safe(w))
     st.html(ui.stats_row(r, by_id))
+    if r.get("more_about"):   # closed by default, directly under the overview and key numbers
+        with st.expander(f"More about {exports.company_name(r)}", expanded=False, key="wn_more_about",
+                         icon=":material/expand_circle_down:"):
+            st.html(ui.more_about_cards(r, by_id))
 
     left, right = st.columns([3, 2])
     left.html(ui.fit_card(r, by_id))

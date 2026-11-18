@@ -508,3 +508,107 @@ def progress_card(company_name, steps, states):
     return (f'<div class="wn-card wn-progress"><h4>{icon("travel_explore")}Researching {esc(company_name)}</h4>'
             f'<ul class="wn-progress-list">{"".join(rows)}</ul>'
             f'<div class="wn-quiet">{done} of {len(steps)} done · usually 20–40 seconds</div></div>')
+
+
+# ---------------------------------------------------------------------------
+# "More about [company]": Key people, Owners, Competitors, Hiring now
+# ---------------------------------------------------------------------------
+NOT_FOUND = "Not found in public sources"
+
+
+def nice_date(iso):
+    """'2024-01-02' → '2 Jan 2024'."""
+    try:
+        return date.fromisoformat(str(iso)[:10]).strftime("%-d %b %Y")
+    except (TypeError, ValueError):
+        return None
+
+
+def nice_company(name):
+    """Lower-case names from the company profile ('paypro global') → 'Paypro Global'. Others are left alone."""
+    if not name or not name.islower():
+        return name
+    return " ".join(w if w[:1].isdigit() else w[:1].upper() + w[1:] for w in name.split())
+
+
+def _mini_card(title, icon_name, body):
+    return f'<div class="wn-mini-card"><h5>{icon(icon_name)}{esc(title)}</h5>{body}</div>'
+
+
+def _not_found():
+    return f'<p class="wn-empty">{NOT_FOUND}</p>'
+
+
+def key_people_card(m, brand, by_id):
+    d = m.get("directors") or {}
+    people = d.get("people") or []
+    if not people:
+        return _mini_card("Key people", "badge", _not_found())
+    rows = "".join(
+        f'<li><div class="wn-person"><b>{esc(p["name"])}</b>'
+        f'<span class="wn-quiet">{esc(p["role"])}'
+        f'{" · appointed " + esc(nice_date(p["appointed_on"])) if nice_date(p.get("appointed_on")) else ""}</span></div>'
+        f'<a class="wn-li-search" href="{safe_url(linkedin_search_url(p["name"], brand))}" target="_blank" '
+        f'rel="noopener noreferrer">{icon("person_search")}LinkedIn</a></li>' for p in people)
+    more = d.get("total", 0) - len(people)
+    footer = f'{d.get("total", len(people))} current director{"s" if d.get("total", 0) != 1 else ""} on Companies House'
+    if more > 0:
+        footer += f" ({more} more not shown)"
+    return _mini_card("Key people", "badge",
+                      f'<ul class="wn-mini-list">{rows}</ul><div class="wn-mini-foot">{esc(footer)}'
+                      f'{cite([d["source"]], by_id) if d.get("source") else ""}</div>')
+
+
+def owners_card(m, by_id):
+    o = m.get("owners") or {}
+    owners = o.get("owners") or []
+    if not owners:
+        return _mini_card("Owners", "account_balance", _not_found())
+    rows = "".join(
+        f'<li><div class="wn-person"><b>{esc(x["name"])}</b> <span class="wn-chip">{esc(x["kind"])}</span>'
+        f'<span class="wn-quiet">{esc("; ".join(x["control"]) or "control not described")}'
+        f'{" · since " + esc(nice_date(x["since"])) if nice_date(x.get("since")) else ""}</span></div></li>' for x in owners)
+    return _mini_card("Owners", "account_balance",
+                      f'<ul class="wn-mini-list">{rows}</ul><div class="wn-mini-foot">People with significant control, '
+                      f'from Companies House{cite([o["source"]], by_id) if o.get("source") else ""}</div>')
+
+
+def competitors_card(m, by_id):
+    c = m.get("competitors") or {}
+    names = c.get("names") or []
+    if not names:
+        return _mini_card("Competitors", "compare_arrows", _not_found())
+    chips = "".join(f'<span class="wn-chip">{esc(nice_company(n))}</span>' for n in names)
+    return _mini_card("Competitors", "compare_arrows",
+                      f'<div class="wn-chips">{chips}</div><div class="wn-mini-foot">Listed as similar companies in the '
+                      f'company profile{cite([c["source"]], by_id) if c.get("source") else ""}</div>')
+
+
+def hiring_card(m, by_id):
+    h = m.get("hiring") or {}
+    roles, count = h.get("roles") or [], h.get("open_roles")
+    if not roles and not count:
+        return _mini_card("Hiring now", "work", _not_found())
+    body = ""
+    if count:
+        body += (f'<div class="wn-hiring-count"><b>{count:,}</b> open role{"s" if count != 1 else ""} listed'
+                 f'{cite([h["open_roles_source"]], by_id) if h.get("open_roles_source") else ""}</div>')
+    if roles:
+        sales = sum(1 for r in roles if r["sales"])
+        rows = []
+        for r in roles:
+            chip = '<span class="wn-chip ok">Sales</span>' if r["sales"] else ""
+            rows.append(f'<li><div class="wn-person"><span>{esc(r["title"])}</span></div>'
+                        f'<span>{chip}{cite([r["source"]], by_id)}</span></li>')
+        in_sales = f" · {sales} in sales" if sales else ""
+        body += (f'<div class="wn-quiet">Examples from job adverts{in_sales}</div>'
+                 f'<ul class="wn-mini-list">{"".join(rows)}</ul>')
+    return _mini_card("Hiring now", "work", body)
+
+
+def more_about_cards(r, by_id):
+    """The 2×2 grid (stacked on phones). Empty cards say 'Not found in public sources', never a guess."""
+    m = r.get("more_about") or {}
+    brand = ((r.get("profile") or {}).get("brand") or {}).get("value") or r["company"]["name"]
+    return ('<div class="wn-more-grid">' + key_people_card(m, brand, by_id) + owners_card(m, by_id)
+            + competitors_card(m, by_id) + hiring_card(m, by_id) + "</div>")

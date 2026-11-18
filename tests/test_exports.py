@@ -39,3 +39,21 @@ def test_pdf_is_a_real_pdf_with_clickable_sources():
 def test_funding_shows_one_main_total():
     assert exports.main_total("318.34M USD, 8.00M GBP") == "318.34M USD (also reported: 8.00M GBP)"
     assert exports.main_total("5M GBP") == "5M GBP"
+
+
+
+def test_csv_has_directors_and_competitors():
+    from tests.test_components import MORE
+    row = exports.csv_row(dict(REPORT, more_about=MORE))
+    assert row["directors"] == "Scott Howard Galit (Director)"
+    assert row["competitors"] == "chargebee; paypro global; 2checkout"
+    blank = exports.csv_row(REPORT)            # an older report without the section
+    assert blank["directors"] == "" and blank["competitors"] == ""
+
+
+def test_pdf_with_more_about_still_builds():
+    from tests.test_components import MORE
+    sources = REPORT["sources"] + [{"id": i, "kind": "x", "title": "t", "url": f"https://x/{i}", "date": None, "content": ""}
+                                   for i in ("S3",)]
+    pdf = exports.report_to_pdf(dict(REPORT, more_about=MORE, sources=sources, all_sources=sources))
+    assert pdf.startswith(b"%PDF")

@@ -214,3 +214,35 @@ def test_overview_falls_back_to_one_line_summary():
 def test_stylesheet_has_no_angle_brackets():
     """Real problem: a comment mentioning <details> made Streamlit's safety filter drop the whole stylesheet."""
     assert "<" not in ui.CSS_FILE.read_text()
+
+
+# --- More about ---------------------------------------------------------------------
+MORE = {
+    "directors": {"people": [{"name": "Scott Howard Galit", "role": "Director", "appointed_on": "2024-01-02",
+                              "occupation": None}], "total": 6, "source": "S1"},
+    "owners": {"owners": [], "source": None},
+    "competitors": {"names": ["chargebee", "paypro global", "2checkout"], "source": "S2"},
+    "hiring": {"open_roles": 25, "open_roles_source": "S2",
+               "roles": [{"title": "Account Executive", "sales": True, "source": "S3"},
+                         {"title": "Backend Engineer", "sales": False, "source": "S3"}]},
+}
+MORE_BY_ID = {i: {"id": i, "title": "t", "url": f"https://x/{i}", "date": None} for i in ("S1", "S2", "S3")}
+
+
+def test_more_about_cards():
+    out = ui.more_about_cards({"more_about": MORE, "profile": {"brand": {"value": "Paddle"}},
+                               "company": {"name": "PADDLE.COM MARKET LIMITED"}}, MORE_BY_ID)
+    assert out.count('class="wn-mini-card"') == 4
+    assert "Scott Howard Galit" in out and "appointed 2 Jan 2024" in out
+    assert "keywords=Scott+Howard+Galit+Paddle" in out                     # LinkedIn search link only
+    assert "6 current directors on Companies House (5 more not shown)" in out
+    assert "Owners" in out and ui.NOT_FOUND in out                         # no current owners
+    assert "Chargebee" in out and "Paypro Global" in out and "2checkout" in out
+    assert "<b>25</b> open roles listed" in out and "1 in sales" in out
+    assert "<script" not in out
+
+
+def test_every_card_says_not_found_when_empty():
+    empty = {"directors": {}, "owners": {}, "competitors": {}, "hiring": {}}
+    out = ui.more_about_cards({"more_about": empty, "profile": {}, "company": {"name": "X"}}, {})
+    assert out.count(ui.NOT_FOUND) == 4

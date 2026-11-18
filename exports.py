@@ -16,7 +16,8 @@ from fpdf.enums import XPos, YPos
 
 FONTS = Path(__file__).parent / "assets" / "fonts"
 CSV_COLUMNS = ["company", "company_number", "website", "employees", "fit_score",
-               "top_reasons_to_reach_out", "email_subject", "email_body", "report_date"]
+               "top_reasons_to_reach_out", "directors", "competitors",
+               "email_subject", "email_body", "report_date"]
 
 # PDF colours: the app's blue and emerald, readable on white paper
 BLUE, EMERALD, INK, GREY = (37, 99, 235), (5, 150, 105), (15, 23, 42), (100, 116, 139)
@@ -30,6 +31,10 @@ def _value(r, field):
     """A profile fact's value, or '' if it wasn't found."""
     fact = (r.get("profile") or {}).get(field)
     return fact["value"] if fact else ""
+
+
+def _more(r, part):
+    return (r.get("more_about") or {}).get(part) or {}
 
 
 def company_name(r):
@@ -66,6 +71,8 @@ def csv_row(r, email=None):
         "employees": _value(r, "headcount"),
         "fit_score": r["fit_score"],
         "top_reasons_to_reach_out": " | ".join(s["text"] for s in r.get("signals", [])),
+        "directors": "; ".join(f"{p['name']} ({p['role']})" for p in _more(r, "directors").get("people", [])),
+        "competitors": "; ".join(_more(r, "competitors").get("names", [])),
         "email_subject": email.get("subject", ""),
         "email_body": email.get("body", ""),
         "report_date": report_date(r),
@@ -198,6 +205,36 @@ def report_to_pdf(r, email=None, today=None):
             s = by_id.get(n["source"], {})
             bullet(f"{clean_title(s.get('title'))} ({s.get('date') or 'no date'}): {n['why_it_matters']}"
                    + cite([n["source"]]))
+
+    # More about: the same four parts as the page, "Not found in public sources" when empty
+    if r.get("more_about"):
+        heading(f"More about {company_name(r)}")
+        not_found = "Not found in public sources"
+        d = _more(r, "directors")
+        text("Key people", bold=True, size=9.5)
+        for p in d.get("people", []):
+            bullet(f"{p['name']}, {p['role']}" + (f", appointed {p['appointed_on']}" if p.get("appointed_on") else "")
+                   + cite([d["source"]] if d.get("source") else []))
+        if not d.get("people"):
+            text(not_found, colour=GREY)
+        o = _more(r, "owners")
+        text("Owners", bold=True, size=9.5)
+        for x in o.get("owners", []):
+            bullet(f"{x['name']} ({x['kind']}): {'; '.join(x['control'])}" + cite([o["source"]] if o.get("source") else []))
+        if not o.get("owners"):
+            text(not_found, colour=GREY)
+        c = _more(r, "competitors")
+        text("Competitors (similar companies)", bold=True, size=9.5)
+        text(", ".join(c["names"]) + cite([c["source"]]) if c.get("names") else not_found,
+             colour=INK if c.get("names") else GREY)
+        h = _more(r, "hiring")
+        text("Hiring now", bold=True, size=9.5)
+        if h.get("open_roles"):
+            text(f"{h['open_roles']} open roles listed" + cite([h["open_roles_source"]] if h.get("open_roles_source") else []))
+        for role in h.get("roles", []):
+            bullet(role["title"] + (" (sales)" if role["sales"] else "") + cite([role["source"]]))
+        if not h.get("open_roles") and not h.get("roles"):
+            text(not_found, colour=GREY)
 
     if r.get("not_found"):
         heading("What we couldn't find")

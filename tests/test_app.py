@@ -314,3 +314,12 @@ def test_batch_results_table_and_csv(app, monkeypatch):
     assert list(table.columns) == ["Company", "Fit score", "Employees", "Top reason to reach out", "Report"]
     assert table.iloc[0]["Report"] == "./?report=abc"
     assert [d.proto.label for d in app.get("download_button")] == ["Download all as CSV"]
+
+
+def test_more_about_section_is_closed_by_default(app, monkeypatch):
+    from tests.test_components import MORE
+    monkeypatch.setattr(report, "build_report", lambda research, offer=None, **k: dict(REPORT, more_about=MORE))
+    research_and_open(app)
+    section = [e for e in app.expander if e.label.startswith("More about")]
+    assert section and section[0].label == "More about Acme"
+    assert section[0].proto.expanded is False
