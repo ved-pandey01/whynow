@@ -437,3 +437,22 @@ def test_report_and_email_say_which_model_wrote_them():
     r = report.build_report(make_research(), ai=ai, today=date(2026, 11, 16))
     assert r["ai_model"] == backup
     assert report.write_email(r, ai=ai)["ai_model"] == backup
+
+
+# --- Who the email is for (persona) ---------------------------------------------
+@pytest.mark.parametrize("persona, angle_words", [
+    ("Head of Sales", "meetings and pipeline"),
+    ("Head of RevOps", "tools and data"),
+    ("Founder / CEO", "growth and cost"),
+])
+def test_email_is_written_for_the_chosen_persona(persona, angle_words):
+    r, _ = build(make_research(), make_draft())
+    ai = FakeAI(make_email())
+    email = report.write_email(r, ai=ai, persona=persona)
+    assert email["persona"] == persona
+    assert f"READER: the {persona}" in ai.prompts[0] and angle_words in ai.prompts[0]
+
+
+def test_unknown_persona_falls_back_to_head_of_sales():
+    r, _ = build(make_research(), make_draft())
+    assert report.write_email(r, ai=FakeAI(make_email()), persona="Chief Wizard")["persona"] == "Head of Sales"

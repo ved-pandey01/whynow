@@ -593,7 +593,7 @@ def _check_email(draft, valid, ai, checks, timings=None):
 LOW_FIT_NOTE = "Low fit: probably not worth contacting."
 
 
-def email_facts(r):
+def email_facts(r, persona=None):
     """The report's own facts, with their sources, written out for the email prompt."""
     by_id = {s["id"]: s for s in r["all_sources"]}
 
@@ -613,30 +613,33 @@ def email_facts(r):
         lines.append("- none found")
     lines.append("\nFIT")
     lines += [cited(c["text"], c["sources"]) for c in r["fit_reasons"]]
-    lines.append(f"\nWHO WE'RE WRITING TO: {r['suggested_role'] or 'Head of Sales'}")
+    persona = persona or settings.DEFAULT_PERSONA
+    lines.append(f"\nWHO WE'RE WRITING TO: {persona}")
+    lines.append(f"WHAT THEY CARE ABOUT: {settings.EMAIL_PERSONAS.get(persona, '')}")
     return "\n".join(lines)
 
 
-def write_email(r, ai=generate_structured, today=None):
+def write_email(r, ai=generate_structured, today=None, persona=None):
     """
-    Write the outreach email for a finished report. Code then checks it:
-    under 120 words (shortened once if not), British spelling, and an opening
-    trigger that cites a source the report actually uses.
+    Write the outreach email for a finished report, for one persona (Head of Sales, Head of RevOps
+    or Founder / CEO). Code then checks it: under 120 words (shortened once if not), British spelling,
+    and an opening trigger that cites a source the report actually uses.
     """
+    persona = persona if persona in settings.EMAIL_PERSONAS else settings.DEFAULT_PERSONA
     if r["not_worth_contacting"]:
         return None
     checks, timings = [], {}
     started = time.monotonic()
     name = r.get("profile", {}).get("brand", {}).get("value") or r["company"]["name"]
-    draft = ai(build_email_prompt(name, r["offer"], email_facts(r), (today or date.today()).isoformat()),
-               EmailDraft)
+    draft = ai(build_email_prompt(name, r["offer"], email_facts(r, persona), (today or date.today()).isoformat(),
+                                  persona), EmailDraft)
     timings["Email"] = round(time.monotonic() - started, 1)
     ai_model = _model_used(ai)
     valid = {s["id"] for s in r["sources"]}   # only sources the report cites
     email = _check_email(draft, valid, ai, checks, timings)
     if r["fit_score"] <= LOW_FIT_SCORE:
         email["warnings"].insert(0, LOW_FIT_NOTE)
-    email["checks"], email["timings"], email["ai_model"] = checks, timings, ai_model
+    email["checks"], email["timings"], email["ai_model"], email["persona"] = checks, timings, ai_model, persona
     return email
 
 

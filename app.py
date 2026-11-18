@@ -88,8 +88,8 @@ def live_progress(company_name):
 
 
 @st.cache_data(ttl=6 * 3600, show_spinner=False)
-def make_email(r):
-    return report.write_email(r)
+def make_email(r, persona):
+    return report.write_email(r, persona=persona)
 
 
 def load_sample():
@@ -133,7 +133,7 @@ def search_form():
     if tried:
         run_try(tried)
     if submitted:
-        for key in ("report", "email", "sample"):
+        for key in ("report", "email", "emails", "sample"):
             st.session_state.pop(key, None)
         st.session_state["offer"] = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
         st.session_state["typed"] = typed
@@ -159,7 +159,7 @@ def try_chips():
 
 def run_try(website):
     """Research a 'Try' company straight away: search by its website and take the top close match."""
-    for key in ("report", "email", "sample", "matches"):
+    for key in ("report", "email", "emails", "sample", "matches"):
         st.session_state.pop(key, None)
     st.session_state["offer"] = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
     st.session_state["typed"] = website
@@ -198,6 +198,7 @@ def landing():
                      disabled=sample is None, use_container_width=True):
         st.session_state.update(report=sample, sample=True, matches=None)
         st.session_state.pop("email", None)
+        st.session_state.pop("emails", None)
         st.rerun()
 
 
@@ -239,6 +240,7 @@ def run_report(choice):
         return
     st.session_state.update(report=r, matches=None, sample=False)
     st.session_state.pop("email", None)
+    st.session_state.pop("emails", None)
     st.rerun()
 
 
@@ -265,23 +267,36 @@ def show_email(r, by_id):
         if r["not_worth_contacting"]:
             st.caption("No email: this company isn't worth contacting.")
             return
-        button, note = st.columns([2, 3], vertical_alignment="center")
+        button, choose = st.columns([2, 3], vertical_alignment="center")
         clicked = button.button("Create email for this company", type="primary", use_container_width=True)
+        persona = choose.segmented_control("Who is it for?", list(settings.EMAIL_PERSONAS), key="wn_persona",
+                                           default=settings.DEFAULT_PERSONA, label_visibility="collapsed")
+        persona = persona or settings.DEFAULT_PERSONA
         if r["fit_score"] <= report.LOW_FIT_SCORE:
-            note.caption(report.LOW_FIT_NOTE)
+            st.caption(report.LOW_FIT_NOTE)
         if clicked:
-            create_email(r)
-        e = st.session_state.get("email")
+            create_email(r, persona)
+        # One email per persona: switching back shows the one already written (free)
+        e = st.session_state.setdefault("emails", {}).get(persona)
+        st.session_state["email"] = e   # the email the downloads include
         if e:
             show_email_text(e, by_id)
 
 
-def create_email(r):
-    with st.spinner("Writing the email…"):
-        try:
-            st.session_state["email"] = r.get("saved_email") or make_email(r)
-        except Exception as e:
-            friendly_error(e)
+def create_email(r, persona):
+    saved = r.get("saved_email")
+    if saved and saved.get("persona", settings.DEFAULT_PERSONA) == persona:
+        email = saved                       # the sample's saved email: no AI needed
+    else:
+        with st.spinner(f"Writing the email for the {persona}…"):
+            try:
+                email = make_email(r, persona)
+            except Exception as e:
+                friendly_error(e)
+                return
+    st.session_state.setdefault("emails", {})[persona] = email
+    st.session_state["email"] = email
+    st.rerun()   # redraw so the downloads at the top include the new email
 
 
 def show_email_text(e, by_id):

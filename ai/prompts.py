@@ -84,8 +84,10 @@ Suggest ONE job title to contact, usually one of: {roles}. Give a role, never a 
 """
 
 
-def build_email_prompt(company_name, offer, facts_text, today):
-    """The instruction for the outreach email. It may only use facts already in the report."""
+def build_email_prompt(company_name, offer, facts_text, today, persona=None):
+    """The instruction for the outreach email, for one persona. It may only use facts already in the report."""
+    persona = persona or settings.DEFAULT_PERSONA
+    angle = settings.EMAIL_PERSONAS.get(persona, "")
     return f"""You are writing a short cold email for an SDR (sales development rep).
 Today's date is {today}. Write in British English.
 
@@ -97,6 +99,9 @@ Each fact cites source IDs like [S1]. Use ONLY these. Do not use your own knowle
 
 {facts_text}
 === END OF FACTS ===
+
+READER: the {persona} at {company_name}. Write for what they care about: {angle}.
+Link the trigger to that, in their language. Don't mention the other personas.
 
 EMAIL
 - Under {settings.EMAIL_MAX_WORDS} words in the body. Short, plain and human.

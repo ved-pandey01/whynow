@@ -129,6 +129,12 @@ APP_TYPING_LINES = [             # the animated amber line on the landing page
 ]
 SEARCH_PLACEHOLDER = "Type a company or website, e.g. cognism.com"
 OFFER_HINT = "WhyNow uses this to score the fit and write your email."
+EMAIL_PERSONAS = {                 # who the email is for, and what that person cares about
+    "Head of Sales": "meetings and pipeline: helping their reps book more meetings and build more pipeline",
+    "Head of RevOps": "tools and data: cleaner data, less manual research, and tools that fit the sales stack",
+    "Founder / CEO": "growth and cost: growing revenue without adding headcount or cost",
+}
+DEFAULT_PERSONA = "Head of Sales"
 TRY_COMPANIES = [                  # the "Try:" chips under the search bar: (name shown, website searched)
     ("Cognism", "cognism.com"),
     ("Darktrace", "darktrace.com"),

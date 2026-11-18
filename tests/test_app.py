@@ -64,7 +64,7 @@ def app(monkeypatch):
     monkeypatch.setattr(ch, "search_companies", lambda typed: MATCHES)
     monkeypatch.setattr(report, "research_company", lambda number, typed, **k: {"number": number})
     monkeypatch.setattr(report, "build_report", lambda research, offer=None, **k: REPORT)
-    monkeypatch.setattr(report, "write_email", lambda r: EMAIL)
+    monkeypatch.setattr(report, "write_email", lambda r, **k: EMAIL)
     return AppTest.from_file("../app.py", default_timeout=30)
 
 
@@ -178,12 +178,12 @@ def test_full_report_shows_every_section(app):
 
 def test_email_is_written_only_when_asked(app, monkeypatch):
     calls = []
-    monkeypatch.setattr(report, "write_email", lambda r: calls.append(1) or EMAIL)
+    monkeypatch.setattr(report, "write_email", lambda r, **k: calls.append(k.get("persona")) or EMAIL)
     research_and_open(app)
     assert not app.code and calls == []          # no email yet, no AI call
     button(app, "Create email for this company").click().run()
     assert app.code[0].value.startswith("Hi [First name]")
-    assert calls == [1]
+    assert calls == ["Head of Sales"]        # the default persona
 
 
 def test_low_fit_shows_note_beside_email_button(app, monkeypatch):
@@ -250,3 +250,18 @@ def test_report_has_pdf_and_csv_downloads(app):
     research_and_open(app)
     labels = [d.proto.label for d in app.get("download_button")]
     assert labels == ["Download PDF", "Download CSV"]
+
+
+def test_persona_selector_writes_one_email_per_persona(app, monkeypatch):
+    calls = []
+    monkeypatch.setattr(report, "write_email", lambda r, **k: calls.append(k["persona"]) or dict(EMAIL, persona=k["persona"]))
+    research_and_open(app)
+    selector = app.get("button_group")[0]
+    assert list(selector.proto.options[i].content for i in range(3)) == ["Head of Sales", "Head of RevOps", "Founder / CEO"]
+    button(app, "Create email for this company").click().run()
+    app.get("button_group")[0].set_value("Head of RevOps").run()
+    assert not app.code                                   # nothing for RevOps until asked
+    button(app, "Create email for this company").click().run()
+    app.get("button_group")[0].set_value("Head of Sales").run()
+    assert app.code                                       # the Sales email is still there, free
+    assert calls == ["Head of Sales", "Head of RevOps"]
