@@ -43,13 +43,18 @@ Your browser opens at http://localhost:8501. Then:
    - who to contact, "Why reach out now" tiles with icons, recent news, what we couldn't find, and sources
 
    Every small `S1`-style tag links to its source.
-4. Click **Create email for this company** to write the email. For scores of 3 or under, a note says it's probably not worth contacting.
-5. Open "Behind the scenes" to see what code changed in the AI's answer and how long each step took.
-6. To start again, click the **WhyNow** logo in the top bar or **← Back to home** above the report. Both clear the current report.
+4. Use **Download PDF** (a clean, printable report with the WhyNow logo and every source as a clickable link) or **Download CSV** (one CRM-ready row: company, company number, website, employees, fit score, top reasons to reach out, email subject, email body, report date) at the top of any report. Both include the email once it's been created.
+5. Click **Create email for this company** to write the email, then **Copy** it. For scores of 3 or under, a note says it's probably not worth contacting.
+6. Open "Behind the scenes" to see what code changed in the AI's answer and how long each step took.
+7. To start again, click the **WhyNow** logo in the top bar or **← Back to home** above the report. Both clear the current report.
 
 **See a sample report:** on the landing page, click the **Example report** card (a real result for Paddle, saved 17 Nov 2026) or the **See a sample report** button. You can also link straight to it with `http://localhost:8501/?sample=1`. It uses no API calls and needs no keys. To refresh it: `.venv/bin/python -m scripts.save_sample`. The research is saved first in `.cache/` (git-ignored), so if the AI step fails, running it again costs no Tavily credits.
 
 Results are cached: looking up the same company again within 6 hours costs no API credits (all the steps tick at once). The cache is our own small store in [app.py](app.py), so the live steps can still be shown while a new report is made. Stop the app with `Ctrl + C` in the terminal.
+
+## Downloads
+- [exports.py](exports.py) builds the CSV (Python's own `csv` module) and the PDF ([fpdf2](https://py-pdf.github.io/fpdf2/)), using only what's already in the report.
+- The PDF uses the Inter font in [assets/fonts](assets/fonts) (SIL Open Font Licence, included), so £, € and dashes print properly.
 
 ## Design
 - Our own look in [ui/style.css](ui/style.css): a premium dark theme with royal blue, emerald and an amber typing line, the Inter font, and dark cards with soft shadows. The landing page has a two-column hero (the WhyNow title, "Know the fit. Know the moment.", an animated "Because…" line and a Google-style search bar on the left; a clickable example report on the right), a subtle grid and line-chart background, and a "Built by Ved Prakash Pandey" pill linking to LinkedIn. The layout stacks on phones.

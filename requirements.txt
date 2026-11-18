@@ -14,3 +14,5 @@ tavily-python==0.8.5
 pydantic==2.14.3
 # Automated tests
 pytest==9.2.0
+# Making the downloadable PDF report
+fpdf2==2.9.0

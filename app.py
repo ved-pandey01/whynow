@@ -19,6 +19,7 @@ from pathlib import Path
 
 import streamlit as st
 
+import exports
 import report
 import settings
 from ai.provider import AIError
@@ -290,7 +291,7 @@ def show_email_text(e, by_id):
     st.markdown(f"**Subject:** {safe(e['subject'])}")
     st.code(e["body"], language=None, wrap_lines=True)
     st.html(f'<div class="wn-quiet">{e["word_count"]} words · opening trigger '
-            f'{ui.cite(e["trigger_sources"], by_id) or "none"} · use the copy icon on the email</div>')
+            f'{ui.cite(e["trigger_sources"], by_id) or "none"}</div>')
     if e.get("ai_model"):
         st.html(ui.model_note(e["ai_model"], "Email"))
 
@@ -303,9 +304,23 @@ def show_behind_the_scenes(r):
             st.markdown("**Time taken:** " + " · ".join(f"{k} {v}s" for k, v in r["timings"].items()))
 
 
+def report_bar(r):
+    """'← Back to home' on the left; 'Download PDF' and 'Download CSV' on the right.
+    The downloads include the email once it has been created."""
+    email = st.session_state.get("email")
+    name = "whynow-" + "".join(c if c.isalnum() else "-" for c in exports.company_name(r).lower()).strip("-")
+    left, right = st.columns([1, 1], vertical_alignment="center")
+    left.html(ui.back_link())
+    with right, st.container(key="wn_downloads", horizontal=True, horizontal_alignment="right", gap="small"):
+        st.download_button("Download PDF", exports.report_to_pdf(r, email), file_name=f"{name}.pdf",
+                           mime="application/pdf", icon=":material/picture_as_pdf:")
+        st.download_button("Download CSV", exports.report_to_csv(r, email), file_name=f"{name}.csv",
+                           mime="text/csv", icon=":material/table_view:")
+
+
 def show_report(r):
     by_id = {s["id"]: s for s in r["all_sources"]}
-    st.html(ui.back_link())
+    report_bar(r)
     if st.session_state.get("sample"):
         st.info(f"Saved example from {r.get('saved_on', 'an earlier run')}. "
                 "Search above to research any UK company live.", icon=":material/history:")

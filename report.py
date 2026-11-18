@@ -349,6 +349,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
         "warnings": research["warnings"],
         "timings": timings,
         "ai_model": ai_model,
+        "created_on": (today or date.today()).strftime("%-d %b %Y"),
         "seconds": round(time.time() - started, 1),
     }
 
@@ -588,6 +589,7 @@ def _closed_company_report(research):
         "checks": ["Flagged by code from Companies House status. No AI used."],
         "warnings": research["warnings"], "timings": dict(research.get("timings", {})), "seconds": 0.0,
         "ai_model": None,   # no AI used
+        "created_on": date.today().strftime("%-d %b %Y"),
     }
 
 

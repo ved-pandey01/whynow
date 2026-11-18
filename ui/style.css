@@ -190,6 +190,24 @@ a.wn-preview-link:hover .wn-pv-view { color: var(--emerald-bright); }
 .wn-step-text { font-weight: 700; color: var(--head); font-size: 0.95rem; }
 .wn-step-sub { color: var(--muted); font-size: 0.82rem; margin-top: 0.1rem; }
 
+/* ---------- Report bar: back link + downloads ---------- */
+.st-key-wn_downloads [data-testid="stElementContainer"] { width: auto !important; flex: 0 0 auto !important; }
+.st-key-wn_downloads .stDownloadButton > button { min-height: 2.3rem; padding: 0 0.9rem; border-radius: 999px; font-size: 0.82rem;
+  font-weight: 600; background: var(--tile) !important; border: 1px solid var(--line-strong) !important; color: var(--body) !important; }
+.st-key-wn_downloads .stDownloadButton > button:hover { border-color: var(--blue) !important; color: var(--head) !important; }
+
+/* ---------- Copy button on the email: Streamlit's own copy button, always visible and labelled ---------- */
+.st-key-wn_box_email div:has(> * > [data-testid="stElementToolbarButton"]),
+.st-key-wn_box_email div:has(> [data-testid="stElementToolbarButton"]),
+.st-key-wn_box_email div:has(> * > [data-testid="stElementToolbarButton"]) *,
+.st-key-wn_box_email [data-testid="stElementToolbarButton"] { opacity: 1 !important; visibility: visible !important; }
+.st-key-wn_box_email button[aria-label="Copy to clipboard"] { width: auto !important; height: auto !important; gap: 0.3rem;
+  padding: 0.25rem 0.65rem !important; border-radius: 999px; background: rgba(59, 130, 246, 0.16) !important;
+  border: 1px solid rgba(59, 130, 246, 0.45) !important; color: var(--blue-bright) !important; opacity: 1 !important; }
+.st-key-wn_box_email button[aria-label="Copy to clipboard"]::after { content: "Copy"; font-size: 0.78rem; font-weight: 700; }
+.st-key-wn_box_email [data-testid="stCode"] pre { padding-top: 2.8rem !important; }   /* room for the Copy button */
+.st-key-wn_box_email button[aria-label="Copy to clipboard"]:hover { background: rgba(59, 130, 246, 0.28) !important; color: var(--head) !important; }
+
 /* ---------- Live progress ---------- */
 .wn-progress { max-width: 560px; }
 .wn-progress-list { list-style: none; padding: 0 !important; margin: 0 0 0.8rem; }

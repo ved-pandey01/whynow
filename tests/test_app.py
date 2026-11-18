@@ -244,3 +244,9 @@ def test_try_chip_with_no_close_match_says_so(app, monkeypatch):
     button(app, "Paddle").click().run()
     assert "No close match found" in app.info[0].value
     assert not app.exception
+
+
+def test_report_has_pdf_and_csv_downloads(app):
+    research_and_open(app)
+    labels = [d.proto.label for d in app.get("download_button")]
+    assert labels == ["Download PDF", "Download CSV"]
