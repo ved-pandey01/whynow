@@ -67,30 +67,155 @@
     }
   },
   "what_they_do": {
-    "text": "Paddle provides a merchant of record platform managing payments, tax, compliance, and billing for SaaS and digital product businesses.",
+    "text": "Paddle provides a merchant of record platform that manages payments, billing, tax, and compliance for digital product businesses.",
     "sources": [
       "S2",
       "S3"
     ]
   },
+  "overview": [
+    {
+      "text": "Paddle provides a merchant of record platform that manages payments, billing, tax, and compliance for digital product businesses.",
+      "sources": [
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "text": "Their solutions serve SaaS and mobile app companies globally, including brands like MacPaw and Fortinet.",
+      "sources": [
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "text": "The company currently employs 430 staff and is headquartered in London.",
+      "sources": [
+        "S2"
+      ]
+    }
+  ],
+  "overview_more": [
+    {
+      "text": "Paddle recently launched an AI Toolkit to help developers manage billing directly from AI tools like Claude Code and Gemini CLI.",
+      "sources": [
+        "S8"
+      ]
+    },
+    {
+      "text": "The firm operates across more than 300 markets to support revenue performance and operational efficiency for its customers.",
+      "sources": [
+        "S3",
+        "S4"
+      ]
+    }
+  ],
+  "about_link": {
+    "url": "https://paddle.com",
+    "label": "Visit website"
+  },
+  "more_about": {
+    "directors": {
+      "people": [
+        {
+          "name": "Scott Howard Galit",
+          "role": "Director",
+          "appointed_on": "2023-08-11",
+          "occupation": null
+        },
+        {
+          "name": "Patrick Joseph Devine",
+          "role": "Director",
+          "appointed_on": "2022-04-28",
+          "occupation": null
+        },
+        {
+          "name": "James Fitzgerald",
+          "role": "Director",
+          "appointed_on": "2022-04-28",
+          "occupation": null
+        },
+        {
+          "name": "Kyle Adams Griswold",
+          "role": "Director",
+          "appointed_on": "2020-11-19",
+          "occupation": null
+        },
+        {
+          "name": "Laurel Charmaine Bowden",
+          "role": "Director",
+          "appointed_on": "2019-09-10",
+          "occupation": null
+        },
+        {
+          "name": "Stephen Charles Chandler",
+          "role": "Director",
+          "appointed_on": "2018-09-28",
+          "occupation": null
+        }
+      ],
+      "total": 6,
+      "source": "S10"
+    },
+    "owners": {
+      "owners": [],
+      "source": null
+    },
+    "competitors": {
+      "names": [
+        "chargebee",
+        "stripe",
+        "weavr",
+        "fastspring"
+      ],
+      "source": "S2"
+    },
+    "hiring": {
+      "open_roles": 25,
+      "open_roles_source": "S2",
+      "roles": [
+        {
+          "title": "Business Development Representative",
+          "sales": true,
+          "source": "S5"
+        },
+        {
+          "title": "Senior Account Executive",
+          "sales": true,
+          "source": "S7"
+        },
+        {
+          "title": "Director of Demand Generation",
+          "sales": false,
+          "source": "S9"
+        }
+      ]
+    }
+  },
   "snapshot": [
     {
-      "text": "Paddle is a software development company founded in 2012.",
+      "text": "Industry: Software Development.",
+      "sources": [
+        "S2"
+      ]
+    },
+    {
+      "text": "Size: 430 employees.",
+      "sources": [
+        "S2"
+      ]
+    },
+    {
+      "text": "Location: London, United Kingdom.",
       "sources": [
         "S1",
         "S2"
       ]
     },
     {
-      "text": "The company is headquartered in London, United Kingdom.",
+      "text": "Founded: 2012.",
       "sources": [
         "S1",
-        "S2"
-      ]
-    },
-    {
-      "text": "Paddle has 430 employees.",
-      "sources": [
         "S2"
       ]
     }
@@ -98,58 +223,54 @@
   "news": [
     {
       "source": "S8",
-      "why_it_matters": "Paddle secured $25 million in funding to support international growth and product development."
-    },
-    {
-      "source": "S7",
-      "why_it_matters": "The launch of the AI Toolkit indicates active product expansion and focus on AI-native customers."
+      "why_it_matters": "The recent launch of their AI Toolkit suggests a strategic focus on AI-native customers, creating opportunities for AI-driven sales tools."
     }
   ],
   "signals": [
     {
-      "type": "funding",
-      "text": "Paddle raised $25 million in funding from CIBC Innovation Banking to support international growth.",
+      "type": "expansion",
+      "text": "Paddle launched its AI Toolkit on 20 October 2026 to integrate billing with AI developer tools.",
       "sources": [
         "S8"
       ]
     },
     {
-      "type": "expansion",
-      "text": "Paddle launched the AI Toolkit on 20 October 2026 for AI-native and SaaS companies.",
-      "sources": [
-        "S7"
-      ]
-    },
-    {
       "type": "hiring_sales",
-      "text": "The company is actively hiring for Business Development Representative and Senior Account Executive roles.",
+      "text": "The company is actively hiring for Business Development Representative roles to support its sales efforts.",
       "sources": [
-        "S4",
         "S5",
         "S6"
       ]
     }
   ],
-  "fit_score": 10,
+  "fit_score": 9,
   "fit_reasons": [
     {
-      "text": "Paddle is a B2B SaaS company with 430 employees, fitting the ideal size band.",
+      "text": "Paddle is a B2B SaaS company with 430 employees, placing it in the ideal size band.",
       "sources": [
         "S2"
       ]
     },
     {
-      "text": "The company is actively hiring sales staff and recently secured a significant funding round.",
+      "text": "The company is actively hiring sales staff, indicating a need for improved lead generation and outreach efficiency.",
       "sources": [
-        "S4",
-        "S6",
+        "S5",
+        "S6"
+      ]
+    },
+    {
+      "text": "Recent product expansion into AI-integrated billing demonstrates a focus on growth and innovation.",
+      "sources": [
         "S8"
       ]
     }
   ],
   "suggested_role": "Head of Sales",
-  "role_reason": "This role oversees the sales team and pipeline generation, aligning with their current hiring efforts.",
-  "not_found": [],
+  "role_reason": "They are actively scaling their sales team and would benefit from tools that improve SDR productivity and meeting bookings.",
+  "not_found": [
+    "No funding news in the last 6 months",
+    "No new sales leader appointment in the last 6 months"
+  ],
   "sources": [
     {
       "id": "S1",
@@ -165,7 +286,7 @@
       "title": "Company profile: Paddle",
       "url": "https://tavily.com/knowledge/company/QHvRVvhthPIF",
       "date": null,
-      "content": "Website: www.paddle.com\nHeadquarters: London, England, United Kingdom\nIndustry: Software Development\nBusiness areas: Merchant of Record Platform, Billing and Subscription Management, Payment Processing, Tax and Compliance Software, Fraud Prevention\nBusiness model: B2B\nSaaS: yes\nEmployees (headcount): 430\nHeadcount change: +41 yearly (10.5%)\nFunding rounds: 12\nTotal raised: 318.34M USD, 8.00M GBP\nAnnual revenue: 26.49M GBP\nLinkedIn followers: 67953\nDescription: Paddle is a payment solution that handles billing, tax, and compliance for SaaS and mobile apps.\nConfirmed as the same company because: legal name matches Companies House"
+      "content": "Website: www.paddle.com\nHeadquarters: London, England, United Kingdom\nIndustry: Software Development\nBusiness areas: Merchant of Record Platform, Billing and Subscription Management, Payment Processing, Tax and Compliance Software, Fraud Prevention\nBusiness model: B2B\nSaaS: yes\nEmployees (headcount): 430\nHeadcount change: +41 yearly (10.5%)\nFunding rounds: 12\nTotal raised: 318.34M USD, 8.00M GBP\nAnnual revenue: 26.49M GBP\nLast funding round: Debt Financing 2025-08-17 25.00M USD\nProducts: Merchant of Record Platform, Billing Software, Checkout Software, Subscription Management Software, Payment Processing Services, Sales Tax Compliance Software, Regulatory Compliance Services, Fraud Prevention and Detection Services, Dunning Management Software, Subscription Analytics Dashboard, Revenue Analytics Dashboard\nInvestors: Business Growth Fund, Notion Capital, Kindred Capital, Future Fifty, MacPaw, Silicon Valley Bank, FTV Capital, Kohlberg Kravis Roberts & Co., 83North, Mark Pearson, CIBC Innovation Banking, Upscale\nOpen roles listed: 25\nSimilar companies: chargebee, stripe, weavr, fastspring, 2checkout, paypro global, recurly, digital river\nLinkedIn followers: 67953\nDescription: Paddle is a payment solution that handles billing, tax, and compliance for SaaS and mobile apps.\nConfirmed as the same company because: legal name matches Companies House"
     },
     {
       "id": "S3",
@@ -177,6 +298,14 @@
     },
     {
       "id": "S4",
+      "kind": "news",
+      "title": "Paddle: The Fintech Unicorn Scaling the Global SaaS Economy | FinTech Magazine",
+      "url": "https://fintechmagazine.com/articles/how-paddle-is-scaling-the-global-saas-economy",
+      "date": "2026-08-04",
+      "content": "Paddle is a fast-emerging Merchant of Record (MoR) for digital product businesses, managing payments, tax, compliance and billing across more than 300 markets.\n\nThe global software-as-a-service (SaaS) and digital product ecosystem has transitioned from a period of hyper-growth funded by low interest rates into a mature phase defined by unit economics, retention and operational efficiency. [...] Wh"
+    },
+    {
+      "id": "S5",
       "kind": "signal",
       "title": "[hiring_sales] Business Development Representative at Paddle | Dev Global Jobs",
       "url": "https://devglobaljobs.com/jobs/detail/166960829",
@@ -184,7 +313,7 @@
       "content": "As a BDR in our Business Development team, you will be the first point of contact for all of Paddle’s sales efforts. You’ll create demand, spark meaningful conversations, and build early relationships that turn into qualified pipeline to arm your counterparts on the Account Executive team. Your core tasks will involve researching, prospecting, prioritizing accounts, educating prospects, and conver"
     },
     {
-      "id": "S5",
+      "id": "S6",
       "kind": "signal",
       "title": "[hiring_sales] Business Development Representative at Paddle",
       "url": "https://startup.jobs/business-development-representative-paddle-2-7494161",
@@ -192,7 +321,7 @@
       "content": "As a BDR in our Business Development team, you will be the first point of contact for all of Paddle’s sales efforts. You’ll create demand, spark meaningful conversations, and build early relationships that turn into qualified pipeline to arm your counterparts on the Account Executive team. Your core tasks will involve researching, prospecting, prioritizing accounts, educating prospects, and conver"
     },
     {
-      "id": "S6",
+      "id": "S7",
       "kind": "signal",
       "title": "[hiring_sales] Senior Account Executive at Paddle.com Market Limited",
       "url": "https://www.visasponsorshiphub.com/jobs/92091",
@@ -200,7 +329,7 @@
       "content": "CA. What you'll do: Build pipeline from leads armed by your Business Development Representative and Marketing counterparts, as well as your own self-sourced opportunities’ You will be responsible for creating a portion of your own self generated pipeline opportunities Be responsible for the full sales cycle from prospecting, qualifying, carrying out demo’s through to closing deals Master Paddle’s "
     },
     {
-      "id": "S7",
+      "id": "S8",
       "kind": "signal",
       "title": "[expansion] Paddle launches AI Toolkit, bringing global selling into ...",
       "url": "https://www.paddle.com/blog/paddle-launches-ai-toolkit-bringing-global-selling-into-ai-workflows",
@@ -208,12 +337,20 @@
       "content": "LONDON, October 20, 2026 – Paddle, the Merchant of Record platform for AI-native, app and SaaS companies, today announced the Paddle AI Toolkit, allowing developers to set up, test, and manage key parts of their billing directly from AI tools including Claude Code, Codex, Cursor, and Gemini CLI. As Merchant of Record, Paddle remains the legal reseller for every sale, responsible for payments, tax,"
     },
     {
-      "id": "S8",
-      "kind": "signal",
-      "title": "[expansion] Paddle Stock Price, Valuation & News",
-      "url": "https://stockanalysis.com/private/paddle",
-      "date": "2026-11-06",
-      "content": "Lovable launched Lovable Payments, a monetization layer built into its AI app builder with Paddle available as the merchant of record. Paddle says it is the first native merchant-of-record integration...\n\n### UK fintech Paddle raises $25m in funding from CIBC Innovation Banking\n\nFinTech Futures covered Paddle's $25 million CIBC Innovation Banking round to support international growth and product d"
+      "id": "S9",
+      "kind": "job",
+      "title": "[jobs] Director of Demand Generation at Paddle",
+      "url": "https://startup.jobs/director-of-demand-generation-paddle-2-10675309",
+      "date": null,
+      "content": "Startup Jobs\n\nPost a Job\n\nPost a job\nPricing\nBulk discounts\nAdvertise\nContact us\n\nLog in\nPost a job\n\nPaddle\n\nPaddle\n\n# Director of Demand Generation\n\nUnited Kingdom\n\nFull-Time\n\nRemote\n\n## TLDR\n\nScale a global demand engine across PLG and sales-led motions, integrating paid media, SEO, ABM, lifecycle, and web into pipeline growth.\n\nWhat do we do? [...] In Europe: UK (London headquarters), Portugal "
+    },
+    {
+      "id": "S10",
+      "kind": "companies_house",
+      "title": "Companies House: directors",
+      "url": "https://find-and-update.company-information.service.gov.uk/company/08172165/officers",
+      "date": null,
+      "content": "Scott Howard Galit: Director, appointed 2023-08-11\nPatrick Joseph Devine: Director, appointed 2022-04-28\nJames Fitzgerald: Director, appointed 2022-04-28\nKyle Adams Griswold: Director, appointed 2020-11-19\nLaurel Charmaine Bowden: Director, appointed 2019-09-10\nStephen Charles Chandler: Director, appointed 2018-09-28"
     }
   ],
   "all_sources": [
@@ -231,7 +368,7 @@
       "title": "Company profile: Paddle",
       "url": "https://tavily.com/knowledge/company/QHvRVvhthPIF",
       "date": null,
-      "content": "Website: www.paddle.com\nHeadquarters: London, England, United Kingdom\nIndustry: Software Development\nBusiness areas: Merchant of Record Platform, Billing and Subscription Management, Payment Processing, Tax and Compliance Software, Fraud Prevention\nBusiness model: B2B\nSaaS: yes\nEmployees (headcount): 430\nHeadcount change: +41 yearly (10.5%)\nFunding rounds: 12\nTotal raised: 318.34M USD, 8.00M GBP\nAnnual revenue: 26.49M GBP\nLinkedIn followers: 67953\nDescription: Paddle is a payment solution that handles billing, tax, and compliance for SaaS and mobile apps.\nConfirmed as the same company because: legal name matches Companies House"
+      "content": "Website: www.paddle.com\nHeadquarters: London, England, United Kingdom\nIndustry: Software Development\nBusiness areas: Merchant of Record Platform, Billing and Subscription Management, Payment Processing, Tax and Compliance Software, Fraud Prevention\nBusiness model: B2B\nSaaS: yes\nEmployees (headcount): 430\nHeadcount change: +41 yearly (10.5%)\nFunding rounds: 12\nTotal raised: 318.34M USD, 8.00M GBP\nAnnual revenue: 26.49M GBP\nLast funding round: Debt Financing 2025-08-17 25.00M USD\nProducts: Merchant of Record Platform, Billing Software, Checkout Software, Subscription Management Software, Payment Processing Services, Sales Tax Compliance Software, Regulatory Compliance Services, Fraud Prevention and Detection Services, Dunning Management Software, Subscription Analytics Dashboard, Revenue Analytics Dashboard\nInvestors: Business Growth Fund, Notion Capital, Kindred Capital, Future Fifty, MacPaw, Silicon Valley Bank, FTV Capital, Kohlberg Kravis Roberts & Co., 83North, Mark Pearson, CIBC Innovation Banking, Upscale\nOpen roles listed: 25\nSimilar companies: chargebee, stripe, weavr, fastspring, 2checkout, paypro global, recurly, digital river\nLinkedIn followers: 67953\nDescription: Paddle is a payment solution that handles billing, tax, and compliance for SaaS and mobile apps.\nConfirmed as the same company because: legal name matches Companies House"
     },
     {
       "id": "S3",
@@ -243,6 +380,14 @@
     },
     {
       "id": "S4",
+      "kind": "news",
+      "title": "Paddle: The Fintech Unicorn Scaling the Global SaaS Economy | FinTech Magazine",
+      "url": "https://fintechmagazine.com/articles/how-paddle-is-scaling-the-global-saas-economy",
+      "date": "2026-08-04",
+      "content": "Paddle is a fast-emerging Merchant of Record (MoR) for digital product businesses, managing payments, tax, compliance and billing across more than 300 markets.\n\nThe global software-as-a-service (SaaS) and digital product ecosystem has transitioned from a period of hyper-growth funded by low interest rates into a mature phase defined by unit economics, retention and operational efficiency. [...] Wh"
+    },
+    {
+      "id": "S5",
       "kind": "signal",
       "title": "[hiring_sales] Business Development Representative at Paddle | Dev Global Jobs",
       "url": "https://devglobaljobs.com/jobs/detail/166960829",
@@ -250,7 +395,7 @@
       "content": "As a BDR in our Business Development team, you will be the first point of contact for all of Paddle’s sales efforts. You’ll create demand, spark meaningful conversations, and build early relationships that turn into qualified pipeline to arm your counterparts on the Account Executive team. Your core tasks will involve researching, prospecting, prioritizing accounts, educating prospects, and conver"
     },
     {
-      "id": "S5",
+      "id": "S6",
       "kind": "signal",
       "title": "[hiring_sales] Business Development Representative at Paddle",
       "url": "https://startup.jobs/business-development-representative-paddle-2-7494161",
@@ -258,7 +403,7 @@
       "content": "As a BDR in our Business Development team, you will be the first point of contact for all of Paddle’s sales efforts. You’ll create demand, spark meaningful conversations, and build early relationships that turn into qualified pipeline to arm your counterparts on the Account Executive team. Your core tasks will involve researching, prospecting, prioritizing accounts, educating prospects, and conver"
     },
     {
-      "id": "S6",
+      "id": "S7",
       "kind": "signal",
       "title": "[hiring_sales] Senior Account Executive at Paddle.com Market Limited",
       "url": "https://www.visasponsorshiphub.com/jobs/92091",
@@ -266,7 +411,7 @@
       "content": "CA. What you'll do: Build pipeline from leads armed by your Business Development Representative and Marketing counterparts, as well as your own self-sourced opportunities’ You will be responsible for creating a portion of your own self generated pipeline opportunities Be responsible for the full sales cycle from prospecting, qualifying, carrying out demo’s through to closing deals Master Paddle’s "
     },
     {
-      "id": "S7",
+      "id": "S8",
       "kind": "signal",
       "title": "[expansion] Paddle launches AI Toolkit, bringing global selling into ...",
       "url": "https://www.paddle.com/blog/paddle-launches-ai-toolkit-bringing-global-selling-into-ai-workflows",
@@ -274,55 +419,116 @@
       "content": "LONDON, October 20, 2026 – Paddle, the Merchant of Record platform for AI-native, app and SaaS companies, today announced the Paddle AI Toolkit, allowing developers to set up, test, and manage key parts of their billing directly from AI tools including Claude Code, Codex, Cursor, and Gemini CLI. As Merchant of Record, Paddle remains the legal reseller for every sale, responsible for payments, tax,"
     },
     {
-      "id": "S8",
-      "kind": "signal",
-      "title": "[expansion] Paddle Stock Price, Valuation & News",
-      "url": "https://stockanalysis.com/private/paddle",
-      "date": "2026-11-06",
-      "content": "Lovable launched Lovable Payments, a monetization layer built into its AI app builder with Paddle available as the merchant of record. Paddle says it is the first native merchant-of-record integration...\n\n### UK fintech Paddle raises $25m in funding from CIBC Innovation Banking\n\nFinTech Futures covered Paddle's $25 million CIBC Innovation Banking round to support international growth and product d"
+      "id": "S9",
+      "kind": "job",
+      "title": "[jobs] Director of Demand Generation at Paddle",
+      "url": "https://startup.jobs/director-of-demand-generation-paddle-2-10675309",
+      "date": null,
+      "content": "Startup Jobs\n\nPost a Job\n\nPost a job\nPricing\nBulk discounts\nAdvertise\nContact us\n\nLog in\nPost a job\n\nPaddle\n\nPaddle\n\n# Director of Demand Generation\n\nUnited Kingdom\n\nFull-Time\n\nRemote\n\n## TLDR\n\nScale a global demand engine across PLG and sales-led motions, integrating paid media, SEO, ABM, lifecycle, and web into pipeline growth.\n\nWhat do we do? [...] In Europe: UK (London headquarters), Portugal "
     },
     {
-      "id": "S9",
-      "kind": "news",
-      "title": "Paddle: The Fintech Unicorn Scaling the Global SaaS Economy | FinTech Magazine",
-      "url": "https://fintechmagazine.com/articles/how-paddle-is-scaling-the-global-saas-economy",
-      "date": "2026-08-04",
-      "content": "Paddle is a fast-emerging Merchant of Record (MoR) for digital product businesses, managing payments, tax, compliance and billing across more than 300 markets.\n\nThe global software-as-a-service (SaaS) and digital product ecosystem has transitioned from a period of hyper-growth funded by low interest rates into a mature phase defined by unit economics, retention and operational efficiency. [...] Wh"
+      "id": "S10",
+      "kind": "companies_house",
+      "title": "Companies House: directors",
+      "url": "https://find-and-update.company-information.service.gov.uk/company/08172165/officers",
+      "date": null,
+      "content": "Scott Howard Galit: Director, appointed 2023-08-11\nPatrick Joseph Devine: Director, appointed 2022-04-28\nJames Fitzgerald: Director, appointed 2022-04-28\nKyle Adams Griswold: Director, appointed 2020-11-19\nLaurel Charmaine Bowden: Director, appointed 2019-09-10\nStephen Charles Chandler: Director, appointed 2018-09-28"
+    },
+    {
+      "id": "S11",
+      "kind": "signal",
+      "title": "[new_sales_leader] PADDLE.COM MARKET LIMITED - 2026 Company Profile & Financials - Tracxn",
+      "url": "https://tracxn.com/d/legal-entities/united-kingdom/paddle.com-market-limited/__29xMJFUJch2cVuVELaTae-4wcNMNibwdm1Pf1DJ0l6E",
+      "date": "2026-07-14",
+      "content": "| Name | Short Description | Founded Year | Location | Current Stage |\n ---  --- \n| Logo for Paddle Paddle | Provider of merchant of record services for digital product businesses | 2012 | United Kingdom | Series D |\n\nLogo for Paddle\n\n## Financials of PADDLE.COM MARKET LIMITED\n\n### Financial Statements [...] | 8th | Logo for Paddle  Paddle 2012, London  (United Kingdom), Series D | Provider of mer"
+    },
+    {
+      "id": "S12",
+      "kind": "signal",
+      "title": "[expansion] Paddle - 2026 Company Profile, Team, Funding, Competitors & Financials - Tracxn",
+      "url": "https://tracxn.com/d/companies/paddle/__8MXiRvlcZyrTHTirJwCMcc5_5-PHOmEETZExlNNL-sM",
+      "date": "2026-10-26",
+      "content": "| 6th | Logo for Curlec  Curlec 2018, Kuala Lumpur  (Malaysia), Acquired | Automated payment collection solution  500 Global, Captii Ventures  & 3 others | 60/100 |\n| 7th | Logo for Paddle  Paddle 2012, London  (United Kingdom), Series D | Provider of merchant of record services for digital product businesses | $292M | Kindred Capital, SVB  & 25 others | 57/100 | [...] | 10th | Logo for Toku  Toku"
+    },
+    {
+      "id": "S13",
+      "kind": "job",
+      "title": "[jobs] Senior Account Executive @ Paddle",
+      "url": "https://jobs.ashbyhq.com/paddle/0989784d-6614-4f92-be52-1ff2cdea786d",
+      "date": null,
+      "content": "Our Paddle hubs:\n\n In Europe: UK (London headquarters), Portugal (Lisbon hub), Netherlands and Ireland (Dublin hub)\n In North America: Austin, TX (USA) and Toronto (Canada)\n\nOur hub philosophy creates an engaging experience for all Paddlers, wherever, whenever and however we choose to work.\n\nTo support this, we focus hiring within our hubs and will always openly share the available locations for e"
+    },
+    {
+      "id": "S14",
+      "kind": "job",
+      "title": "[jobs] Business Development Representative at Paddle – Remote (United States) | Jobspresso",
+      "url": "https://jobspresso.co/job/business-development-representative-6",
+      "date": null,
+      "content": "Our Paddle hubs:\n\n In Europe: UK (London headquarters), Portugal (Lisbon hub), Netherlands and Ireland (Dublin hub)\n In North America: Austin, TX (USA) and Toronto (Canada)\n\nOur hub philosophy creates an engaging experience for all Paddlers, wherever, whenever and however we choose to work.\n\nTo support this, we focus hiring within our hubs and will always openly share the available locations for e"
+    },
+    {
+      "id": "S15",
+      "kind": "job",
+      "title": "[jobs] Business Development Representative @ Paddle",
+      "url": "https://jobs.ashbyhq.com/paddle/84fd129a-76e1-4dc2-80ce-f288ef4d8dab",
+      "date": null,
+      "content": "Our Paddle hubs:\n\n In Europe: UK (London headquarters), Portugal (Lisbon hub), Netherlands and Ireland (Dublin hub)\n In North America: Austin, TX (USA) and Toronto (Canada)\n\nOur hub philosophy creates an engaging experience for all Paddlers, wherever, whenever and however we choose to work.\n\nTo support this, we focus hiring within our hubs and will always openly share the available locations for e"
+    },
+    {
+      "id": "S16",
+      "kind": "job",
+      "title": "[jobs] What's the Company Culture Like at Paddle 2026? | Built In",
+      "url": "https://builtin.com/company/paddle/faq/culture-values",
+      "date": null,
+      "content": "Paddle Compensation & Benefits\n\nWhat's the Work-Life Balance Like at Paddle?\n\nPaddle Leadership & Management\n\nPaddle Company Growth, Stability & Outlook\n\nView All 15 Jobs at Paddle\n\n## Paddle FAQs\n\nWhat's It Like to Work at Paddle?\n\nPaddle Career Growth & Development\n\nPaddle Compensation & Benefits\n\nWhat's the Work-Life Balance Like at Paddle?\n\nPaddle Leadership & Management\n\nPaddle Company Growth"
+    },
+    {
+      "id": "S17",
+      "kind": "job",
+      "title": "[jobs] Paddle for Peace hiring Programs & Communications Coordinator",
+      "url": "https://www.facebook.com/paddleforpeaceSD/posts/were-hiring-tell-a-friendpaddle-for-peace-is-looking-for-a-programs-communicatio/983179284457961",
+      "date": null,
+      "content": "Paddle for Peace is looking for a Programs & Communications Coordinator to support our youth ocean programs, community events, outreach, social"
     }
   ],
   "checks": [],
   "warnings": [],
   "timings": {
-    "Companies House": 0.3,
-    "Company profile": 0.8,
-    "Website": 0.4,
-    "News": 1.5,
-    "Signals": 3.3,
-    "AI report": 6.3
+    "Companies House": 0.5,
+    "Company profile": 1.8,
+    "Website": 0.2,
+    "News": 2.0,
+    "Signals": 18.9,
+    "Jobs": 1.9,
+    "AI report": 128.1
   },
   "ai_model": {
     "name": "gemini-3.1-flash-lite",
     "backup": true,
-    "reason": "gemini-3.5-flash-lite failed: Gemini is having problems right now. Try again in a few minutes."
+    "reason": "gemini-3.6-flash failed: Gemini is having problems right now. Try again in a few minutes.; gemini-3.5-flash failed: Gemini is having problems right now. Try again in a few minutes.; gemini-3.5-flash-lite failed: Gemini is having problems right now. Try again in a few minutes."
   },
-  "seconds": 6.3,
+  "created_on": "18 Nov 2026",
+  "seconds": 128.2,
   "saved_email": {
-    "subject": "Researching accounts at Paddle",
-    "body": "Hi [First name], I saw that Paddle launched the AI Toolkit on 20 October 2026. As you scale your sales team following that launch, our AI tool helps your reps research accounts and personalise outreach so you can book more meetings. Worth a quick chat? [Your name]",
-    "word_count": 47,
+    "subject": "Paddle's AI Toolkit launch",
+    "body": "Hi [First name], I saw that Paddle recently launched its AI Toolkit on 20 October 2026. With the team actively hiring Business Development Representatives to support your sales efforts, I imagine your reps are looking for ways to book more meetings and build pipeline more efficiently. We provide an AI tool that helps SDR teams research accounts and personalise outreach, so your reps can book more meetings. Worth a quick chat? [Your name]",
+    "word_count": 73,
     "trigger_sources": [
-      "S7"
+      "S9"
     ],
     "warnings": [],
+    "linkedin_note": "Hi [First name], saw Paddle launched its AI Toolkit recently and is growing the sales team. Thought it'd be great to connect.",
+    "call_opener": "[Your name] here, calling because Paddle recently launched its AI Toolkit and is hiring new sales reps.\nHow are you currently helping the team research accounts to book more meetings?",
     "checks": [],
     "timings": {
-      "Email": 2.6
+      "Email": 69.3
     },
     "ai_model": {
       "name": "gemini-3.5-flash-lite",
-      "backup": false,
-      "reason": null
-    }
+      "backup": true,
+      "reason": "gemini-3.6-flash failed: Gemini is having problems right now. Try again in a few minutes.; gemini-3.5-flash failed: Gemini is having problems right now. Try again in a few minutes."
+    },
+    "persona": "Head of Sales"
   },
-  "saved_on": "17 Nov 2026"
+  "saved_on": "18 Nov 2026"
 }

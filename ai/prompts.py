@@ -30,7 +30,8 @@ about the company, even if you think you know it.
 === END OF SOURCES ===
 
 STRICT RULES
-1. Every claim must cite the source IDs it comes from. No source = don't say it.
+1. Every claim must cite the source IDs it comes from, in its source_ids field. No source = don't say it.
+   Never type source IDs like [S2] inside the text itself.
 2. Never guess or invent numbers, names, dates or events. If something isn't in the
    sources, add it to "not_found" instead (e.g. "Employee count not found").
 3. Some search results are about a DIFFERENT company or thing with a similar name

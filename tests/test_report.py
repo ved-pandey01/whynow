@@ -622,3 +622,23 @@ def test_ai_text_in_the_report_gets_commas():
         signals=[Signal(signal_type="hiring_sales", text="Hiring 1200 SDRs.", source_ids=["S4"])]))
     assert r["overview"][0]["text"] == "Acme employs 2,604 people."
     assert r["signals"][0]["text"] == "Hiring 1,200 SDRs."
+
+
+
+@pytest.mark.parametrize("text, clean", [
+    ("Paddle sells billing software [S2, S3].", "Paddle sells billing software."),
+    ("It launched an AI Toolkit [S9]. Hiring too (S5).", "It launched an AI Toolkit. Hiring too."),
+    ("No tags here.", "No tags here."),
+    ("Series [A] round.", "Series [A] round."),        # only S-number tags are removed
+])
+def test_typed_source_tags_are_removed(text, clean):
+    assert report.strip_source_tags(text) == clean
+
+
+def test_report_text_never_shows_typed_tags():
+    """Real problem (Paddle sample): '... launched an AI Toolkit [S9].' while its real tag was S8."""
+    r, _ = build(make_research(), make_draft(
+        overview=[Claim(text="Acme makes sales software [S2].", source_ids=["S2"])],
+        signals=[Signal(signal_type="hiring_sales", text="Hiring an SDR [S4, S9].", source_ids=["S4"])]))
+    assert r["overview"][0]["text"] == "Acme makes sales software."
+    assert r["signals"][0]["text"] == "Hiring an SDR."
