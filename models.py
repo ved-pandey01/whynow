@@ -33,7 +33,12 @@ class Signal(BaseModel):
 
 class AIReport(BaseModel):
     """The research report the AI writes. Code checks all of it before it's shown."""
-    what_they_do: Claim
+    overview: list[Claim] = Field(description=(
+        "3 to 4 sentences, one per claim: what the company does and its main products, who its customers are, "
+        "and one notable fact (size, growth, ownership or recent news). Fewer if the sources don't support more."))
+    overview_more: list[Claim] = Field(description=(
+        "A longer description for 'Read more': 5 to 7 sentences, one per claim, adding detail beyond the overview. "
+        "Fewer if the sources don't support more."))
     snapshot: list[Claim] = Field(description="Industry, size, location, founded. Only facts found in the sources.")
     news: list[NewsPick] = Field(description="Up to 3 news items that are really about this company.")
     signals: list[Signal] = Field(description="Only signals clearly shown by a source. Empty list if none.")

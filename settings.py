@@ -88,6 +88,8 @@ NEWS_WINDOW_MONTHS = 6       # "recent" news means published in the last 6 month
 NEWS_CANDIDATES = 8          # news items fetched; the AI picks the 3 really about the company
 LINKEDIN_NOTE_MAX_CHARS = 300   # LinkedIn connection notes allow 300 characters
 CALL_OPENER_MAX_LINES = 2
+OVERVIEW_SENTENCES = 4          # the overview card: 3–4 sentences
+OVERVIEW_MORE_SENTENCES = 7     # "Read more": 5–7 sentences
 EMAIL_MAX_WORDS = 120        # outreach email length limit
 
 # ---------------------------------------------------------------------------

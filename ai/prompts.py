@@ -77,7 +77,10 @@ enterprise-scale, very large or global (e.g. hundreds of thousands of customers)
 saying it's a weak fit on size, so the score must be {settings.WEAK_FIT_MAX_SCORE} or lower.
 
 KEEP IT SHORT
-"what_they_do" is one sentence under 25 words. Every other claim, reason and signal is
+OVERVIEW: "overview" is 3–4 sentences (what they do and their main products, who their customers are,
+one notable fact such as size, growth, ownership or recent news). "overview_more" is 5–7 sentences for
+"Read more". One sentence per claim, each with its own source IDs, each under 30 words. If the sources
+don't support that many sentences, write fewer: never pad or guess. Every other claim, reason and signal is
 under 20 words. Plain words, no filler.
 
 SUGGESTED ROLE

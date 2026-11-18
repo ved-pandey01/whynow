@@ -30,7 +30,8 @@ def make_research(headcount=300, status="active", accounts="full"):
 def make_draft(**changes):
     """A well-behaved AI answer. Tests change parts of it to misbehave."""
     fields = dict(
-        what_they_do=Claim(text="Acme makes sales software.", source_ids=["S2"]),
+        overview=[Claim(text="Acme makes sales software.", source_ids=["S2"])],
+        overview_more=[Claim(text="Acme was founded in 2015.", source_ids=["S1"])],
         snapshot=[Claim(text="Founded in 2015.", source_ids=["S1"])],
         news=[NewsPick(source_id="S3", why_it_matters="New product means new pipeline goals.")],
         signals=[Signal(signal_type="hiring_sales", text="Hiring an SDR.", source_ids=["S4"])],
@@ -108,8 +109,8 @@ def test_claims_with_made_up_sources_are_removed():
 
 
 def test_claim_with_no_sources_is_removed():
-    r, _ = build(make_research(), make_draft(what_they_do=Claim(text="Guess.", source_ids=[])))
-    assert r["what_they_do"] is None  # shown as "not found"
+    r, _ = build(make_research(), make_draft(overview=[Claim(text="Guess.", source_ids=[])]))
+    assert r["what_they_do"] is None and r["overview"] == []  # shown as "not found"
 
 
 def test_fake_source_ids_are_stripped_but_real_ones_kept():
@@ -514,3 +515,29 @@ def test_recent_round_is_kept():
 ])
 def test_is_old_round_matches_the_amount(text, old):
     assert report._is_old_round(text, {"last_round": PADDLE_LAST_ROUND}, today=date(2026, 11, 18)) is old
+
+
+# --- Longer overview ----------------------------------------------------------------
+def test_overview_is_capped_and_every_sentence_needs_a_source():
+    many = [Claim(text=f"Fact {i}.", source_ids=["S1"]) for i in range(6)]
+    r, _ = build(make_research(), make_draft(
+        overview=[Claim(text="Unsourced.", source_ids=[])] + many,
+        overview_more=[Claim(text=f"More {i}.", source_ids=["S2"]) for i in range(9)]))
+    assert [c["text"] for c in r["overview"]] == ["Fact 0.", "Fact 1.", "Fact 2.", "Fact 3."]   # 4 at most
+    assert len(r["overview_more"]) == 7
+    assert r["what_they_do"]["text"] == "Fact 0."          # the one-line summary is the first sentence
+
+
+def test_fewer_sentences_when_sources_support_fewer():
+    r, _ = build(make_research(), make_draft(overview=[Claim(text="Only one fact.", source_ids=["S2"])],
+                                             overview_more=[]))
+    assert len(r["overview"]) == 1 and r["overview_more"] == []
+
+
+def test_about_link_only_from_a_fetched_source():
+    research = make_research()
+    research["sources"].add("website", "About Acme", "https://acme.com/about", "...")
+    r, _ = build(research, make_draft())
+    assert r["about_link"] == {"url": "https://acme.com/about", "label": "About page"}
+    plain, _ = build(make_research(), make_draft())
+    assert plain["about_link"] == {"url": "https://acme.com", "label": "Visit website"}   # the website source

@@ -268,6 +268,18 @@ a.wn-preview-link:hover .wn-pv-view { color: var(--emerald-bright); }
 .wn-name { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; color: var(--head); }
 .wn-legal { color: var(--muted); font-size: 0.85rem; margin-top: 0.2rem; }
 .wn-what { margin-top: 0.9rem; line-height: 1.6; }
+/* "Read more" in the overview: a plain HTML details element, so no scripts are needed */
+.wn-more { margin-top: 0.6rem; }
+.wn-more summary { cursor: pointer; color: var(--blue-bright); font-weight: 600; font-size: 0.85rem; list-style: none;
+  display: inline-flex; align-items: center; gap: 0.3rem; }
+.wn-more summary::-webkit-details-marker { display: none; }
+.wn-more summary::after { content: "expand_more"; font-family: 'Material Symbols Rounded'; font-size: 18px;
+  font-weight: normal; transition: transform .15s; }
+.wn-more[open] summary::after { transform: rotate(180deg); }
+.wn-more summary:hover { color: var(--head); }
+.wn-more .wn-what { margin-top: 0.6rem; color: var(--body); }
+.wn-about { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.7rem; font-size: 0.85rem; font-weight: 600; }
+.wn-about .icon { font-size: 16px; color: var(--blue-bright); }
 .wn-alert { margin-top: 0.9rem; color: var(--red-bright); font-weight: 600; }
 .wn-facts { display: grid; gap: 0.7rem; }
 .wn-fact-label { color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }

@@ -282,9 +282,7 @@ def banner(r, by_id):
         chips += f'<span class="wn-chip">{esc(p["business_model"]["value"])}</span>'
     if ((p.get("saas") or {}).get("value") or "").lower() == "yes":
         chips += '<span class="wn-chip">SaaS</span>'
-    what = r.get("what_they_do")
-    what_html = (f'<div class="wn-what">{esc(what["text"])}{cite(what["sources"], by_id)}</div>' if what
-                 else '<div class="wn-what wn-empty">What they do: not found</div>')
+    what_html = overview_html(r, by_id)
     alert = ""
     if r["not_worth_contacting"]:
         alert = f'<div class="wn-alert">Not worth contacting. {esc(r["fit_reasons"][0]["text"])}</div>'
@@ -292,6 +290,26 @@ def banner(r, by_id):
             f'<div class="wn-name">{esc(name)}</div>'
             f'<div class="wn-legal">{esc(c["name"])} · {link(c["source"], c["number"])}</div>'
             f'<div>{chips}</div></div></div>{what_html}{alert}</div>')
+
+
+def sentences(claims, by_id):
+    """Sentences in a row, each followed by its own source tags."""
+    return " ".join(f"{esc(c['text'])}{cite(c['sources'], by_id)}" for c in claims)
+
+
+def overview_html(r, by_id):
+    """3–4 sourced sentences, a 'Read more' toggle (plain HTML, no scripts) with 5–7, and an About/website link."""
+    overview = r.get("overview") or ([r["what_they_do"]] if r.get("what_they_do") else [])
+    if not overview:
+        return '<div class="wn-what wn-empty">What they do: not found</div>'
+    html_out = f'<div class="wn-what">{sentences(overview, by_id)}</div>'
+    more, about = r.get("overview_more") or [], r.get("about_link")
+    if more or about:
+        about_html = (f'<div class="wn-about">{icon("open_in_new")}{link(about["url"], about["label"])}</div>'
+                      if about else "")
+        more_html = f'<div class="wn-what">{sentences(more, by_id)}</div>' if more else ""
+        html_out += (f'<details class="wn-more"><summary>Read more</summary>{more_html}{about_html}</details>')
+    return html_out
 
 
 def profile_card(r, by_id):

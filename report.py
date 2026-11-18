@@ -338,7 +338,10 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
             return None
         return {"text": claim.text, "sources": good}
 
-    what_they_do = check_claim(draft.what_they_do)
+    # Overview: every sentence needs a real source; 3–4 sentences, and 5–7 for "Read more"
+    overview = [c for c in (check_claim(x) for x in draft.overview) if c][:settings.OVERVIEW_SENTENCES]
+    overview_more = [c for c in (check_claim(x) for x in draft.overview_more) if c][:settings.OVERVIEW_MORE_SENTENCES]
+    what_they_do = overview[0] if overview else None   # the one-line summary, used by the email and older code
     snapshot = [c for c in (check_claim(x) for x in draft.snapshot) if c]
     fit_reasons = [c for c in (check_claim(x) for x in draft.fit_reasons) if c]
 
@@ -367,7 +370,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
 
     profile_facts = company_profile(research)
     used = set(n["source"] for n in news)
-    for group in ([what_they_do] if what_they_do else []) + snapshot + fit_reasons + signals:
+    for group in overview + overview_more + snapshot + fit_reasons + signals:
         used.update(group["sources"])
     used.update(f["source"] for f in profile_facts.values() if isinstance(f, dict) and f.get("source"))
 
@@ -385,6 +388,9 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
         "offer": offer,
         "profile": profile_facts,
         "what_they_do": what_they_do,
+        "overview": overview,
+        "overview_more": overview_more,
+        "about_link": _about_link(sources, research),
         "snapshot": snapshot,
         "news": news,
         "signals": signals,
@@ -428,7 +434,7 @@ def renumber_sources(r):
 
     out = dict(r)
     out["what_they_do"] = claim(r.get("what_they_do"))
-    for key in ("snapshot", "fit_reasons", "signals"):
+    for key in ("overview", "overview_more", "snapshot", "fit_reasons", "signals"):
         out[key] = [claim(c) for c in r.get(key, [])]
     out["news"] = [dict(n, source=new_id.get(n["source"], n["source"])) for n in r.get("news", [])]
     out["profile"] = {k: (dict(f, source=new_id.get(f["source"], f["source"])) if isinstance(f, dict) and f.get("source") else f)
@@ -440,6 +446,21 @@ def renumber_sources(r):
     if r.get("saved_email"):
         out["saved_email"] = email(r["saved_email"])
     return out
+
+
+def _about_link(sources, research):
+    """The company's About page if a fetched source is one on its own website; otherwise its website. Never guessed."""
+    website = research.get("website") or (research.get("card") or {}).get("website")
+    domain = tavily.domain_of(website) if website else None
+    if domain:
+        for s in sources.items:
+            if tavily.domain_of(s["url"]) == domain and re.search(r"/about(-us)?/?($|[?#])", s["url"], re.IGNORECASE):
+                return {"url": s["url"], "label": "About page"}
+    if research.get("website"):
+        return {"url": research["website"], "label": "Visit website"}
+    if website:
+        return {"url": website if website.startswith("http") else f"https://{website}", "label": "Visit website"}
+    return None
 
 
 def _model_used(ai):
@@ -652,8 +673,8 @@ def email_facts(r, persona=None):
         return f"- {text} " + " ".join(f"[{i}]" for i in ids)
 
     lines = ["WHAT THEY DO"]
-    if r["what_they_do"]:
-        lines.append(cited(r["what_they_do"]["text"], r["what_they_do"]["sources"]))
+    for c in r.get("overview") or ([r["what_they_do"]] if r.get("what_they_do") else []):
+        lines.append(cited(c["text"], c["sources"]))
     lines.append("\nWHY NOW SIGNALS")
     lines += [cited(s["text"], s["sources"]) for s in r["signals"]] or ["- none found"]
     lines.append("\nRECENT NEWS")
@@ -710,7 +731,7 @@ def _closed_company_report(research):
                     "status": p["status"], "source": p["source"]},
         "not_worth_contacting": True,
         "profile": company_profile(research),
-        "what_they_do": None,
+        "what_they_do": None, "overview": [], "overview_more": [], "about_link": None,
         "snapshot": [{"text": f"Founded {p['founded']}." if p["founded"] else "Founded date not found.",
                       "sources": [source_id]}],
         "news": [], "signals": [],

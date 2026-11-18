@@ -143,9 +143,16 @@ def report_to_pdf(r, email=None, today=None):
     c = r["company"]
     text(company_name(r), size=17, bold=True, height=8)
     text(f"{c['name']} · Companies House {c['number']} · {c['status'] or 'status not found'}", size=9, colour=GREY)
-    if r.get("what_they_do"):
+    # Overview: the full "Read more" version if there is one, else the short one
+    overview = r.get("overview_more") or r.get("overview") or ([r["what_they_do"]] if r.get("what_they_do") else [])
+    if overview:
         pdf.ln(1.5)
-        text(r["what_they_do"]["text"] + cite(r["what_they_do"]["sources"]))
+        text(" ".join(c["text"] + cite(c["sources"]) for c in overview))
+    if r.get("about_link"):
+        pdf.set_font("Inter", "", 8.5)
+        pdf.set_text_color(*BLUE)
+        pdf.cell(0, 5, f"{r['about_link']['label']}: {r['about_link']['url']}", link=r["about_link"]["url"],
+                 new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     if r.get("not_worth_contacting"):
         pdf.ln(1.5)
         text("Not worth contacting: " + r["fit_reasons"][0]["text"], bold=True, colour=FIT_COLOURS["weak"])

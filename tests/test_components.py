@@ -192,3 +192,25 @@ def test_signal_shows_age_of_its_newest_dated_source():
     today = _date(2026, 11, 18)
     assert "Funding · 3 weeks ago" in ui.signal_tile(funding, by_id, today)
     assert ">Hiring for sales<" in ui.signal_tile(hiring, by_id, today)   # undated: no age shown
+
+
+def test_overview_with_read_more_and_about_link():
+    by_id = {"S1": {"id": "S1", "title": "a", "url": "https://a", "date": None}}
+    r = {"overview": [{"text": "Acme makes billing software.", "sources": ["S1"]}],
+         "overview_more": [{"text": "It sells to SaaS firms.", "sources": ["S1"]}],
+         "about_link": {"url": "https://acme.com/about", "label": "About page"}}
+    out = ui.overview_html(r, by_id)
+    assert "Acme makes billing software." in out and '<details class="wn-more"><summary>Read more</summary>' in out
+    assert "It sells to SaaS firms." in out and ">About page</a>" in out
+    assert "<script" not in out
+
+
+def test_overview_falls_back_to_one_line_summary():
+    r = {"what_they_do": {"text": "Old one-liner.", "sources": []}}
+    assert "Old one-liner." in ui.overview_html(r, {}) and "Read more" not in ui.overview_html(r, {})
+    assert "not found" in ui.overview_html({}, {})
+
+
+def test_stylesheet_has_no_angle_brackets():
+    """Real problem: a comment mentioning <details> made Streamlit's safety filter drop the whole stylesheet."""
+    assert "<" not in ui.CSS_FILE.read_text()
