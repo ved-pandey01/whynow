@@ -480,3 +480,37 @@ def test_call_opener_is_kept_to_two_lines_and_british():
     email, _ = email_for(make_draft(), make_email(call_opener="Line one.\nWe help you optimize.\nLine three.\nLine four."))
     assert email["call_opener"] == "Line one.\nWe help you optimise."
     assert any("Call opener cut from 4 to 2 lines" in c for c in email["checks"])
+
+
+# --- Funding signals use the real round date ------------------------------------
+PADDLE_LAST_ROUND = {"type": "Debt Financing", "date": "2025-08-17", "amount": "25.00M USD"}
+
+
+def test_old_round_reported_on_a_new_page_is_not_a_funding_signal():
+    """Real problem (Paddle): a Nov 2026 page reported the $25m round the profile dates 17 Aug 2025."""
+    research = make_research()
+    research["card"]["last_round"] = PADDLE_LAST_ROUND
+    research["sources"].add("signal", "[funding] Paddle raises $25m", "https://f", "...", "2026-11-06")   # S5
+    r, _ = build(research, make_draft(signals=[
+        Signal(signal_type="funding", text="Paddle raised $25 million from CIBC Innovation Banking.", source_ids=["S5"]),
+        Signal(signal_type="hiring_sales", text="Hiring an SDR.", source_ids=["S4"])]))
+    assert [s["type"] for s in r["signals"]] == ["hiring_sales"]
+    assert any("dates that round 2025-08-17" in c for c in r["checks"])
+
+
+def test_recent_round_is_kept():
+    research = make_research()
+    research["card"]["last_round"] = {"type": "Series B", "date": "2026-10-01", "amount": "40.00M USD"}
+    research["sources"].add("signal", "[funding] Acme raises $40m", "https://f", "...", "2026-10-02")   # S5
+    r, _ = build(research, make_draft(signals=[
+        Signal(signal_type="funding", text="Acme raised $40m in a Series B.", source_ids=["S5"])]))
+    assert [s["type"] for s in r["signals"]] == ["funding"]
+
+
+@pytest.mark.parametrize("text, old", [
+    ("Raised $25 million in funding.", True),     # same amount as the old last round
+    ("Raised £250m.", False),                     # a different amount: not that round
+    ("Raised $2.5m.", False),
+])
+def test_is_old_round_matches_the_amount(text, old):
+    assert report._is_old_round(text, {"last_round": PADDLE_LAST_ROUND}, today=date(2026, 11, 18)) is old

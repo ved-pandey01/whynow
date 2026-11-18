@@ -87,6 +87,7 @@ Results are cached: looking up the same company again within 6 hours costs no AP
     - news picks must be real stories from the last 6 months
     - any recent story used as a "Why reach out now" signal also appears under "Recent news", so the two never disagree
     - **only events from the last 6 months count:** older dated search results are left out before the AI sees them, so they never become a reason to reach out or affect the score (set by `EVENT_WINDOW_MONTHS` in settings.py)
+    - **funding uses the real round date:** a news page dated this month can report an older round. If the company profile dates the last round more than 6 months ago and the signal mentions the same amount, code removes it (real case: Paddle's $25m was debt financing on 17 Aug 2025)
     - each fit reason appears once: when code adds the company-size reason, the AI's own size reason is removed
     - sources are numbered S1, S2, S3… in order with no gaps, and every tag matches
     - the email (written only when asked) may only use facts already in the report, must be under 120 words and must open with a cited trigger

@@ -46,6 +46,8 @@ STRICT RULES
 ONLY RECENT EVENTS COUNT
 A reason to reach out (signal) and any event used in the fit score must have happened in the last
 {settings.EVENT_WINDOW_MONTHS} months (after {six_months_ago}). Ignore older events completely, even if a source mentions them.
+Use the date the event happened, not the date of the page. For funding, the company profile's
+"Last funding round" date wins: a news page dated this month about an older round is NOT a recent round.
 
 NEWS
 Pick up to {settings.NEWS_ITEMS} items that are really about this company, from the NEWS CANDIDATES

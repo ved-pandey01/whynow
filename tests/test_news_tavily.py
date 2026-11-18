@@ -277,3 +277,31 @@ def test_tavily_failures_give_friendly_errors(monkeypatch, error, message):
     use_fake(monkeypatch, error=error)
     with pytest.raises(nt.NewsError, match=message):
         nt.get_recent_news("Cognism")
+
+
+# A shortened copy of Paddle's real company page sections (Nov 2026)
+PADDLE_EXTRA = """Investors: Notion Capital, FTV Capital, Kohlberg Kravis Roberts & Co., CIBC Innovation Banking
+Last round: Debt Financing 2025-08-17 25.00M USD
+Products: Merchant of Record Platform, Billing Software, Checkout Software
+Open roles: 25
+Similar companies
+chargebee
+stripe
+weavr
+fastspring
+2checkout
+"""
+
+
+def test_card_reads_last_round_open_roles_and_similar_companies():
+    card = nt.parse_company_card(SAMPLE_CARD + PADDLE_EXTRA)
+    assert card["last_round"] == {"type": "Debt Financing", "date": "2025-08-17", "amount": "25.00M USD"}
+    assert card["open_roles"] == 25
+    assert card["similar_companies"] == ["chargebee", "stripe", "weavr", "fastspring", "2checkout"]
+    assert card["products"][0] == "Merchant of Record Platform"
+    assert "CIBC Innovation Banking" in card["investors"]
+
+
+def test_card_without_extra_sections_gives_none():
+    card = nt.parse_company_card(SAMPLE_CARD)
+    assert card["last_round"] is None and card["open_roles"] is None and card["similar_companies"] is None

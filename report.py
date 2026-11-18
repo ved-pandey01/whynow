@@ -120,6 +120,22 @@ def too_old(iso_date, today=None):
     return str(iso_date)[:10] < cutoff.isoformat()
 
 
+def _is_old_round(signal_text, card, today=None):
+    """
+    True if a funding signal is really the company's last round, and that round is old.
+    Real problem (Paddle): a news page dated Nov 2026 reported a $25m round that the company profile
+    dates 17 Aug 2025 (debt financing). The page date looked recent; the round wasn't.
+    """
+    last = (card or {}).get("last_round")
+    if not last or not too_old(last["date"], today):
+        return False
+    m = re.match(r"([\d.]+)", last["amount"])
+    if not m:
+        return False
+    amount = f"{float(m.group(1)):g}"                       # '25.00M USD' → '25'
+    return bool(re.search(rf"(?<![\d.]){re.escape(amount)}(?![\d])", signal_text))
+
+
 def research_company(company_number, typed, on_step=_no_progress):
     """
     Fetch everything we know about one company. Never crashes on a Tavily problem.
@@ -237,6 +253,11 @@ def _add_card_source(sources, brand, card):
         ("Funding rounds", card["funding_rounds"]),
         ("Total raised", ", ".join(card["total_raised"] or []) or None),
         ("Annual revenue", card.get("annual_revenue")),
+        ("Last funding round", " ".join(card["last_round"].values()) if card.get("last_round") else None),
+        ("Products", ", ".join(card.get("products") or []) or None),
+        ("Investors", ", ".join(card.get("investors") or []) or None),
+        ("Open roles listed", card.get("open_roles")),
+        ("Similar companies", ", ".join(card.get("similar_companies") or []) or None),
         ("LinkedIn followers", card.get("linkedin_followers")),
         ("Description", card["description"]),
         ("Confirmed as the same company because", card.get("match_reason")),
@@ -326,6 +347,10 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
     for s in draft.signals:
         good = [i for i in s.source_ids if i in valid]
         dates = [sources.get(i)["date"] for i in good if sources.get(i).get("date")]
+        if s.signal_type == "funding" and _is_old_round(s.text, research["card"], today):
+            checks.append(f"Removed a funding signal: the company profile dates that round "
+                          f"{research['card']['last_round']['date']}, older than {settings.EVENT_WINDOW_MONTHS} months")
+            continue
         if s.signal_type in ALLOWED_SIGNAL_TYPES and good and not (dates and too_old(max(dates), today)):
             signals.append({"type": s.signal_type, "text": s.text, "sources": good})
         elif dates and too_old(max(dates), today):

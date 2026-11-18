@@ -155,6 +155,10 @@ def parse_company_card(text):
         headcount_change = yearly.group(1) if yearly else None
 
     followers = re.search(r"^LinkedIn:.*?([\d,]+) followers", text, re.MULTILINE)
+    last = re.search(r"^Last round:\s*(.+?)\s+(\d{4}-\d{2}-\d{2})\s+(.+)$", text, re.MULTILINE)
+    open_roles = field("Open roles")
+    products = field("Products")
+    investors = field("Investors")
     rounds = field("Rounds")
     areas = field("Business areas")
     return {
@@ -173,7 +177,27 @@ def parse_company_card(text):
         "description": (field("Description") or "")[:500] or None,
         "linkedin_followers": int(followers.group(1).replace(",", "")) if followers else None,
         "annual_revenue": field("Annual revenue"),
+        # e.g. {"type": "Debt Financing", "date": "2025-08-17", "amount": "25.00M USD"}
+        "last_round": {"type": last.group(1), "date": last.group(2), "amount": last.group(3).strip()} if last else None,
+        "open_roles": int(open_roles) if open_roles and open_roles.isdigit() else None,
+        "products": [x.strip() for x in products.split(",")][:12] if products else None,
+        "investors": [x.strip() for x in investors.split(",")][:12] if investors else None,
+        "similar_companies": _list_after("Similar companies", text),
     }
+
+
+def _list_after(heading, text):
+    """The one-name-per-line list under a heading (e.g. 'Similar companies'), up to the next blank line or field."""
+    lines = text.splitlines()
+    if heading not in lines:
+        return None
+    names = []
+    for line in lines[lines.index(heading) + 1:]:
+        line = line.strip()
+        if not line or ":" in line or line.startswith("#"):
+            break
+        names.append(line)
+    return names or None
 
 
 def card_match_reason(card, legal_name=None, website=None, registered_address=None, card_name=None):
