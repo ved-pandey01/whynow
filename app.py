@@ -151,9 +151,9 @@ def try_chips():
     clicked = None
     with st.container(key="wn_try", horizontal=True, vertical_alignment="center", gap="small"):
         st.html('<span class="wn-try-label">Try:</span>')
-        for name, website in settings.TRY_COMPANIES:
+        for name, website, number in settings.TRY_COMPANIES:
             if st.button(name, key=f"wn_try_{website}", type="tertiary"):
-                clicked = website
+                clicked = (name, website, number)
         if st.button("Research a list", key="wn_batch_open", type="tertiary", icon=":material/format_list_bulleted:"):
             for key in ("report", "email", "emails", "sample", "matches"):
                 st.session_state.pop(key, None)
@@ -162,21 +162,14 @@ def try_chips():
     return clicked
 
 
-def run_try(website):
-    """Research a 'Try' company straight away: search by its website and take the top close match."""
+def run_try(chip):
+    """Research a 'Try' company straight away, using its fixed Companies House number (no search, no guessing)."""
+    name, website, number = chip
     for key in ("report", "email", "emails", "sample", "matches"):
         st.session_state.pop(key, None)
     st.session_state["offer"] = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
-    st.session_state["typed"] = website
-    try:
-        matches = find_companies(website)
-    except Exception as e:
-        friendly_error(e)
-        return
-    if not matches or not matches[0]["close_match"]:
-        st.info(f'No close match found for "{safe(website)}" on Companies House.')
-        return
-    run_report(matches[0])
+    st.session_state["typed"] = website   # the website still guides the news and signal searches
+    run_report({"company_number": number, "name": name})
 
 
 def open_sample_from_link():

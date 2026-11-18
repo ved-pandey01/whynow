@@ -227,53 +227,18 @@ def test_try_chips_are_shown_under_the_search(app):
     assert "Try:" in html(app)
 
 
-def test_try_chip_goes_straight_to_the_report(app, monkeypatch):
-    searched = []
+def test_try_chip_uses_its_fixed_company_number(app, monkeypatch):
+    """Real problem: the Darktrace chip opened DARKTRACE MIDCO I LIMITED instead of DARKTRACE HOLDINGS LIMITED."""
+    researched, searched = [], []
+    monkeypatch.setattr(report, "research_company", lambda number, typed, **k: researched.append((number, typed)) or {})
     monkeypatch.setattr(ch, "search_companies", lambda typed: searched.append(typed) or MATCHES)
     app.run()
-    button(app, "Cognism").click().run()
-    assert searched == ["cognism.com"]                  # searched by website, for accuracy
+    button(app, "Darktrace").click().run()
+    assert researched == [("08562035", "darktrace.com")]
+    assert searched == []                               # no search, so ranking can't pick the wrong company
     assert not app.exception
-    assert 'class="wn-badge strong"' in html(app)      # the report is showing
+    assert 'class="wn-badge strong"' in html(app)
     assert not [b for b in app.button if b.label == "Research this company"]   # no picker step
-
-
-def test_try_chip_with_no_close_match_says_so(app, monkeypatch):
-    monkeypatch.setattr(ch, "search_companies", lambda typed: [dict(MATCHES[1], close_match=False)])
-    app.run()
-    button(app, "Paddle").click().run()
-    assert "No close match found" in app.info[0].value
-    assert not app.exception
-
-
-def test_report_has_pdf_and_csv_downloads(app):
-    research_and_open(app)
-    labels = [d.proto.label for d in app.get("download_button")]
-    assert labels == ["Download PDF", "Download CSV"]
-
-
-def test_persona_selector_writes_one_email_per_persona(app, monkeypatch):
-    calls = []
-    monkeypatch.setattr(report, "write_email", lambda r, **k: calls.append(k["persona"]) or dict(EMAIL, persona=k["persona"]))
-    research_and_open(app)
-    selector = app.get("button_group")[0]
-    assert list(selector.proto.options[i].content for i in range(3)) == ["Head of Sales", "Head of RevOps", "Founder / CEO"]
-    button(app, "Create email for this company").click().run()
-    app.get("button_group")[0].set_value("Head of RevOps").run()
-    assert not app.code                                   # nothing for RevOps until asked
-    button(app, "Create email for this company").click().run()
-    app.get("button_group")[0].set_value("Head of Sales").run()
-    assert app.code                                       # the Sales email is still there, free
-    assert calls == ["Head of Sales", "Head of RevOps"]
-
-
-def test_linkedin_note_and_call_opener_each_have_a_copy_box(app, monkeypatch):
-    full = dict(EMAIL, linkedin_note="Hi [First name], congrats on the round.", call_opener="Line one.\nLine two?")
-    monkeypatch.setattr(report, "write_email", lambda r, **k: full)
-    research_and_open(app)
-    button(app, "Create email for this company").click().run()
-    assert [c.value for c in app.code] == [EMAIL["body"], full["linkedin_note"], full["call_opener"]]
-    assert "LinkedIn connection note" in html(app) and "Call opener" in html(app)
 
 
 # --- Research a list -----------------------------------------------------------

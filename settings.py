@@ -143,10 +143,10 @@ EMAIL_PERSONAS = {                 # who the email is for, and what that person 
 DEFAULT_PERSONA = "Head of Sales"
 BATCH_MAX_COMPANIES = 10           # "Research a list": the most companies in one upload
 TAVILY_CREDITS_PER_REPORT = 10     # roughly, for the credit warning
-TRY_COMPANIES = [                  # the "Try:" chips under the search bar: (name shown, website searched)
-    ("Cognism", "cognism.com"),
-    ("Darktrace", "darktrace.com"),
-    ("Paddle", "paddle.com"),
+TRY_COMPANIES = [                  # the "Try:" chips: (name shown, website, fixed Companies House number)
+    ("Cognism", "cognism.com", "09392705"),       # COGNISM LIMITED
+    ("Darktrace", "darktrace.com", "08562035"),   # DARKTRACE HOLDINGS LIMITED (not the Midco deal vehicle)
+    ("Paddle", "paddle.com", "08172165"),         # PADDLE.COM MARKET LIMITED
 ]
 AUTHOR_NAME = "Ved Prakash Pandey"
 AUTHOR_SHORT_NAME = "Ved"          # used in the header pill on phones

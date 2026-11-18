@@ -187,6 +187,8 @@ def search_companies(name):
                 "company_type": item.get("company_type"),
                 "exact_match": is_exact_match(name, item.get("title")),
                 "close_match": is_exact_match(name, item.get("title")) or is_close_match(name, item.get("title")),
+                # A finance/holding vehicle (Midco, Bidco…) goes after the main company, unless that's what was typed
+                "vehicle": is_vehicle(item.get("title")) and not is_vehicle(name),
                 "source": company_page_url(number),
             })
 
@@ -220,7 +222,16 @@ def _best_first(m, domain):
     then the typed website's company, close matches, biggest, exact name. Ties keep the order from before.
     """
     return (m["status"] != "active", _website_first(m, domain), not m["close_match"],
-            m["size_rank"], not m["exact_match"])
+            m.get("vehicle", False), m["size_rank"], not m["exact_match"])
+
+
+# Words used for finance or holding vehicles created for deals, e.g. DARKTRACE MIDCO I LIMITED
+VEHICLE_WORDS = {"midco", "bidco", "topco", "holdco", "finco", "debtco", "propco"}
+
+
+def is_vehicle(name):
+    """True for names like 'DARKTRACE MIDCO I LIMITED': a deal vehicle, not the main trading company."""
+    return bool(VEHICLE_WORDS & set(_words(name)))
 
 
 # Size from the type of accounts a company files with Companies House (official, free).

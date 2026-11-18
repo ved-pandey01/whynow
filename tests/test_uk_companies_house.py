@@ -305,3 +305,32 @@ def test_owners_are_current_only_in_plain_english(monkeypatch):
 ])
 def test_control_in_words(nature, words):
     assert ch.control_in_words(nature) == words
+
+
+
+def test_deal_vehicles_rank_after_the_main_company(monkeypatch):
+    """Real problem: DARKTRACE MIDCO I LIMITED (group accounts) ranked above DARKTRACE HOLDINGS LIMITED."""
+    fake_api(monkeypatch,
+             search_items=[{"title": "DARKTRACE MIDCO I LIMITED", "company_number": "15662253", "company_status": "active"},
+                           {"title": "DARKTRACE HOLDINGS LIMITED", "company_number": "08562035", "company_status": "active"},
+                           {"title": "DARKTRACE BIDCO LIMITED", "company_number": "5", "company_status": "active"}],
+             accounts={"15662253": ("group", "ltd"), "08562035": ("full", "ltd"), "5": ("group", "ltd")})
+    assert [m["company_number"] for m in ch.search_companies("darktrace.com")][:1] == ["08562035"]
+    names = [m["name"] for m in ch.search_companies("Darktrace")]
+    assert names.index("DARKTRACE HOLDINGS LIMITED") < names.index("DARKTRACE MIDCO I LIMITED")
+
+
+def test_typed_vehicle_name_is_not_pushed_down(monkeypatch):
+    fake_api(monkeypatch,
+             search_items=[{"title": "DARKTRACE HOLDINGS LIMITED", "company_number": "08562035", "company_status": "active"},
+                           {"title": "DARKTRACE MIDCO I LIMITED", "company_number": "15662253", "company_status": "active"}],
+             accounts={"15662253": ("group", "ltd"), "08562035": ("full", "ltd")})
+    assert ch.search_companies("Darktrace Midco I")[0]["company_number"] == "15662253"
+
+
+@pytest.mark.parametrize("name, vehicle", [
+    ("DARKTRACE MIDCO I LIMITED", True), ("ACME BIDCO LTD", True), ("ACME TOPCO LIMITED", True),
+    ("ACME HOLDCO LTD", True), ("DARKTRACE HOLDINGS LIMITED", False), ("MIDCOAST LTD", False),
+])
+def test_is_vehicle(name, vehicle):
+    assert ch.is_vehicle(name) is vehicle
