@@ -97,11 +97,11 @@
   ],
   "news": [
     {
-      "source": "S9",
+      "source": "S8",
       "why_it_matters": "Paddle secured $25 million in funding to support international growth and product development."
     },
     {
-      "source": "S8",
+      "source": "S7",
       "why_it_matters": "The launch of the AI Toolkit indicates active product expansion and focus on AI-native customers."
     }
   ],
@@ -110,23 +110,23 @@
       "type": "funding",
       "text": "Paddle raised $25 million in funding from CIBC Innovation Banking to support international growth.",
       "sources": [
-        "S9"
+        "S8"
       ]
     },
     {
       "type": "expansion",
       "text": "Paddle launched the AI Toolkit on 20 October 2026 for AI-native and SaaS companies.",
       "sources": [
-        "S8"
+        "S7"
       ]
     },
     {
       "type": "hiring_sales",
       "text": "The company is actively hiring for Business Development Representative and Senior Account Executive roles.",
       "sources": [
+        "S4",
         "S5",
-        "S6",
-        "S7"
+        "S6"
       ]
     }
   ],
@@ -141,9 +141,9 @@
     {
       "text": "The company is actively hiring sales staff and recently secured a significant funding round.",
       "sources": [
-        "S5",
-        "S7",
-        "S9"
+        "S4",
+        "S6",
+        "S8"
       ]
     }
   ],
@@ -176,7 +176,7 @@
       "content": "Launch Explore the Paddle AI Toolkit and go from prompt to global selling. Learn more Paddle logo Get startedBook a demo Sell globally.Grow without the complexity. As the Merchant of Record for digital product businesses, Paddle manages payments, tax, compliance, and billing across 300+ markets. Book a demoGet started HubXMacPawRunna GeoGuessr Merchant of Record platform Billing The only complete billing solution for digital products. Payments, subscriptions, localized checkout, sales tax and regulatory compliance - all fully managed for you, globally. Discover Billing SaaS billing dashboard) ProfitWell Metrics See exactly what's driving your revenue. Real time metrics across subscriptions, retention, and growth, built for digital product businesses. Discover ProfitWell Metrics Metrics SaaS analytics dashboard) Retain Don't lose revenue you've already earned. Retain automatically recovers failed payments, reduces cancellations, and optimizes subscriptions to protect revenue at every stage of the customer lifecycle. Discover Retain Retain automatic customer retention software) Built for growth. Proven at scale. See all customer stories Renderforest How Renderforest unlocked 3X ARR growth with Paddle ARR growth : 3x : ARR growth reduction in refunds : 60% : reduction in refundsKaleido How Kaleido used Paddle to launch and scale their business globally MoM customer growth : 20% : MoM customer growthMacPaw 200% in 12 months: How MacPaw switched to SaaS and tripled its revenue increase in revenue : 200% : increase in revenue 190 million transactions processed $130 million in sales taxes remitted last year 10,000+ customers using Paddle FortinetMacPawLaravel SparkAdaptavistGeoGuessrn8nTailwind LabsKaleidoBeyond CodeDayliteGetBlockRunnaHubX Our model Not just another payments platform Paddle combines intelligent automation with deep expertise across payments, tax, compliance, fraud, and billing to continuously optimize revenue performance, reduce operational cost, and help"
     },
     {
-      "id": "S5",
+      "id": "S4",
       "kind": "signal",
       "title": "[hiring_sales] Business Development Representative at Paddle | Dev Global Jobs",
       "url": "https://devglobaljobs.com/jobs/detail/166960829",
@@ -184,7 +184,7 @@
       "content": "As a BDR in our Business Development team, you will be the first point of contact for all of Paddle’s sales efforts. You’ll create demand, spark meaningful conversations, and build early relationships that turn into qualified pipeline to arm your counterparts on the Account Executive team. Your core tasks will involve researching, prospecting, prioritizing accounts, educating prospects, and conver"
     },
     {
-      "id": "S6",
+      "id": "S5",
       "kind": "signal",
       "title": "[hiring_sales] Business Development Representative at Paddle",
       "url": "https://startup.jobs/business-development-representative-paddle-2-7494161",
@@ -192,7 +192,7 @@
       "content": "As a BDR in our Business Development team, you will be the first point of contact for all of Paddle’s sales efforts. You’ll create demand, spark meaningful conversations, and build early relationships that turn into qualified pipeline to arm your counterparts on the Account Executive team. Your core tasks will involve researching, prospecting, prioritizing accounts, educating prospects, and conver"
     },
     {
-      "id": "S7",
+      "id": "S6",
       "kind": "signal",
       "title": "[hiring_sales] Senior Account Executive at Paddle.com Market Limited",
       "url": "https://www.visasponsorshiphub.com/jobs/92091",
@@ -200,7 +200,7 @@
       "content": "CA. What you'll do: Build pipeline from leads armed by your Business Development Representative and Marketing counterparts, as well as your own self-sourced opportunities’ You will be responsible for creating a portion of your own self generated pipeline opportunities Be responsible for the full sales cycle from prospecting, qualifying, carrying out demo’s through to closing deals Master Paddle’s "
     },
     {
-      "id": "S8",
+      "id": "S7",
       "kind": "signal",
       "title": "[expansion] Paddle launches AI Toolkit, bringing global selling into ...",
       "url": "https://www.paddle.com/blog/paddle-launches-ai-toolkit-bringing-global-selling-into-ai-workflows",
@@ -208,7 +208,7 @@
       "content": "LONDON, October 20, 2026 – Paddle, the Merchant of Record platform for AI-native, app and SaaS companies, today announced the Paddle AI Toolkit, allowing developers to set up, test, and manage key parts of their billing directly from AI tools including Claude Code, Codex, Cursor, and Gemini CLI. As Merchant of Record, Paddle remains the legal reseller for every sale, responsible for payments, tax,"
     },
     {
-      "id": "S9",
+      "id": "S8",
       "kind": "signal",
       "title": "[expansion] Paddle Stock Price, Valuation & News",
       "url": "https://stockanalysis.com/private/paddle",
@@ -243,14 +243,6 @@
     },
     {
       "id": "S4",
-      "kind": "news",
-      "title": "Paddle: The Fintech Unicorn Scaling the Global SaaS Economy | FinTech Magazine",
-      "url": "https://fintechmagazine.com/articles/how-paddle-is-scaling-the-global-saas-economy",
-      "date": "2026-08-04",
-      "content": "Paddle is a fast-emerging Merchant of Record (MoR) for digital product businesses, managing payments, tax, compliance and billing across more than 300 markets.\n\nThe global software-as-a-service (SaaS) and digital product ecosystem has transitioned from a period of hyper-growth funded by low interest rates into a mature phase defined by unit economics, retention and operational efficiency. [...] Wh"
-    },
-    {
-      "id": "S5",
       "kind": "signal",
       "title": "[hiring_sales] Business Development Representative at Paddle | Dev Global Jobs",
       "url": "https://devglobaljobs.com/jobs/detail/166960829",
@@ -258,7 +250,7 @@
       "content": "As a BDR in our Business Development team, you will be the first point of contact for all of Paddle’s sales efforts. You’ll create demand, spark meaningful conversations, and build early relationships that turn into qualified pipeline to arm your counterparts on the Account Executive team. Your core tasks will involve researching, prospecting, prioritizing accounts, educating prospects, and conver"
     },
     {
-      "id": "S6",
+      "id": "S5",
       "kind": "signal",
       "title": "[hiring_sales] Business Development Representative at Paddle",
       "url": "https://startup.jobs/business-development-representative-paddle-2-7494161",
@@ -266,7 +258,7 @@
       "content": "As a BDR in our Business Development team, you will be the first point of contact for all of Paddle’s sales efforts. You’ll create demand, spark meaningful conversations, and build early relationships that turn into qualified pipeline to arm your counterparts on the Account Executive team. Your core tasks will involve researching, prospecting, prioritizing accounts, educating prospects, and conver"
     },
     {
-      "id": "S7",
+      "id": "S6",
       "kind": "signal",
       "title": "[hiring_sales] Senior Account Executive at Paddle.com Market Limited",
       "url": "https://www.visasponsorshiphub.com/jobs/92091",
@@ -274,7 +266,7 @@
       "content": "CA. What you'll do: Build pipeline from leads armed by your Business Development Representative and Marketing counterparts, as well as your own self-sourced opportunities’ You will be responsible for creating a portion of your own self generated pipeline opportunities Be responsible for the full sales cycle from prospecting, qualifying, carrying out demo’s through to closing deals Master Paddle’s "
     },
     {
-      "id": "S8",
+      "id": "S7",
       "kind": "signal",
       "title": "[expansion] Paddle launches AI Toolkit, bringing global selling into ...",
       "url": "https://www.paddle.com/blog/paddle-launches-ai-toolkit-bringing-global-selling-into-ai-workflows",
@@ -282,12 +274,20 @@
       "content": "LONDON, October 20, 2026 – Paddle, the Merchant of Record platform for AI-native, app and SaaS companies, today announced the Paddle AI Toolkit, allowing developers to set up, test, and manage key parts of their billing directly from AI tools including Claude Code, Codex, Cursor, and Gemini CLI. As Merchant of Record, Paddle remains the legal reseller for every sale, responsible for payments, tax,"
     },
     {
-      "id": "S9",
+      "id": "S8",
       "kind": "signal",
       "title": "[expansion] Paddle Stock Price, Valuation & News",
       "url": "https://stockanalysis.com/private/paddle",
       "date": "2026-11-06",
       "content": "Lovable launched Lovable Payments, a monetization layer built into its AI app builder with Paddle available as the merchant of record. Paddle says it is the first native merchant-of-record integration...\n\n### UK fintech Paddle raises $25m in funding from CIBC Innovation Banking\n\nFinTech Futures covered Paddle's $25 million CIBC Innovation Banking round to support international growth and product d"
+    },
+    {
+      "id": "S9",
+      "kind": "news",
+      "title": "Paddle: The Fintech Unicorn Scaling the Global SaaS Economy | FinTech Magazine",
+      "url": "https://fintechmagazine.com/articles/how-paddle-is-scaling-the-global-saas-economy",
+      "date": "2026-08-04",
+      "content": "Paddle is a fast-emerging Merchant of Record (MoR) for digital product businesses, managing payments, tax, compliance and billing across more than 300 markets.\n\nThe global software-as-a-service (SaaS) and digital product ecosystem has transitioned from a period of hyper-growth funded by low interest rates into a mature phase defined by unit economics, retention and operational efficiency. [...] Wh"
     }
   ],
   "checks": [],
@@ -311,7 +311,7 @@
     "body": "Hi [First name], I saw that Paddle launched the AI Toolkit on 20 October 2026. As you scale your sales team following that launch, our AI tool helps your reps research accounts and personalise outreach so you can book more meetings. Worth a quick chat? [Your name]",
     "word_count": 47,
     "trigger_sources": [
-      "S8"
+      "S7"
     ],
     "warnings": [],
     "checks": [],

@@ -63,6 +63,12 @@ def make_email(**changes):
     return EmailDraft(**fields)
 
 
+def news_urls(r):
+    """The web addresses of the news shown (source numbers change when the report is renumbered)."""
+    by_id = {x["id"]: x for x in r["all_sources"]}
+    return [by_id[n["source"]]["url"] for n in r["news"]]
+
+
 def build(research, *answers):
     ai = FakeAI(*answers)
     return report.build_report(research, ai=ai, today=date(2026, 11, 16)), ai
@@ -132,8 +138,63 @@ def test_recent_story_used_as_signal_also_appears_in_news():
     r, _ = build(research_with_signal_story("2026-10-20"), make_draft(
         news=[],
         signals=[Signal(signal_type="expansion", text="Expanding into Sweden.", source_ids=["S5"])]))
-    assert [n["source"] for n in r["news"]] == ["S5"]
+    assert news_urls(r) == ["https://news/sweden"]
     assert r["news"][0]["why_it_matters"] == "Expanding into Sweden."
+
+
+def test_sources_are_numbered_in_order_with_no_gaps():
+    """Real problem: the Sources list read S1, S3, S5… because unused sources kept their numbers."""
+    research = make_research()
+    research["sources"].add("news", "Unused story", "https://news/unused", "...", "2026-11-02")   # S5, never cited
+    research["sources"].add("signal", "[funding] Acme raises £5m", "https://f", "Acme raised £5m", "2026-11-03")  # S6
+    r, _ = build(research, make_draft(
+        snapshot=[], news=[], fit_reasons=[Claim(text="Good fit.", source_ids=["S1"])],
+        signals=[Signal(signal_type="funding", text="Raised £5m.", source_ids=["S6"])]))
+    shown = [x["id"] for x in r["sources"]]
+    assert shown == [f"S{n}" for n in range(1, len(shown) + 1)]           # S1, S2, S3… no gaps
+    by_id = {x["id"]: x for x in r["all_sources"]}
+    funding = r["signals"][0]
+    assert by_id[funding["sources"][0]]["url"] == "https://f"            # the tag follows its source
+    assert funding["sources"][0] in shown
+    assert "https://news/unused" not in [x["url"] for x in r["sources"]]
+
+
+def test_old_events_are_left_out_of_reasons_to_reach_out():
+    """Real problem (Darktrace): 'Expansion · 9 months ago' was shown as a reason to reach out."""
+    research = research_with_signal_story("2026-02-03")   # 9 months before the report date
+    r, _ = build(research, make_draft(
+        news=[], signals=[Signal(signal_type="expansion", text="Launched SECURE AI.", source_ids=["S5"])]))
+    assert r["signals"] == []
+    assert any("older than 6 months" in c for c in r["checks"])
+
+
+def test_old_search_results_never_reach_the_ai(monkeypatch):
+    monkeypatch.setattr(report.ch, "get_company_profile", lambda n: {
+        "name": "ACME LTD", "company_number": "1", "status": "active", "closed_on": None, "founded": "2015-01-01",
+        "address": "Leeds", "sic_codes": [], "sic_descriptions": [], "last_accounts_type": "full", "company_type": "ltd",
+        "source": "https://ch/acme", "not_worth_contacting": False})
+    monkeypatch.setattr(report.ch, "get_recent_directors", lambda n: [])
+    monkeypatch.setattr(report.tavily, "get_company_card", lambda *a, **k: None)
+    monkeypatch.setattr(report.tavily, "get_website_text", lambda w: None)
+    monkeypatch.setattr(report.tavily, "get_recent_news", lambda *a, **k: [])
+    monkeypatch.setattr(report.tavily, "get_signals", lambda *a, **k: {"expansion": [
+        {"title": "Old launch", "source": "https://old", "snippet": "...", "date": "2025-01-01"},
+        {"title": "New office", "source": "https://new", "snippet": "...", "date": date.today().isoformat()}]})
+    research = report.research_company("1", "Acme")
+    urls = [x["url"] for x in research["sources"].items]
+    assert "https://new" in urls and "https://old" not in urls
+    assert research["left_out_old"] == 1
+
+
+def test_size_reason_appears_only_once():
+    """Real problem (Darktrace): code and the AI both gave the company-size reason."""
+    r, _ = build(make_research(headcount=2604), make_draft(fit_score=9, fit_reasons=[
+        Claim(text="Employee headcount is 2,604, placing it in the 2,001 to 10,000 band.", source_ids=["S2"]),
+        Claim(text="Actively hiring SDRs.", source_ids=["S4"])]))
+    texts = [c["text"] for c in r["fit_reasons"]]
+    assert len([t for t in texts if "2,604" in t]) == 1          # just the code's size reason
+    assert "Actively hiring SDRs." in texts
+    assert any("repeated company-size reason" in c for c in r["checks"])
 
 
 def test_ai_can_pick_a_recent_signal_story_as_news():
@@ -150,7 +211,7 @@ def test_signal_stories_take_priority_when_news_is_full():
     r, _ = build(research, make_draft(
         news=[NewsPick(source_id=f"S{i}", why_it_matters="...") for i in (6, 7, 8)],
         signals=[Signal(signal_type="expansion", text="Expanding into Sweden.", source_ids=["S5"])]))
-    assert [n["source"] for n in r["news"]] == ["S8", "S7", "S5"]  # S5 kept, still newest first
+    assert news_urls(r) == ["https://news/8", "https://news/7", "https://news/sweden"]  # kept, newest first
 
 
 @pytest.mark.parametrize("story_date", [None, "2025-12-01"])  # undated, or older than 6 months
@@ -254,8 +315,11 @@ def test_email_uses_only_facts_from_the_report():
 
 
 def test_email_cannot_cite_sources_outside_the_report():
-    """S3 was fetched, but the report doesn't use it, so the email can't use it either."""
-    email, _ = email_for(make_draft(news=[]), make_email(trigger_source_ids=["S3"]))
+    """The news story was fetched, but the report doesn't use it, so the email can't use it either."""
+    r, _ = build(make_research(), make_draft(news=[]))
+    unused = next(x["id"] for x in r["all_sources"] if x["url"] == "https://news/1")
+    assert unused not in {x["id"] for x in r["sources"]}
+    email = report.write_email(r, ai=FakeAI(make_email(trigger_source_ids=[unused])))
     assert any("couldn't be matched to a source" in w for w in email["warnings"])
 
 

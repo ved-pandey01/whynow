@@ -293,7 +293,7 @@ def show_email_text(e, by_id):
     st.html(f'<div class="wn-quiet">{e["word_count"]} words · opening trigger '
             f'{ui.cite(e["trigger_sources"], by_id) or "none"}</div>')
     if e.get("ai_model"):
-        st.html(ui.model_note(e["ai_model"], "Email"))
+        st.html(ui.model_note(e["ai_model"]))
 
 
 def show_behind_the_scenes(r):
@@ -302,6 +302,10 @@ def show_behind_the_scenes(r):
         st.markdown("\n".join(f"- {safe(c)}" for c in r["checks"]) or "None needed.")
         if r.get("timings"):
             st.markdown("**Time taken:** " + " · ".join(f"{k} {v}s" for k, v in r["timings"].items()))
+        email = st.session_state.get("email") or {}
+        models = [ui.model_details(r.get("ai_model"), "Report"), ui.model_details(email.get("ai_model"), "Email")]
+        if any(models):
+            st.markdown("**AI model:**\n" + "\n".join(f"- {safe(m)}" for m in models if m))
 
 
 def report_bar(r):

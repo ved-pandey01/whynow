@@ -13,6 +13,8 @@ def build_report_prompt(company_name, offer, sources_text, today):
     strong = "\n".join(f"  - {s}" for s in settings.STRONG_FIT_SIGNALS)
     weak = "\n".join(f"  - {s}" for s in settings.BAD_FIT_SIGNALS)
     roles = ", ".join(settings.TARGET_BUYER_ROLES)
+    from datetime import date, timedelta
+    six_months_ago = (date.fromisoformat(today) - timedelta(days=30 * settings.EVENT_WINDOW_MONTHS)).isoformat()
 
     return f"""You are a careful B2B sales researcher helping an SDR (sales development rep).
 Today's date is {today}. Write in British English.
@@ -40,6 +42,10 @@ STRICT RULES
 5. Industry codes (SIC) come with their official meaning. Quote that meaning exactly and
    never reinterpret it. For example, "70100: Activities of head offices" means the registered
    company is a head office or holding company. It does NOT mean "software development".
+
+ONLY RECENT EVENTS COUNT
+A reason to reach out (signal) and any event used in the fit score must have happened in the last
+{settings.EVENT_WINDOW_MONTHS} months (after {six_months_ago}). Ignore older events completely, even if a source mentions them.
 
 NEWS
 Pick up to {settings.NEWS_ITEMS} items that are really about this company, from the NEWS CANDIDATES

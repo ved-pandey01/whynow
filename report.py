@@ -112,6 +112,14 @@ def looks_like_website(typed):
     return t.startswith(("http://", "https://", "www.")) or ("." in t and " " not in t)
 
 
+def too_old(iso_date, today=None):
+    """True if a dated event is older than EVENT_WINDOW_MONTHS. Undated items can't be judged, so they're kept."""
+    if not iso_date:
+        return False
+    cutoff = (today or date.today()) - timedelta(days=30 * settings.EVENT_WINDOW_MONTHS)
+    return str(iso_date)[:10] < cutoff.isoformat()
+
+
 def research_company(company_number, typed, on_step=_no_progress):
     """
     Fetch everything we know about one company. Never crashes on a Tavily problem.
@@ -187,7 +195,11 @@ def research_company(company_number, typed, on_step=_no_progress):
             research["website"] = web["source"]
             sources.add("website", f"{brand} website", web["source"], web["text"])
 
+        old = 0   # dated results older than 6 months are left out, so they can't count as reasons to reach out
         for item in run_step("News", lambda: tavily.get_recent_news(brand, website, topic)) or []:
+            if too_old(item["date"]):
+                old += 1
+                continue
             sources.add("news", item["title"], item["source"], item["snippet"], item["date"])
         on_step(1, DONE)
 
@@ -199,8 +211,12 @@ def research_company(company_number, typed, on_step=_no_progress):
             warnings.append(f"Signal searches skipped to keep the report under a minute: {', '.join(skipped)}")
         for signal_type, items in signals.items():
             for item in items:
+                if too_old(item["date"]):
+                    old += 1
+                    continue
                 sources.add("signal", f"[{signal_type}] {item['title']}", item["source"],
                             item["snippet"], item["date"])
+        research["left_out_old"] = old
         on_step(2, DONE)
     except tavily.NewsError as e:
         warnings.append(f"News and signals unavailable: {e}")
@@ -288,6 +304,9 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
     timings["AI report"] = round(time.monotonic() - ai_start, 1)
 
     checks = []      # notes on what code changed, shown for transparency
+    if research.get("left_out_old"):
+        checks.append(f"Left out {research['left_out_old']} search result(s) older than "
+                      f"{settings.EVENT_WINDOW_MONTHS} months, so they don't count as reasons to reach out or in the score")
     valid = sources.ids()
 
     def check_claim(claim):
@@ -306,8 +325,11 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
     signals = []
     for s in draft.signals:
         good = [i for i in s.source_ids if i in valid]
-        if s.signal_type in ALLOWED_SIGNAL_TYPES and good:
+        dates = [sources.get(i)["date"] for i in good if sources.get(i).get("date")]
+        if s.signal_type in ALLOWED_SIGNAL_TYPES and good and not (dates and too_old(max(dates), today)):
             signals.append({"type": s.signal_type, "text": s.text, "sources": good})
+        elif dates and too_old(max(dates), today):
+            checks.append(f"Removed a reason to reach out older than {settings.EVENT_WINDOW_MONTHS} months: \"{s.text[:60]}\"")
         else:
             checks.append(f"Removed an unsupported signal: \"{s.text[:60]}\"")
 
@@ -318,9 +340,11 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
     score, fit_reasons = _apply_size_rule(score, fit_reasons, research, checks)
 
 
+    profile_facts = company_profile(research)
     used = set(n["source"] for n in news)
     for group in ([what_they_do] if what_they_do else []) + snapshot + fit_reasons + signals:
         used.update(group["sources"])
+    used.update(f["source"] for f in profile_facts.values() if isinstance(f, dict) and f.get("source"))
 
     not_found = list(draft.not_found)
     if not research["card"]:
@@ -329,12 +353,12 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
         not_found.append("Company website couldn't be read")
 
     on_step(4, DONE)
-    return {
+    return renumber_sources({
         "company": {"name": profile["name"], "number": profile["company_number"],
                     "status": profile["status"], "source": profile["source"]},
         "not_worth_contacting": False,
         "offer": offer,
-        "profile": company_profile(research),
+        "profile": profile_facts,
         "what_they_do": what_they_do,
         "snapshot": snapshot,
         "news": news,
@@ -352,7 +376,45 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
         "ai_model": ai_model,
         "created_on": (today or date.today()).strftime("%-d %b %Y"),
         "seconds": round(time.time() - started, 1),
-    }
+    })
+
+
+def renumber_sources(r):
+    """
+    Number the sources the report shows as S1, S2, S3… in order, with no gaps, and update every tag
+    to match. Sources the report doesn't use come after them (they're never listed).
+    Works on finished reports, including saved ones and their saved email.
+    """
+    shown = [s["id"] for s in r["sources"]]
+    rest = [s["id"] for s in r["all_sources"] if s["id"] not in shown]
+    new_id = {old: f"S{n}" for n, old in enumerate(shown + rest, start=1)}
+
+    def ids(old_ids):
+        return [new_id.get(i, i) for i in old_ids]
+
+    def claim(c):
+        return dict(c, sources=ids(c["sources"])) if c else c
+
+    def email(e):
+        return dict(e, trigger_sources=ids(e.get("trigger_sources", []))) if e else e
+
+    def retag(text):
+        return re.sub(r"\bS\d+\b", lambda m: new_id.get(m.group(0), m.group(0)), text)
+
+    out = dict(r)
+    out["what_they_do"] = claim(r.get("what_they_do"))
+    for key in ("snapshot", "fit_reasons", "signals"):
+        out[key] = [claim(c) for c in r.get(key, [])]
+    out["news"] = [dict(n, source=new_id.get(n["source"], n["source"])) for n in r.get("news", [])]
+    out["profile"] = {k: (dict(f, source=new_id.get(f["source"], f["source"])) if isinstance(f, dict) and f.get("source") else f)
+                      for k, f in (r.get("profile") or {}).items()}
+    out["all_sources"] = sorted((dict(s, id=new_id[s["id"]]) for s in r["all_sources"]),
+                                key=lambda s: int(s["id"][1:]))
+    out["sources"] = out["all_sources"][:len(shown)]
+    out["checks"] = [retag(c) for c in r.get("checks", [])]
+    if r.get("saved_email"):
+        out["saved_email"] = email(r["saved_email"])
+    return out
 
 
 def _model_used(ai):
@@ -443,8 +505,21 @@ def _apply_size_rule(score, reasons, research, checks):
     if score > cap:
         checks.append(f"Score capped at {cap}: {headcount:,} employees is a {band} fit on size")
         score = cap
+    # Code gives the size reason, so drop the AI's own size reason: each reason appears once
+    kept = [r for r in reasons if not _is_size_reason(r["text"], headcount)]
+    if len(kept) < len(reasons):
+        checks.append("Removed a repeated company-size reason (the size reason above comes from code)")
     card_id = research["sources"]._by_url[card["source"]]
-    return score, [{"text": reason, "sources": [card_id]}] + reasons
+    return score, [{"text": reason, "sources": [card_id]}] + kept
+
+
+SIZE_WORDS = re.compile(r"\b(employees?|staff|headcount|workforce|size band|company size)\b", re.IGNORECASE)
+
+
+def _is_size_reason(text, headcount):
+    """Is this fit reason about company size? (mentions the headcount, or words like 'employees' or 'size band')"""
+    numbers = {f"{headcount:,}", str(headcount)}
+    return bool(SIZE_WORDS.search(text)) or any(n in text for n in numbers)
 
 
 def word_count(text):
@@ -574,7 +649,7 @@ def _closed_company_report(research):
     else:
         closed = f" (closed on {p['closed_on']})" if p["closed_on"] else ""
         reason = f"Companies House lists the company as {p['status']}{closed}."
-    return {
+    return renumber_sources({
         "company": {"name": p["name"], "number": p["company_number"],
                     "status": p["status"], "source": p["source"]},
         "not_worth_contacting": True,
@@ -591,7 +666,7 @@ def _closed_company_report(research):
         "warnings": research["warnings"], "timings": dict(research.get("timings", {})), "seconds": 0.0,
         "ai_model": None,   # no AI used
         "created_on": date.today().strftime("%-d %b %Y"),
-    }
+    })
 
 
 # ---------------------------------------------------------------------------

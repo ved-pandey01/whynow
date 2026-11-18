@@ -458,14 +458,21 @@ def sources_card(r):
     return card("Sources", "link", f'<ul class="wn-sources">{rows}</ul>')
 
 
-def model_note(model, what="Report"):
-    """A small quiet line, e.g. 'Report written by gemini-3.5-flash (backup: gemini-3.6-flash was busy)'."""
+def model_note(model):
+    """A short grey line: 'Written by gemini-3.5-flash'. Never error messages (those go in 'Behind the scenes')."""
     if not model:
         return ""
-    note = f"{what} written by {model['name']}"
-    if model.get("backup"):
-        note += f" (backup model, because {model['reason']})"
-    return f'<div class="wn-quiet" style="margin:0.4rem 0 1rem">{icon("smart_toy")} {esc(note)}</div>'
+    return f'<div class="wn-model">Written by {esc(model["name"])}</div>'
+
+
+def model_details(model, what):
+    """For 'Behind the scenes': which model wrote it and, if a backup was used, why."""
+    if not model:
+        return None
+    line = f"{what} written by {model['name']}"
+    if model.get("backup") and model.get("reason"):
+        line += f" (backup model; {model['reason']})"
+    return line
 
 
 def progress_card(company_name, steps, states):

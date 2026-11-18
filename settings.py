@@ -34,7 +34,7 @@ WEAK_FIT_MAX_SCORE = 3
 # Signals that push the score UP
 STRONG_FIT_SIGNALS = [
     "Hiring SDRs, BDRs or other sales roles",
-    "Funding round (Series A to C) in the last 12 months",
+    "Funding round (Series A to C) in the last 6 months",
     "New sales or revenue leader (CRO, VP Sales, Head of Sales) in the last 6 months",
     "Expansion into new markets or offices, or a new product launch",
 ]
@@ -47,7 +47,8 @@ BAD_FIT_SIGNALS = [
 ]
 
 # How far back signals count
-FUNDING_WINDOW_MONTHS = 12
+EVENT_WINDOW_MONTHS = 6          # reasons to reach out must have happened in the last 6 months
+FUNDING_WINDOW_MONTHS = 6
 NEW_LEADER_WINDOW_MONTHS = 6
 
 # Companies House statuses that mean "not worth contacting".

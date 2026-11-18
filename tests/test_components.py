@@ -73,10 +73,15 @@ def test_internal_tags_are_removed_from_titles(title, clean):
     assert ui.clean_title(title) == clean
 
 
-def test_model_note_mentions_backup():
-    note = ui.model_note({"name": "gemini-3.5-flash", "backup": True, "reason": "gemini-3.6-flash failed: busy"})
-    assert "Report written by gemini-3.5-flash (backup model, because gemini-3.6-flash failed: busy)" in note
+def test_model_note_is_short_and_never_shows_errors():
+    backup = {"name": "gemini-3.5-flash", "backup": True, "reason": "gemini-3.6-flash failed: Gemini is having problems"}
+    note = ui.model_note(backup)
+    assert note == '<div class="wn-model">Written by gemini-3.5-flash</div>'
+    assert "failed" not in note and "problems" not in note
     assert ui.model_note(None) == ""
+    # the reason moves to "Behind the scenes"
+    assert ui.model_details(backup, "Report") == ("Report written by gemini-3.5-flash "
+                                                  "(backup model; gemini-3.6-flash failed: Gemini is having problems)")
 
 
 def test_header_has_slogan_and_typing_lines():
