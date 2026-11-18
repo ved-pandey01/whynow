@@ -274,3 +274,43 @@ def test_linkedin_note_and_call_opener_each_have_a_copy_box(app, monkeypatch):
     button(app, "Create email for this company").click().run()
     assert [c.value for c in app.code] == [EMAIL["body"], full["linkedin_note"], full["call_opener"]]
     assert "LinkedIn connection note" in html(app) and "Call opener" in html(app)
+
+
+# --- Research a list -----------------------------------------------------------
+def test_research_a_list_opens_with_a_credit_warning(app):
+    app.run()
+    button(app, "Research a list").click().run()
+    assert not app.exception
+    assert "uses more API credits" in app.warning[0].value
+    assert app.get("file_uploader")
+
+
+def test_report_link_opens_a_cached_report(app):
+    """The batch table's 'View report' links open ./?report=<id> from the 6-hour cache."""
+    research_and_open(app)
+    rid = app.session_state["report"]["report_id"]
+    fresh = AppTest.from_file("../app.py", default_timeout=30)   # a new visitor (new session)
+    fresh.query_params["report"] = rid
+    fresh.run()
+    assert not fresh.exception
+    assert 'class="wn-badge strong"' in html(fresh)
+
+
+def test_expired_report_link_says_so(app):
+    app.query_params["report"] = "doesnotexist"
+    app.run()
+    assert "expired" in app.info[0].value
+
+
+def test_batch_results_table_and_csv(app, monkeypatch):
+    rows = [{"typed": "acme.com", "company": "Acme", "fit_score": 8, "employees": 300,
+             "top_reason": "Raised $5m.", "report_id": "abc", "status": "Done"}]
+    app.session_state["batch_mode"] = True
+    app.session_state["batch_rows"] = rows
+    app.session_state["batch_reports"] = [REPORT]
+    app.run()
+    assert not app.exception
+    table = app.dataframe[0].value
+    assert list(table.columns) == ["Company", "Fit score", "Employees", "Top reason to reach out", "Report"]
+    assert table.iloc[0]["Report"] == "./?report=abc"
+    assert [d.proto.label for d in app.get("download_button")] == ["Download all as CSV"]

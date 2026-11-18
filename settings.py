@@ -137,6 +137,8 @@ EMAIL_PERSONAS = {                 # who the email is for, and what that person 
     "Founder / CEO": "growth and cost: growing revenue without adding headcount or cost",
 }
 DEFAULT_PERSONA = "Head of Sales"
+BATCH_MAX_COMPANIES = 10           # "Research a list": the most companies in one upload
+TAVILY_CREDITS_PER_REPORT = 10     # roughly, for the credit warning
 TRY_COMPANIES = [                  # the "Try:" chips under the search bar: (name shown, website searched)
     ("Cognism", "cognism.com"),
     ("Darktrace", "darktrace.com"),

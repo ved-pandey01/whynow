@@ -19,6 +19,7 @@ from pathlib import Path
 
 import streamlit as st
 
+import batch
 import exports
 import report
 import settings
@@ -65,8 +66,7 @@ def make_report(company_number, typed, offer, on_step=report._no_progress):
     r = cached_report(rid)
     if r is None:
         research = report.research_company(company_number, typed, on_step=on_step)
-        r = report.build_report(research, offer=offer, on_step=on_step)
-        r["report_id"] = rid
+        r = dict(report.build_report(research, offer=offer, on_step=on_step), report_id=rid)
         report_store()[rid] = (time.time(), r)
     else:
         for step in range(len(report.STEPS)):   # cached: every step is already done
@@ -74,9 +74,9 @@ def make_report(company_number, typed, offer, on_step=report._no_progress):
     return r
 
 
-def live_progress(company_name):
+def live_progress(company_name, box=None):
     """Show the steps as a card that ticks off live. Returns the on_step function for the report code."""
-    box = st.empty()
+    box = box or st.empty()
     states = ["todo"] * len(report.STEPS)
 
     def on_step(step, state):
@@ -154,6 +154,11 @@ def try_chips():
         for name, website in settings.TRY_COMPANIES:
             if st.button(name, key=f"wn_try_{website}", type="tertiary"):
                 clicked = website
+        if st.button("Research a list", key="wn_batch_open", type="tertiary", icon=":material/format_list_bulleted:"):
+            for key in ("report", "email", "emails", "sample", "matches"):
+                st.session_state.pop(key, None)
+            st.session_state["batch_mode"] = True
+            st.rerun()
     return clicked
 
 
@@ -175,11 +180,20 @@ def run_try(website):
 
 
 def open_sample_from_link():
-    """A link ending in ?sample=1 opens the sample report straight away (handy for a portfolio)."""
-    if st.query_params.get("sample") == "1" and "report" not in st.session_state:
+    """A link ending in ?sample=1 opens the sample report; ?report=<id> opens a report from the 6-hour cache
+    (the links in the batch results table)."""
+    if "report" in st.session_state:
+        return
+    if st.query_params.get("sample") == "1":
         sample = load_sample()
         if sample:
             st.session_state.update(report=sample, sample=True, matches=None)
+    elif st.query_params.get("report"):
+        r = cached_report(st.query_params["report"])
+        if r:
+            st.session_state.update(report=r, sample=False, matches=None)
+        else:
+            st.info("That report has expired (reports are kept for 6 hours). Search for the company again.")
 
 
 def landing():
@@ -376,6 +390,75 @@ def show_report(r):
 
 
 # ---------------------------------------------------------------------------
+# Research a list (batch mode)
+# ---------------------------------------------------------------------------
+def batch_page():
+    """Upload a CSV of up to 10 companies, research them one by one, then see them ranked by fit."""
+    st.html(ui.back_link())
+    st.html(f'<div class="wn-card wn-card-head"><h4>{ui.icon("format_list_bulleted")}Research a list</h4></div>')
+    st.caption(f"Upload a CSV with up to {settings.BATCH_MAX_COMPANIES} companies: one per row, as names or websites "
+               "(a column called company or website is used if there is one). Websites find the right company fastest.")
+    st.warning(f"This uses more API credits: about {settings.TAVILY_CREDITS_PER_REPORT} Tavily credits and 1–4 Gemini "
+               f"requests per company, so a list of {settings.BATCH_MAX_COMPANIES} uses about "
+               f"{settings.TAVILY_CREDITS_PER_REPORT * settings.BATCH_MAX_COMPANIES} credits and a good share of Gemini's "
+               "free daily allowance. Companies researched in the last 6 hours are free.", icon=":material/warning:")
+    upload = st.file_uploader("Your list (CSV)", type=["csv"], key="wn_batch_file")
+    if upload is not None:
+        names, left_out = batch.parse_company_list(upload.getvalue().decode("utf-8-sig", errors="replace"))
+        if not names:
+            st.info("No company names found in that file.")
+        else:
+            if left_out:
+                st.caption(f"Only the first {settings.BATCH_MAX_COMPANIES} are used ({left_out} left out).")
+            st.html('<div class="wn-quiet">' + " · ".join(ui.esc(n) for n in names) + "</div>")
+            if st.button(f"Start research ({len(names)} {'company' if len(names) == 1 else 'companies'})",
+                         type="primary", icon=":material/play_arrow:"):
+                run_batch(names)
+    if st.session_state.get("batch_rows"):
+        show_batch_results()
+
+
+def run_batch(names):
+    """Research each company in turn with live progress (the work itself is in batch.research_list)."""
+    offer = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
+    overall = st.progress(0.0)
+    box = st.empty()
+    rows, reports = batch.research_list(
+        names,
+        find=find_companies,
+        make=lambda match, typed: make_report(match["company_number"], typed, offer, live_progress(match["name"], box)),
+        company_name=exports.company_name,
+        employees=lambda r: exports._value(r, "headcount"),
+        friendly_errors=(ch.CompaniesHouseError, AIError),
+        on_company=lambda n, typed: overall.progress(n / len(names), text=f"{n + 1} of {len(names)}: {typed}"),
+    )
+    overall.progress(1.0, text=f"Done: {len(names)} of {len(names)}")
+    box.empty()
+    st.session_state["batch_rows"] = rows
+    st.session_state["batch_reports"] = reports
+
+
+def show_batch_results():
+    import pandas as pd
+    rows = st.session_state["batch_rows"]
+    table = pd.DataFrame([{
+        "Company": row["company"],
+        "Fit score": f"{row['fit_score']}/10" if row["fit_score"] is not None else "—",
+        "Employees": f"{row['employees']:,}" if row["employees"] else "—",
+        "Top reason to reach out": row["top_reason"] or ("—" if row["fit_score"] is not None else row["status"]),
+        "Report": f"./?report={row['report_id']}" if row["report_id"] else "",
+    } for row in rows])
+    st.markdown("##### Ranked by fit")
+    st.dataframe(table, hide_index=True, use_container_width=True, column_config={
+        "Report": st.column_config.LinkColumn(display_text="View report"),
+    })
+    reports = st.session_state.get("batch_reports") or []
+    if reports:
+        st.download_button("Download all as CSV", exports.rows_to_csv([exports.csv_row(r) for r in reports]),
+                           file_name="whynow-list.csv", mime="text/csv", icon=":material/table_view:", type="primary")
+
+
+# ---------------------------------------------------------------------------
 # The page
 # ---------------------------------------------------------------------------
 def main():
@@ -384,7 +467,9 @@ def main():
     st.html(ui.css())
     open_sample_from_link()
     st.html(ui.topbar())
-    if "report" in st.session_state or st.session_state.get("matches") is not None:
+    if st.session_state.get("batch_mode") and "report" not in st.session_state:
+        batch_page()
+    elif "report" in st.session_state or st.session_state.get("matches") is not None:
         search_form()          # the same search bar, above the picker or report
         pick_company()
         if "report" in st.session_state:

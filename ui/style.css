@@ -151,6 +151,11 @@ a:hover { text-decoration: underline; }
 .st-key-wn_try .stButton > button:hover { color: var(--head) !important; border-color: var(--blue) !important;
   background: rgba(59, 130, 246, 0.14) !important; transform: none; }
 .st-key-wn_try .stButton > button p { font-size: 0.8rem; }
+/* "Research a list": a quiet link, not another company chip */
+.st-key-wn_try .st-key-wn_batch_open { margin-left: 0.6rem; padding-left: 0.9rem; border-left: 1px solid var(--line-strong); }
+.st-key-wn_try .st-key-wn_batch_open button { background: transparent !important; border: none !important; padding: 0.2rem 0 !important;
+  color: var(--blue-bright) !important; }
+.st-key-wn_try .st-key-wn_batch_open button:hover { background: transparent !important; color: var(--head) !important; }
 .st-key-wn_offer summary { padding-top: 0.15rem !important; }
 
 /* ---------- Preview card (right column) ---------- */
