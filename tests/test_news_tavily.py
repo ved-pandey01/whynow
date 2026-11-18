@@ -323,3 +323,48 @@ def test_role_from_title(title, brand, role):
 def test_sales_roles_are_spotted():
     assert nt.is_sales_role("Senior Account Executive") and nt.is_sales_role("SDR")
     assert not nt.is_sales_role("Senior Backend Engineer")
+
+
+
+# --- Registered name from public sources ----------------------------------------
+@pytest.mark.parametrize("text, found", [
+    ("Gousto is a trading name of Schoolsplash Ltd, registered in England.", {"name": "Schoolsplash Ltd"}),
+    ("Paddle.com Market Limited is a company registered in England and Wales with company number 8172165.",
+     {"number": "08172165", "name": "Paddle.com Market Limited"}),
+    ("© 2026 Cognism Ltd. All rights reserved. Company No. 09392705", {"number": "09392705", "name": "Cognism Ltd"}),
+    ("Registered name: Acme Widgets Limited. Registered office: London.", {"name": "Acme Widgets Limited"}),
+    ("Company Number SC123456", {"number": "SC123456"}),
+    ("We love food and recipes.", None),                       # nothing stated: nothing guessed
+])
+def test_extract_registration(text, found):
+    assert nt.extract_registration(text) == found
+
+
+def test_find_registration_reads_the_website_footer(monkeypatch):
+    monkeypatch.setattr(nt, "_search", lambda q, **o: [{"url": "https://tavily.com/knowledge/company/g", "title": "Gousto",
+                                                         "content": "Website: www.gousto.co.uk"}])
+    monkeypatch.setattr(nt, "_extract_text", lambda url: "# Gousto\nWebsite: www.gousto.co.uk\n")
+    read = []
+
+    def pages(urls):
+        read.extend(urls)
+        return [{"url": "https://gousto.co.uk", "text": "Recipes"},
+                {"url": "https://gousto.co.uk/terms", "text": "Schoolsplash Ltd is a company registered in England, company number 07294209."}]
+    monkeypatch.setattr(nt, "_extract_pages", pages)
+    found = nt.find_registration("Gousto")
+    assert found == {"number": "07294209", "name": "Schoolsplash Ltd", "website": "gousto.co.uk",
+                     "source": "https://gousto.co.uk/terms", "source_title": "gousto.co.uk website"}
+    assert "https://gousto.co.uk/privacy" in read and "https://gousto.co.uk/terms" in read
+
+
+def test_find_registration_falls_back_to_the_profile_legal_name(monkeypatch):
+    monkeypatch.setattr(nt, "_search", lambda q, **o: [{"url": "https://tavily.com/knowledge/company/g", "title": "Gousto",
+                                                         "content": ""}])
+    monkeypatch.setattr(nt, "_extract_text", lambda url: "# Gousto\nLegal name: Schoolsplash Ltd\n")
+    found = nt.find_registration("Gousto")
+    assert found["name"] == "Schoolsplash Ltd" and found["source"] == "https://tavily.com/knowledge/company/g"
+
+
+def test_find_registration_returns_none_when_no_source_says(monkeypatch):
+    monkeypatch.setattr(nt, "_search", lambda q, **o: [{"url": "https://news.com/x", "title": "Gousto recipes"}])
+    assert nt.find_registration("Gousto") is None

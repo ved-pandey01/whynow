@@ -25,6 +25,7 @@ import report
 import settings
 from ai.provider import AIError
 from sources import uk_companies_house as ch
+from sources import news_tavily as tavily
 from sources.news_tavily import domain_of
 from ui import components as ui
 
@@ -37,6 +38,26 @@ SAMPLE_FILE = Path(__file__).parent / settings.SAMPLE_REPORT_FILE
 @st.cache_data(ttl=3600, show_spinner=False)
 def find_companies(typed):
     return ch.search_companies(typed)
+
+
+@st.cache_data(ttl=6 * 3600, show_spinner=False)
+def find_registered(typed):
+    """
+    For brands that aren't the registered name (e.g. 'Gousto'): look for the registered name or
+    number in public sources, then on Companies House. About 2 Tavily credits; never guesses.
+    Returns {"match": a Companies House match or None, "found": what the source said, "error": text}.
+    """
+    website = typed if report.looks_like_website(typed) else None
+    try:
+        found = tavily.find_registration(report.brand_from(typed), website)
+    except tavily.NewsError as e:
+        return {"match": None, "found": None, "error": str(e)}
+    match = ch.lookup_registration(found)
+    if match:
+        match = dict(match, registered_as={"brand": report.brand_from(typed), "source": found["source"],
+                                           "source_title": found["source_title"]},
+                     typed=found.get("website") or typed)   # research by the website found, for accuracy
+    return {"match": match, "found": found, "error": None}
 
 
 REPORT_CACHE_SECONDS = 6 * 3600
@@ -137,8 +158,18 @@ def search_form():
             st.session_state.pop(key, None)
         st.session_state["offer"] = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
         st.session_state["typed"] = typed
+        st.session_state.pop("registration", None)
         try:
-            st.session_state["matches"] = find_companies(typed)
+            matches = find_companies(typed)
+            if typed.strip() and not any(m["close_match"] and m["status"] == "active" for m in matches):
+                # No active company with this name: the brand may be registered under another name
+                with st.spinner("Looking for the registered company name in public sources…"):
+                    registration = find_registered(typed)
+                st.session_state["registration"] = registration
+                if registration["match"]:
+                    number = registration["match"]["company_number"]
+                    matches = [registration["match"]] + [m for m in matches if m["company_number"] != number]
+            st.session_state["matches"] = matches
         except Exception as e:
             st.session_state["matches"] = None
             friendly_error(e)
@@ -217,10 +248,23 @@ def pick_company():
     matches, typed = st.session_state.get("matches"), st.session_state.get("typed")
     if matches is None:
         return
+    registration = st.session_state.get("registration")
+    if registration and registration["match"]:
+        found = registration["match"]
+        st.success(f'**{safe(found["registered_as"]["brand"])}** is registered as **{safe(found["name"])}** '
+                   f'(company {found["company_number"]}), as stated on [{safe(found["registered_as"]["source_title"])}]'
+                   f'({found["registered_as"]["source"]}).', icon=":material/verified:")
+    elif registration:
+        reason = f" ({registration['error']})" if registration.get("error") else ""
+        st.warning(f'We couldn\'t find the registered company name for "{safe(typed)}" in public sources '
+                   f'(its company profile, website footer, terms or privacy pages){reason}. '
+                   "Try the company's website instead, e.g. gousto.co.uk.", icon=":material/search_off:")
     if not matches:
         st.info(f'No companies found for "{safe(typed)}". Check the spelling or try the website.')
         return
-    if not matches[0]["close_match"]:
+    if all((m.get("status") or "active") != "active" for m in matches):
+        st.info("Only closed companies match this name. Try the company's website instead.", icon=":material/info:")
+    elif not matches[0]["close_match"]:
         st.warning(f'No close match found for "{safe(typed)}". Only pick one below if you\'re sure it\'s right.')
     st.markdown("##### Which company did you mean?")
     st.caption("Biggest first. Size is a guide from the accounts each company files, not a staff count.")
@@ -241,7 +285,8 @@ def pick_company():
 def run_report(choice):
     on_step = live_progress(choice["name"])
     try:
-        r = make_report(choice["company_number"], st.session_state["typed"], st.session_state["offer"], on_step)
+        r = make_report(choice["company_number"], choice.get("typed") or st.session_state["typed"],
+                        st.session_state["offer"], on_step)
     except Exception as e:
         friendly_error(e)
         return

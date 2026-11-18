@@ -449,3 +449,86 @@ if __name__ == "__main__":
         print("\nWEBSITE:", f"{web['source']}\n  {web['text'][:300]}..." if web else "not found")
     except NewsError as e:
         print(f"Sorry: {e}")
+
+
+# ---------------------------------------------------------------------------
+# 5. Registered name (when the brand isn't the registered company name)
+# ---------------------------------------------------------------------------
+# Pages where UK companies must show their registered name and number (footer, terms, privacy)
+REGISTRATION_PAGES = ["", "/terms", "/terms-and-conditions", "/privacy", "/privacy-policy"]
+
+_NUMBER = re.compile(
+    r"(?:company|registration|registered|reg\.?)\s*(?:no\.?|number|num\.?)\s*(?:is\s*)?[:.#]?\s*"
+    r"((?:SC|NI|OC|SO|NC|FC|R0)\d{6}|\d{6,8})\b", re.IGNORECASE)
+_SUFFIX = r"(?:Limited|Ltd\.?|PLC|plc|LLP)"
+_NAME = r"([A-Z0-9][A-Za-z0-9&.,'’\- ]{1,60}?\s" + _SUFFIX + r")"
+_NAME_PATTERNS = [
+    re.compile(r"(?i:trading (?:name|style) of)\s+" + _NAME),                    # 'Gousto is a trading name of X Ltd'
+    re.compile(_NAME + r",?\s+(?i:(?:is\s+)?(?:a\s+)?(?:private\s+)?(?:limited\s+)?company registered)"),
+    re.compile(r"(?i:registered (?:name|as))[:\s]+" + _NAME),
+    re.compile(r"©\s*(?:\d{4}\s*[-–]?\s*\d{0,4}\s*)?" + _NAME),              # '© 2026 X Ltd'
+]
+
+
+def extract_registration(text):
+    """
+    The registered company number and/or name written on a page, or None.
+    Only what the page literally says: {"number": "08172165", "name": "PADDLE.COM MARKET LIMITED"}.
+    """
+    text = text or ""
+    found = {}
+    m = _NUMBER.search(text)
+    if m:
+        number = m.group(1).upper()
+        found["number"] = number.zfill(8) if number.isdigit() else number
+    for pattern in _NAME_PATTERNS:
+        m = pattern.search(text)
+        if m:
+            found["name"] = re.sub(r"\s+", " ", m.group(1)).strip(" .,")
+            break
+    return found or None
+
+
+def find_registration(brand, website=None):
+    """
+    Look for the company's registered name or number in public sources, for brands that don't match
+    a Companies House name (e.g. 'Gousto'). About 2 Tavily credits. Never guesses: returns
+    {"number" and/or "name", "website", "source", "source_title"} only if a page states it, else None.
+    1. The company's profile page (one search) gives its website and sometimes its legal name.
+    2. The website's homepage footer, terms and privacy pages (one read) usually state the
+       registered name and company number, as UK companies must.
+    """
+    card, card_url = None, None
+    for result in _search(f'"{brand}" company', max_results=5):
+        url = result.get("url")
+        if _is_company_card(url) and mentions(brand, result.get("title") or ""):
+            card = parse_company_card(_extract_text(url) or "")
+            for key, value in parse_company_card(result.get("content", "")).items():
+                if card.get(key) is None:
+                    card[key] = value
+            card_url = url
+            break
+    website = website or (card or {}).get("website")
+
+    if website:
+        domain = domain_of(website)
+        urls = [f"https://{domain}{path}" for path in REGISTRATION_PAGES]
+        for page in _extract_pages(urls):
+            found = extract_registration(page["text"])
+            if found:
+                return dict(found, website=domain, source=page["url"], source_title=f"{domain} website")
+    if card and card.get("legal_name"):
+        return {"name": card["legal_name"], "website": domain_of(website) if website else None,
+                "source": card_url, "source_title": f"Company profile: {brand}"}
+    return None
+
+
+def _extract_pages(urls):
+    """Read several pages in one request. Pages that can't be read are simply skipped."""
+    try:
+        result = _client().extract(urls=urls, format="text", timeout=settings.TAVILY_TIMEOUT_SECONDS)
+    except NewsError:
+        raise
+    except Exception as e:
+        raise _friendly(e)
+    return [{"url": p.get("url"), "text": p.get("raw_content") or ""} for p in result.get("results", [])]

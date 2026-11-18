@@ -253,7 +253,10 @@ def picker_card(m, typed_domain=None):
         details.append(typed_domain)   # the website the user typed, only when it's in this company's name
     meta = " · ".join(esc(d) for d in details if d) or "No details found"
     closed = " closed" if (m.get("status") or "active") != "active" else ""
-    return (f'<div class="wn-pick{closed}"><div class="wn-pick-name">{esc(m["name"])} {status_chip(m.get("status"))}</div>'
+    name = esc(m["name"])
+    if m.get("registered_as"):   # found through a public source: 'Gousto (registered as SCHOOLING LTD)'
+        name = f'{esc(m["registered_as"]["brand"])} <span class="wn-quiet">(registered as {esc(m["name"])})</span>'
+    return (f'<div class="wn-pick{closed}"><div class="wn-pick-name">{name} {status_chip(m.get("status"))}</div>'
             f'<div class="wn-pick-meta">{meta} · {link(m["source"], "Companies House")}</div></div>')
 
 

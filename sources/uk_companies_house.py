@@ -464,3 +464,32 @@ if __name__ == "__main__":
             print(f"  - {d['name']} ({d['role']}, appointed {d['appointed_on']})")
     except CompaniesHouseError as e:
         print(f"Sorry: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Registered company from a brand (when the brand isn't the registered name)
+# ---------------------------------------------------------------------------
+def lookup_registration(found):
+    """
+    Turn a registered number or name found in a public source into a Companies House match.
+    The number is used first (it's exact). A name only counts if Companies House has an
+    exact, active match for it. Returns a match like search_companies() gives, or None.
+    """
+    if not found:
+        return None
+    if found.get("number"):
+        try:
+            p = get_company_profile(found["number"])
+        except CompaniesHouseError:
+            p = None
+        if p:
+            match = {"name": p["name"], "company_number": p["company_number"], "status": p["status"],
+                     "founded": p["founded"], "address": p["address"], "company_type": p["company_type"],
+                     "exact_match": True, "close_match": True, "vehicle": False, "source": p["source"]}
+            match.update(company_summary(p["company_number"]))
+            return match
+    if found.get("name"):
+        for m in search_companies(found["name"]):
+            if m["exact_match"] and m["status"] == "active":
+                return m
+    return None

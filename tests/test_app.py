@@ -10,6 +10,7 @@ from streamlit.testing.v1 import AppTest
 
 import report
 import settings
+from sources import news_tavily as tavily
 from sources import uk_companies_house as ch
 from ai.provider import AIError
 
@@ -146,8 +147,9 @@ def test_no_matches_gives_friendly_message(app, monkeypatch):
 
 def test_loose_matches_get_a_warning(app, monkeypatch):
     monkeypatch.setattr(ch, "search_companies", lambda typed: [dict(MATCHES[1], close_match=False)])
+    monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: None)
     search(app, "Zzqx Widgets Ltd")
-    assert "No close match" in app.warning[0].value
+    assert any("No close match" in w.value for w in app.warning)
 
 
 def test_companies_house_error_is_shown_kindly(app, monkeypatch):
@@ -288,3 +290,44 @@ def test_more_about_section_is_closed_by_default(app, monkeypatch):
     section = [e for e in app.expander if e.label.startswith("More about")]
     assert section and section[0].label == "More about Acme"
     assert section[0].proto.expanded is False
+
+
+
+# --- Brand registered under another name (e.g. Gousto) ----------------------------
+DISSOLVED_TAKEAWAY = dict(MATCHES[0], name="GOUSTO TAKEAWAY LTD", company_number="999", status="dissolved",
+                          close_match=True)
+GOUSTO_FOUND = {"number": "07294209", "website": "gousto.co.uk",
+                "source": "https://www.gousto.co.uk/terms", "source_title": "gousto.co.uk website"}
+GOUSTO_MATCH = dict(MATCHES[0], name="SCHOOLING LIMITED", company_number="07294209", status="active")
+
+
+def test_brand_found_under_its_registered_name(app, monkeypatch):
+    """Real problem: searching 'Gousto' only found a dissolved takeaway."""
+    monkeypatch.setattr(ch, "search_companies", lambda typed: [DISSOLVED_TAKEAWAY])
+    monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: GOUSTO_FOUND)
+    monkeypatch.setattr(ch, "lookup_registration", lambda found: GOUSTO_MATCH if found == GOUSTO_FOUND else None)
+    researched = []
+    monkeypatch.setattr(report, "research_company", lambda number, typed, **k: researched.append((number, typed)) or {})
+    search(app, "Gousto")
+    assert not app.exception
+    assert "is registered as **SCHOOLING LIMITED**" in app.success[0].value
+    assert "gousto.co.uk/terms" in app.success[0].value              # says where it was found
+    page = html(app)
+    assert 'Gousto <span class="wn-quiet">(registered as SCHOOLING LIMITED)</span>' in page
+    app.button(key="pick_07294209").click().run()
+    assert researched == [("07294209", "gousto.co.uk")]               # researched by the website found
+
+
+def test_no_registered_name_found_says_so_and_flags_closed_only(app, monkeypatch):
+    monkeypatch.setattr(ch, "search_companies", lambda typed: [DISSOLVED_TAKEAWAY])
+    monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: None)
+    search(app, "Gousto")
+    assert any("couldn't find the registered company name" in w.value for w in app.warning)
+    assert "Only closed companies match this name. Try the company's website instead." in app.info[0].value
+
+
+def test_registered_name_lookup_is_skipped_when_an_active_match_exists(app, monkeypatch):
+    calls = []
+    monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: calls.append(brand))
+    search(app, "Acme")
+    assert calls == []      # no extra credits when Companies House already has the company

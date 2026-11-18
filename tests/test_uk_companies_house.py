@@ -334,3 +334,21 @@ def test_typed_vehicle_name_is_not_pushed_down(monkeypatch):
 ])
 def test_is_vehicle(name, vehicle):
     assert ch.is_vehicle(name) is vehicle
+
+
+
+def test_lookup_registration_prefers_the_company_number(monkeypatch):
+    monkeypatch.setattr(ch, "get_company_profile", lambda n: {
+        "name": "SCHOOLING LIMITED", "company_number": n, "status": "active", "founded": "2010-06-01",
+        "address": "London", "company_type": "ltd", "source": f"https://ch/{n}"})
+    monkeypatch.setattr(ch, "company_summary", lambda n: {"size_rank": 2, "size": "Large", "industry": "Food", "city": "London"})
+    m = ch.lookup_registration({"number": "07294209", "name": "Something Else Ltd"})
+    assert m["company_number"] == "07294209" and m["name"] == "SCHOOLING LIMITED" and m["close_match"]
+
+
+def test_lookup_registration_by_name_needs_an_exact_active_match(monkeypatch):
+    monkeypatch.setattr(ch, "search_companies", lambda name: [
+        {"name": "SCHOOLSPLASH HOLDINGS LTD", "exact_match": False, "status": "active", "company_number": "1"},
+        {"name": "SCHOOLSPLASH LTD", "exact_match": True, "status": "dissolved", "company_number": "2"}])
+    assert ch.lookup_registration({"name": "Schoolsplash Ltd"}) is None      # no exact, active match: no guess
+    assert ch.lookup_registration(None) is None
