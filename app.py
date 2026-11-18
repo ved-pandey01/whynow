@@ -473,6 +473,7 @@ def run_batch(names):
         employees=lambda r: exports._value(r, "headcount"),
         friendly_errors=(ch.CompaniesHouseError, AIError),
         on_company=lambda n, typed: overall.progress(n / len(names), text=f"{n + 1} of {len(names)}: {typed}"),
+        find_registered=lambda typed: find_registered(typed)["match"],   # e.g. Gousto → SCA INVESTMENTS LIMITED
     )
     overall.progress(1.0, text=f"Done: {len(names)} of {len(names)}")
     box.empty()

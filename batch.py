@@ -42,12 +42,15 @@ def rank_rows(rows):
     return sorted(rows, key=lambda row: (row["fit_score"] is None, -(row["fit_score"] or 0)))
 
 
-def research_list(names, find, make, company_name, employees, friendly_errors=(), on_company=None):
+def research_list(names, find, make, company_name, employees, friendly_errors=(), on_company=None,
+                  find_registered=None):
     """
     Research each company in turn. One failure never stops the rest.
-      find(typed)            → Companies House matches
-      make(match, typed)     → a finished report (cached for 6 hours by the app)
-      on_company(n, typed)   → called before each one, for the progress bar
+      find(typed)              → Companies House matches
+      find_registered(typed)   → if there's no active close match: the company a public source says the
+                                 brand is registered as (e.g. Gousto → SCA INVESTMENTS LIMITED), or None
+      make(match, typed)       → a finished report (cached for 6 hours by the app)
+      on_company(n, typed)     → called before each one, for the progress bar
     Returns (rows ranked by fit, the finished reports).
     """
     rows, reports = [], []
@@ -58,12 +61,23 @@ def research_list(names, find, make, company_name, employees, friendly_errors=()
                "top_reason": "", "report_id": None, "status": ""}
         try:
             matches = find(typed)
-            if not matches or not matches[0]["close_match"]:
-                row["status"] = "No close match on Companies House"
+            active = [m for m in matches if m["close_match"] and m.get("status", "active") == "active"]
+            match = active[0] if active else (find_registered(typed) if find_registered else None)
+            closed = [m for m in matches if m["close_match"]]
+            if not match and closed:
+                match = closed[0]   # really closed: its report says "not worth contacting"
+            if not match:
+                row["status"] = ("No close match on Companies House, and no registered name found in public sources"
+                                 if find_registered else "No close match on Companies House")
             else:
-                r = make(matches[0], typed)
+                if match.get("registered_as"):
+                    row["registered_as"] = match["name"]
+                r = make(match, match.get("typed") or typed)
                 reports.append(r)
-                row.update(company=company_name(r), fit_score=r["fit_score"], employees=employees(r) or None,
+                name = company_name(r)
+                if row.get("registered_as"):
+                    name = f"{name} (registered as {row['registered_as']})"
+                row.update(company=name, fit_score=r["fit_score"], employees=employees(r) or None,
                            top_reason=(r["signals"][0]["text"] if r.get("signals") else ""),
                            report_id=r.get("report_id"), status="Done")
         except friendly_errors as e:
