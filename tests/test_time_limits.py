@@ -31,7 +31,7 @@ def test_gemini_gets_time_limit_and_no_hidden_retries(monkeypatch):
 
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setattr(genai, "Client", FakeClient)
-    with pytest.raises(provider.AIError, match="took longer than 60 seconds"):
+    with pytest.raises(provider.AllModelsBusy, match="all 4 models are busy"):   # every model timed out
         provider.generate_structured("hello", object)
     assert seen == {"timeout": settings.GEMINI_TIMEOUT_SECONDS * 1000, "attempts": 1}
 
@@ -82,7 +82,8 @@ def test_one_slow_step_is_skipped_and_the_rest_carry_on(fake_sources):
         "funding": [{"title": "Acme raises £5m", "source": "https://f", "snippet": "...", "date": None}]})
 
     research = report.research_company("123", "Acme")
-    assert any(w.startswith("News skipped: Tavily took longer") for w in research["warnings"])
+    assert any(w.startswith("News and reasons to reach out are unavailable right now for: news (Tavily took longer")
+               for w in research["warnings"])
     assert "https://f" in [s["url"] for s in research["sources"].items]  # signals still ran
     assert "News" in research["timings"] and "Signals" in research["timings"]
 
@@ -97,7 +98,8 @@ def test_key_problem_stops_all_tavily_steps_with_one_message(fake_sources):
     fake_sources.setattr(report.tavily, "get_recent_news", lambda *a, **k: calls.append("news") or [])
 
     research = report.research_company("123", "Acme")
-    assert research["warnings"] == ["News and signals unavailable: Tavily rejected the API key."]
+    assert research["warnings"] == ["News and reasons to reach out are unavailable right now (Tavily rejected the "
+                                    "API key). The score uses Companies House data only."]
     assert calls == []  # didn't keep trying with a bad key
 
 
@@ -191,7 +193,7 @@ def test_all_models_busy_gives_a_friendly_error(monkeypatch):
     from models import Claim
     all_models = [settings.GEMINI_MODEL] + settings.GEMINI_FALLBACK_MODELS
     gemini = FakeGemini({m: busy() for m in all_models}).install(monkeypatch)
-    with pytest.raises(provider.AIError, match="having problems"):
+    with pytest.raises(provider.AllModelsBusy, match="all 4 models are busy. Try again in a few minutes"):
         provider.generate_structured("hi", Claim)
     assert gemini.models_asked == all_models   # each model once, no endless loop
 
@@ -204,7 +206,7 @@ def test_dropped_connection_gets_a_plain_message(monkeypatch):
     """Real problem (17 Nov 2026): the connection dropped and the message said 'ConnectError'."""
     from models import Claim
     FakeGemini({m: ConnectError() for m in [settings.GEMINI_MODEL] + settings.GEMINI_FALLBACK_MODELS}).install(monkeypatch)
-    with pytest.raises(provider.AIError, match="Couldn't reach Gemini. Check your internet connection"):
+    with pytest.raises(provider.AIError, match="Couldn't connect to the internet"):
         provider.generate_structured("hi", Claim)
 
 

@@ -27,7 +27,7 @@ import exports
 import report
 import settings
 import usage
-from ai.provider import AIError
+from ai.provider import AIError, AllModelsBusy
 from sources import uk_companies_house as ch
 from sources import news_tavily as tavily
 from sources.news_tavily import domain_of
@@ -192,7 +192,7 @@ def search_form():
         with st.form("search", border=False):
             text, button = st.columns([5, 1.3], vertical_alignment="center")
             typed = text.text_input("Company name or website", placeholder=settings.SEARCH_PLACEHOLDER,
-                                    label_visibility="collapsed")
+                                    label_visibility="collapsed", max_chars=settings.MAX_SEARCH_CHARS)
             submitted = button.form_submit_button("Research →", type="primary")
     tried = try_chips()
     # The offer keeps its default unless the user opens "Change offer"
@@ -201,6 +201,12 @@ def search_form():
         st.caption(settings.OFFER_HINT)
     if tried:
         run_try(tried)
+    if submitted and len(typed) > settings.MAX_SEARCH_CHARS:
+        st.error("That's too long for a company name. Type the name or website only.", icon=":material/error:")
+        return
+    if submitted and not typed.strip():
+        st.info("Type a company name or website first, e.g. cognism.com.", icon=":material/info:")
+        return
     if submitted:
         for key in ("report", "email", "emails", "sample"):
             st.session_state.pop(key, None)
@@ -310,12 +316,14 @@ def pick_company():
                    f'(its company profile, website footer, terms or privacy pages){reason}. '
                    "Try the company's website instead, e.g. gousto.co.uk.", icon=":material/search_off:")
     if not matches:
-        st.info(f'No companies found for "{safe(typed)}". Check the spelling or try the website.')
+        st.info(f'No UK company found for "{safe(typed)}". Check the spelling, or type the website '
+                "(e.g. gousto.co.uk).", icon=":material/search_off:")
         return
     if all((m.get("status") or "active") != "active" for m in matches):
         st.info("Only closed companies match this name. Try the company's website instead.", icon=":material/info:")
     elif not matches[0]["close_match"]:
-        st.warning(f'No close match found for "{safe(typed)}". Only pick one below if you\'re sure it\'s right.')
+        st.warning(f'No close match found for "{safe(typed)}". Check the spelling, or type the website '
+                   "(e.g. gousto.co.uk). Only pick one below if you're sure it's right.")
     st.markdown("##### Which company did you mean?")
     st.caption("Biggest first. Size is a guide from the accounts each company files, not a staff count.")
     typed_domain = domain_of(typed) if report.looks_like_website(typed) else None
@@ -345,6 +353,11 @@ def run_report(choice):
     on_step = live_progress(choice["name"])
     try:
         r = make_report(choice["company_number"], typed, offer, on_step)
+    except AllModelsBusy:
+        st.error(f"The AI couldn't write the report right now (all models are busy). The research is saved for "
+                 f"{settings.TAVILY_CACHE_HOURS} hours, so trying again in a few minutes won't use search credits.",
+                 icon=":material/hourglass_top:")
+        return
     except Exception as e:
         friendly_error(e)
         return
@@ -403,6 +416,10 @@ def create_email(r, persona):
         with st.spinner(f"Writing the email for the {persona}…"):
             try:
                 email = make_email(r, persona)
+            except AllModelsBusy:
+                st.error("The AI couldn't write the email right now (all models are busy). The report is safe; "
+                         "try again in a few minutes.", icon=":material/hourglass_top:")
+                return
             except Exception as e:
                 friendly_error(e)
                 return
@@ -485,7 +502,10 @@ def show_report(r):
         left.html(ui.banner(r, by_id))
         right.html(ui.profile_card(r, by_id))
     for w in r["warnings"]:
-        st.caption(safe(w))
+        if w.startswith(report.NEWS_UNAVAILABLE):
+            st.warning(safe(w), icon=":material/cloud_off:")
+        else:
+            st.caption(safe(w))
     st.html(ui.stats_row(r, by_id))
     if r.get("more_about"):   # closed by default, directly under the overview and key numbers
         with st.expander(f"More about {exports.company_name(r)}", expanded=False, key="wn_more_about",
@@ -522,9 +542,9 @@ def batch_page():
                f"free daily allowance. Companies researched in the last {settings.REPORT_CACHE_HOURS} hours are free.", icon=":material/warning:")
     upload = st.file_uploader("Your list (CSV)", type=["csv"], key="wn_batch_file")
     if upload is not None:
-        names, left_out = batch.parse_company_list(upload.getvalue().decode("utf-8-sig", errors="replace"))
-        if not names:
-            st.info("No company names found in that file.")
+        names, left_out, problem = batch.read_upload(upload.getvalue())
+        if problem:
+            st.warning(problem, icon=":material/error:")
         else:
             if left_out:
                 st.caption(f"Only the first {settings.BATCH_MAX_COMPANIES} are used ({left_out} left out).")

@@ -117,6 +117,11 @@ def company_page_url(company_number):
     return f"{PUBLIC_SITE}/company/{company_number}"
 
 
+CH_DOWN = ("Companies House isn't responding right now. Try again in a few minutes; "
+           "the sample report still works.")
+NO_INTERNET = "Couldn't connect to the internet. Check your connection and try again."
+
+
 def _call_api(path, params=None):
     """
     Call Companies House and return the JSON. Turns every failure into a friendly error.
@@ -146,9 +151,11 @@ def _call_api_live(path, params=None):
             timeout=settings.COMPANIES_HOUSE_TIMEOUT_SECONDS,
         )
     except requests.exceptions.Timeout:
-        raise CompaniesHouseError("Companies House took too long to reply. Please try again.")
+        raise CompaniesHouseError(CH_DOWN)
+    except requests.exceptions.ConnectionError:
+        raise CompaniesHouseError(NO_INTERNET)
     except requests.exceptions.RequestException:
-        raise CompaniesHouseError("Couldn't reach Companies House. Check your internet connection.")
+        raise CompaniesHouseError(CH_DOWN)
 
     if response.status_code == 401:
         raise CompaniesHouseError("Companies House rejected the API key. Check it in your .env file.")
@@ -157,7 +164,7 @@ def _call_api_live(path, params=None):
     if response.status_code == 429:
         raise CompaniesHouseError("Too many Companies House requests. Wait a few minutes and try again.")
     if not response.ok:
-        raise CompaniesHouseError(f"Companies House had a problem (code {response.status_code}). Try again later.")
+        raise CompaniesHouseError(CH_DOWN)
     return response.json()
 
 

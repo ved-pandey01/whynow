@@ -37,6 +37,31 @@ def parse_company_list(text, limit=settings.BATCH_MAX_COMPANIES):
     return names[:limit], max(0, len(names) - limit)
 
 
+MAX_UPLOAD_BYTES = 100_000   # a list of 10 companies is tiny; anything bigger isn't a company list
+
+
+def read_upload(data):
+    """
+    Check an uploaded file and read the company names from it.
+    Returns (names, left_out, problem): 'problem' is a friendly message saying what to fix, or None.
+    """
+    if len(data) > MAX_UPLOAD_BYTES:
+        return [], 0, ("That file is too big for a list of companies. Upload a CSV with one company per row, "
+                       f"up to {settings.BATCH_MAX_COMPANIES} rows.")
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return [], 0, ("That file isn't a plain-text CSV. In Excel or Google Sheets, save it as "
+                       "'CSV UTF-8' and upload it again.")
+    if not text.strip():
+        return [], 0, "That file is empty. Add one company name or website per row and upload it again."
+    names, left_out = parse_company_list(text)
+    if not names:
+        return [], 0, ("No company names found in that file. Put one company name or website per row, "
+                       "or use a column called company or website.")
+    return names, left_out, None
+
+
 def rank_rows(rows):
     """Best fit first; companies we couldn't research go to the bottom."""
     return sorted(rows, key=lambda row: (row["fit_score"] is None, -(row["fit_score"] or 0)))

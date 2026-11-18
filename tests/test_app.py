@@ -142,7 +142,7 @@ def test_picker_shows_cards_with_details(app):
 def test_no_matches_gives_friendly_message(app, monkeypatch):
     monkeypatch.setattr(ch, "search_companies", lambda typed: [])
     search(app, "Zzqx Widgets Ltd")
-    assert "No companies found" in app.info[0].value
+    assert any("No UK company found" in i.value for i in app.info)
 
 
 def test_loose_matches_get_a_warning(app, monkeypatch):

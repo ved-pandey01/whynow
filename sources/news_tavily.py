@@ -61,11 +61,13 @@ def _friendly(error):
     if isinstance(error, (tavily_errors.InvalidAPIKeyError, tavily_errors.MissingAPIKeyError)):
         return NewsError("Tavily rejected the API key. Check TAVILY_API_KEY in your .env file.")
     if isinstance(error, tavily_errors.UsageLimitExceededError):
-        return NewsError("Your free Tavily credits have run out for this month.")
+        return NewsError("Tavily credits have run out")
     if isinstance(error, tavily_errors.TimeoutError) or "timeout" in type(error).__name__.lower():
-        return NewsError(f"Tavily took longer than {settings.TAVILY_TIMEOUT_SECONDS} seconds to reply.",
+        return NewsError(f"Tavily took longer than {settings.TAVILY_TIMEOUT_SECONDS} seconds to reply",
                          temporary=True)
-    return NewsError("Couldn't get news from Tavily right now. Please try again.", temporary=True)
+    if isinstance(error, (ConnectionError, OSError)) or "connect" in type(error).__name__.lower():
+        return NewsError("Couldn't connect to the internet. Check your connection and try again")
+    return NewsError("Tavily isn't responding right now", temporary=True)
 
 
 TAVILY_CACHE_SECONDS = settings.TAVILY_CACHE_HOURS * 3600

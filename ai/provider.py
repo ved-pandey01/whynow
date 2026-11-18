@@ -21,12 +21,19 @@ import usage
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
+NO_INTERNET = "Couldn't connect to the internet. Check your connection and try again."
+
+
 class AIError(Exception):
     """A problem with the AI, with a friendly message to show the user."""
 
     def __init__(self, message, try_backup=False):
         super().__init__(message)
         self.try_backup = try_backup   # True if another model might work (busy, slow, retired)
+
+
+class AllModelsBusy(AIError):
+    """Every Gemini model (main and backups) failed for a temporary reason."""
 
 
 # Which model answered the last request, kept per user session (each session runs in its own thread)
@@ -49,9 +56,13 @@ def generate_structured(prompt, shape):
             answer = _ask_gemini(prompt, shape, model)
         except AIError as e:
             usage.log_call("gemini", "generate", model=model)   # a failed request may still be billed
-            # Key problems (or the last model failing) stop here: another model wouldn't help
-            if not e.try_backup or model == models[-1]:
-                raise
+            if not e.try_backup:
+                raise    # e.g. a key problem: another model wouldn't help
+            if model == models[-1]:
+                if str(e) == NO_INTERNET:
+                    raise
+                raise AllModelsBusy(f"The AI couldn't answer right now: all {len(models)} models are busy. "
+                                    "Try again in a few minutes.") from e
             failed.append(f"{model} failed: {e}")
             continue
         usage.log_call("gemini", "generate", model=model)
@@ -89,10 +100,10 @@ def _ask_gemini(prompt, shape, model):
     except errors.APIError as e:
         raise _friendly(e, model)
     except (ConnectionError, TimeoutError, OSError):
-        raise AIError("Couldn't reach Gemini. Check your internet connection and try again.")
+        raise AIError(NO_INTERNET, try_backup=True)
     except Exception as e:
         if "connect" in type(e).__name__.lower():   # e.g. the web library's ConnectError
-            raise AIError("Couldn't reach Gemini. Check your internet connection and try again.", try_backup=True)
+            raise AIError(NO_INTERNET, try_backup=True)
         if "timeout" in type(e).__name__.lower():
             raise AIError(f"Gemini took longer than {settings.GEMINI_TIMEOUT_SECONDS} seconds. Please try again.",
                           try_backup=True)

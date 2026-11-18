@@ -37,6 +37,10 @@ STEPS = [
 START, DONE = "start", "done"
 
 
+NEWS_UNAVAILABLE = "News and reasons to reach out are unavailable right now"
+TAVILY_STEPS = ("Company profile", "News", "Signals", "Jobs")   # 'Website' handles its own errors (it's optional)
+
+
 def _no_progress(step, state):
     """Default: nobody is watching the progress (command line, tests)."""
 
@@ -183,6 +187,8 @@ def research_company(company_number, typed, on_step=_no_progress):
     def out_of_time():
         return time.monotonic() - started > settings.RESEARCH_TIME_BUDGET_SECONDS
 
+    failed_steps = []   # Tavily steps that failed for a temporary reason (slow or not responding)
+
     def run_step(label, fn):
         """Run one Tavily step, timing it. A slow step is skipped; a key/credit problem stops all."""
         if out_of_time():
@@ -194,7 +200,7 @@ def research_company(company_number, typed, on_step=_no_progress):
         except tavily.NewsError as e:
             if not e.temporary:
                 raise
-            warnings.append(f"{label} skipped: {e}")
+            failed_steps.append((label, str(e).rstrip(".")))   # summed up in one message at the end
             return None
         finally:
             research["timings"][label] = round(time.monotonic() - step_start, 1)
@@ -244,9 +250,17 @@ def research_company(company_number, typed, on_step=_no_progress):
                 sources.add("job", f"[jobs] {item['title']}", item["source"], item["snippet"], item["date"])
         on_step(2, DONE)
     except tavily.NewsError as e:
-        warnings.append(f"News and signals unavailable: {e}")
+        warnings.append(f"{NEWS_UNAVAILABLE} ({str(e).rstrip('.')}). The score uses Companies House data only.")
         on_step(1, DONE)
         on_step(2, DONE)
+    else:
+        if failed_steps:   # one clear message, not one per step
+            reason = failed_steps[0][1]
+            if len(failed_steps) == len(TAVILY_STEPS):
+                warnings.append(f"{NEWS_UNAVAILABLE} ({reason}). The score uses Companies House data only.")
+            else:
+                parts = ", ".join(label.lower() for label, _ in failed_steps)
+                warnings.append(f"{NEWS_UNAVAILABLE} for: {parts} ({reason}). The report uses the rest of the research.")
 
     return research
 

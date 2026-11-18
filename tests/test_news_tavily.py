@@ -272,7 +272,7 @@ def test_missing_key_gives_friendly_error(monkeypatch):
 @pytest.mark.parametrize("error, message", [
     (nt.tavily_errors.InvalidAPIKeyError("bad"), "rejected the API key"),
     (nt.tavily_errors.UsageLimitExceededError("limit"), "credits have run out"),
-    (RuntimeError("anything else"), "Couldn't get news"),
+    (RuntimeError("anything else"), "Tavily isn't responding right now"),
 ])
 def test_tavily_failures_give_friendly_errors(monkeypatch, error, message):
     use_fake(monkeypatch, error=error)

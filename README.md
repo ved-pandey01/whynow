@@ -71,6 +71,22 @@ WhyNow is built to be cheap to run. Every limit is in the "Running costs" sectio
 - **Call log** ([usage.py](usage.py)): every Gemini and Tavily call, including cache hits at no cost, is logged to `.usage/`. No keys or search text are logged.
 - **Owner mode:** set `OWNER_PASSWORD` in `.env`, then open **Owner** under the footer. The owner has no daily limit and sees **Research a list** and today's usage totals in "Behind the scenes". With no password set, owner mode is off.
 
+## When something goes wrong
+WhyNow never crashes: each problem gets a plain message saying what happened and what to try next.
+
+| Problem | What you see |
+|---|---|
+| Company not found or misspelled | "No UK company found…" or "No close match…", with a suggestion to check the spelling or type the website |
+| Only dissolved companies match | "Only closed companies match this name. Try the company's website instead." |
+| Companies House down or slow | "Companies House isn't responding right now. Try again in a few minutes; the sample report still works." |
+| Tavily down or out of credits | The report still appears, with a note that news and reasons to reach out are unavailable and the score uses Companies House data only |
+| All Gemini models busy | "The AI couldn't write the report right now…", noting that trying again won't use search credits (the research is cached for 24 hours) |
+| No internet | "Couldn't connect to the internet. Check your connection and try again." |
+| Bad CSV in Research a list | Separate messages for an empty file, a non-CSV file, a file that's too big, or no company names |
+| Over-long search | The search box stops at 100 characters |
+
+Anything unexpected shows "Something unexpected went wrong. Please try again in a minute." and prints only the error type (never a key) in the terminal. Each case has a mocked test in [tests/test_errors.py](tests/test_errors.py).
+
 ## Downloads
 - [exports.py](exports.py) builds the CSV (Python's own `csv` module) and the PDF ([fpdf2](https://py-pdf.github.io/fpdf2/)), using only what's already in the report.
 - The PDF uses the Inter font in [assets/fonts](assets/fonts) (SIL Open Font Licence, included), so £, € and dashes print properly.
