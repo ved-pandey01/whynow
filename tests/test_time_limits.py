@@ -225,3 +225,12 @@ def test_closed_company_ticks_every_step_without_research(fake_sources):
     research = report.research_company("123", "Acme", on_step=lambda step, state: events.append((step, state)))
     report.build_report(research, on_step=lambda step, state: events.append((step, state)))
     assert {step for step, state in events if state == report.DONE} == set(range(len(report.STEPS)))
+
+
+def test_directors_source_is_dated_by_newest_appointment(fake_sources):
+    fake_sources.setattr(report.ch, "get_recent_directors", lambda n: [
+        {"name": "A", "role": "director", "occupation": None, "appointed_on": "2026-09-01", "source": "https://ch/officers"},
+        {"name": "B", "role": "director", "occupation": None, "appointed_on": "2026-10-12", "source": "https://ch/officers"}])
+    research = report.research_company("123", "Acme")
+    directors = next(s for s in research["sources"].items if s["url"] == "https://ch/officers")
+    assert directors["date"] == "2026-10-12"

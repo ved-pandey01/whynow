@@ -158,3 +158,32 @@ def test_progress_card_shows_ticks_spinner_and_waiting_steps():
     assert 'class="wn-step-row active"><span class="wn-spin"' in out
     assert 'class="wn-step-row todo"><span class="icon" aria-hidden="true">radio_button_unchecked</span>' in out
     assert "Researching Acme &lt;Ltd&gt;" in out and "1 of 3 done" in out
+
+
+# --- Signal freshness ------------------------------------------------------------
+from datetime import date as _date
+
+
+@pytest.mark.parametrize("when, words", [
+    ("2026-11-18", "today"), ("2026-11-17", "yesterday"), ("2026-11-13", "5 days ago"),
+    ("2026-11-11", "1 week ago"), ("2026-10-28", "3 weeks ago"), ("2026-07-18", "4 months ago"),
+    ("2025-10-01", "1 year ago"),
+])
+def test_time_ago(when, words):
+    assert ui.time_ago(when, today=_date(2026, 11, 18)) == words
+
+
+@pytest.mark.parametrize("when", [None, "", "not a date", "2026-12-25"])   # missing, broken or future
+def test_time_ago_shows_nothing_without_a_real_past_date(when):
+    assert ui.time_ago(when, today=_date(2026, 11, 18)) is None
+
+
+def test_signal_shows_age_of_its_newest_dated_source():
+    by_id = {"S1": {"id": "S1", "title": "a", "url": "https://a", "date": "2026-10-20"},
+             "S2": {"id": "S2", "title": "b", "url": "https://b", "date": "2026-10-28"},
+             "S3": {"id": "S3", "title": "job", "url": "https://c", "date": None}}
+    funding = {"type": "funding", "text": "Raised £5m.", "sources": ["S1", "S2"]}
+    hiring = {"type": "hiring_sales", "text": "Hiring SDRs.", "sources": ["S3"]}
+    today = _date(2026, 11, 18)
+    assert "Funding · 3 weeks ago" in ui.signal_tile(funding, by_id, today)
+    assert ">Hiring for sales<" in ui.signal_tile(hiring, by_id, today)   # undated: no age shown

@@ -40,7 +40,7 @@ Your browser opens at http://localhost:8501. Then:
 3. Click **Research this company** (usually 20–45 seconds). While it runs, a card ticks off the live steps: finding the company on Companies House, reading recent news, checking reasons to reach out, scoring the fit and writing the report. The report shows:
    - a banner with the logo, a one-line summary, and a profile card (industry, HQ, website, LinkedIn followers)
    - key stat tiles (if funding is reported in more than one currency, the first is shown as the total and the others in small grey text), and the fit score as a colour-coded badge (green 7–10, amber 4–6, red 1–3)
-   - who to contact, "Why reach out now" tiles with icons, recent news, what we couldn't find, and sources
+   - who to contact, "Why reach out now" tiles with icons and how recent each one is (e.g. "Funding · 3 weeks ago", worked out from the source's own date; undated sources such as many job adverts show no age), recent news, what we couldn't find, and sources
 
    Every small `S1`-style tag links to its source.
 4. Use **Download PDF** (a clean, printable report with the WhyNow logo and every source as a clickable link) or **Download CSV** (one CRM-ready row: company, company number, website, employees, fit score, top reasons to reach out, email subject, email body, report date) at the top of any report. Both include the email once it's been created.

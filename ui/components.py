@@ -8,6 +8,7 @@ code to our page. Links only allow http(s) addresses.
 
 import html
 import re
+from datetime import date
 from pathlib import Path
 from urllib.parse import quote_plus
 
@@ -197,7 +198,8 @@ def preview_card(sample=None):
         name = (p.get("brand") or {}).get("value") or sample["company"]["name"]
         meta = " · ".join(esc(f["value"]) for f in (p.get("industry"), p.get("headquarters")) if f) or "UK company"
         score = sample["fit_score"]
-        signals = [SIGNALS.get(s["type"], (s["type"], "bolt")) for s in sample["signals"][:3]]
+        sample_sources = {x["id"]: x for x in sample.get("all_sources", [])}
+        signals = [signal_label(s, sample_sources) for s in sample["signals"][:3]]
         source_count = len(sample["sources"])
         logo_html = logo(p)
         subtitle = f"Real result for {esc(name)}, saved {esc(sample.get('saved_on', ''))}"
@@ -388,18 +390,47 @@ def linkedin_search_url(role, company):
     return "https://www.linkedin.com/search/results/people/?keywords=" + quote_plus(f"{role} {company}")
 
 
-def signal_tile(s, by_id):
+def time_ago(iso_date, today=None):
+    """'2026-10-28' → '3 weeks ago'. None if there's no date (or it's in the future): then we show nothing."""
+    try:
+        days = ((today or date.today()) - date.fromisoformat(str(iso_date)[:10])).days
+    except (TypeError, ValueError):
+        return None
+    if days < 0:
+        return None
+    if days < 2:
+        return "today" if days == 0 else "yesterday"
+    for size, unit in ((365, "year"), (30, "month"), (7, "week"), (1, "day")):
+        if days >= size:
+            n = days // size
+            return f"{n} {unit}{'s' if n > 1 else ''} ago"
+
+
+def signal_date(s, by_id):
+    """The newest date among the signal's own sources, or None if none of them is dated."""
+    dates = [by_id[i]["date"] for i in s.get("sources", []) if i in by_id and by_id[i].get("date")]
+    return max(dates) if dates else None
+
+
+def signal_label(s, by_id, today=None):
+    """'Funding · 3 weeks ago', or just 'Funding' when no source is dated."""
     label, icon_name = SIGNALS.get(s["type"], (s["type"].replace("_", " ").capitalize(), "bolt"))
+    age = time_ago(signal_date(s, by_id), today)
+    return (f"{label} · {age}" if age else label), icon_name
+
+
+def signal_tile(s, by_id, today=None):
+    label, icon_name = signal_label(s, by_id, today)
     warn = " warn" if s["type"] in WARNING_SIGNALS else (" grow" if s["type"] in GROWTH_SIGNALS else "")
     return (f'<div class="wn-signal{warn}"><div class="wn-signal-head">{icon(icon_name)}{esc(label)}</div>'
             f'<div class="wn-signal-text">{esc(s["text"])}{cite(s["sources"], by_id)}</div></div>')
 
 
-def signals_card(r, by_id):
+def signals_card(r, by_id, today=None):
     if not r["signals"]:
-        body = f'<p class="wn-empty">No reasons to reach out now were found.</p>'
+        body = '<p class="wn-empty">No reasons to reach out now were found.</p>'
     else:
-        body = f'<div class="wn-signals">{"".join(signal_tile(s, by_id) for s in r["signals"])}</div>'
+        body = f'<div class="wn-signals">{"".join(signal_tile(s, by_id, today) for s in r["signals"])}</div>'
     return card(settings.SIGNALS_TITLE, "bolt", body)
 
 

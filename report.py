@@ -143,7 +143,8 @@ def research_company(company_number, typed, on_step=_no_progress):
     if directors:
         sources.add("signal", "Companies House: recently appointed directors", directors[0]["source"],
                     "\n".join(f"{d['name']} ({d['role']}, {d['occupation'] or 'occupation not listed'}), "
-                              f"appointed {d['appointed_on']}" for d in directors))
+                              f"appointed {d['appointed_on']}" for d in directors),
+                    max((d["appointed_on"] for d in directors if d.get("appointed_on")), default=None))
 
     research["timings"]["Companies House"] = round(time.monotonic() - started, 1)
     on_step(0, DONE)
