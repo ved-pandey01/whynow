@@ -199,10 +199,18 @@ def report_to_pdf(r, email=None, today=None):
 
     # Email, only if it has been created
     if email:
-        heading("Outreach email")
+        heading("Outreach email" + (f" · for the {email['persona']}" if email.get("persona") else ""))
         text(f"Subject: {email['subject']}", bold=True)
         pdf.ln(1)
         text(email["body"])
+        if email.get("linkedin_note"):
+            pdf.ln(2)
+            text("LinkedIn connection note", bold=True, size=9.5)
+            text(email["linkedin_note"])
+        if email.get("call_opener"):
+            pdf.ln(2)
+            text("Call opener", bold=True, size=9.5)
+            text(email["call_opener"])
 
     # Sources, each with its clickable link
     heading("Sources")

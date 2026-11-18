@@ -114,6 +114,18 @@ EMAIL
 - Use British English spelling: personalise, organisation, optimise, prioritise, analyse,
   programme, centre, favourite. Never American spelling (personalize, organization…).
 - Start with "Hi [First name]," and sign off with "[Your name]".
+
+LINKEDIN NOTE (linkedin_note)
+- A connection request note, under {settings.LINKEDIN_NOTE_MAX_CHARS} characters including spaces.
+- Mention the same real trigger, one line on why you're connecting, no hard sell, no link.
+- Start with "Hi [First name]," and don't sign off.
+
+CALL OPENER (call_opener)
+- Exactly 2 short lines, one per line, for the first 10 seconds of a cold call.
+- Line 1: who you are ("[Your name] here, from [Your company]") and the real trigger.
+- Line 2: one open question that links the trigger to what they care about.
+
+All three use only the facts above, British English, and the same trigger (cite it in trigger_source_ids).
 """
 
 

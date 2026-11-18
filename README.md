@@ -44,7 +44,8 @@ Your browser opens at http://localhost:8501. Then:
 
    Every small `S1`-style tag links to its source.
 4. Use **Download PDF** (a clean, printable report with the WhyNow logo and every source as a clickable link) or **Download CSV** (one CRM-ready row: company, company number, website, employees, fit score, top reasons to reach out, email subject, email body, report date) at the top of any report. Both include the email once it's been created.
-5. Choose who the email is for (**Head of Sales**, **Head of RevOps** or **Founder / CEO**; Head of Sales by default), then click **Create email for this company** and **Copy** it. Each persona gets its own angle: sales = meetings and pipeline, RevOps = tools and data, founder = growth and cost (set in `EMAIL_PERSONAS` in settings.py). Each email is kept, so switching back is free. For scores of 3 or under, a note says it's probably not worth contacting.
+5. Choose who the email is for (**Head of Sales**, **Head of RevOps** or **Founder / CEO**; Head of Sales by default), then click **Create email for this company** and **Copy** it. Each persona gets its own angle: sales = meetings and pipeline, RevOps = tools and data, founder = growth and cost (set in `EMAIL_PERSONAS` in settings.py). Each email is kept, so switching back is free.
+   - The same single AI request also writes a **LinkedIn connection note** (300 characters at most; if it's longer, code cuts it at the last full sentence) and a **2-line call opener**, each with its own Copy button. All three use only facts from the report. For scores of 3 or under, a note says it's probably not worth contacting.
 6. Open "Behind the scenes" to see what code changed in the AI's answer and how long each step took.
 7. To start again, click the **WhyNow** logo in the top bar or **← Back to home** above the report. Both clear the current report.
 

@@ -4,6 +4,9 @@ Run it once (about 10 Tavily credits + 2 Gemini requests). If the AI step fails,
 the research is kept, so running it again costs no Tavily credits:
     .venv/bin/python -m scripts.save_sample
 Only the report is saved: no API keys are ever written to the file.
+
+To refresh only the email, LinkedIn note and call opener (1 Gemini request, no Tavily credits):
+    .venv/bin/python -m scripts.save_sample --outreach-only
 """
 
 import json
@@ -57,5 +60,16 @@ def main():
     print(f"Saved to {path} (score {r['fit_score']}/10, email {r['saved_email']['word_count']} words)")
 
 
+def refresh_outreach():
+    """Rewrite only the sample's email, LinkedIn note and call opener (1 Gemini request, no Tavily credits)."""
+    path = Path(__file__).resolve().parent.parent / settings.SAMPLE_REPORT_FILE
+    r = json.loads(path.read_text())
+    r["saved_email"] = with_retries(lambda: report.write_email(r))
+    path.write_text(json.dumps(r, indent=2, ensure_ascii=False))
+    print(f"Saved new outreach to {path} ({r['saved_email']['word_count']}-word email, "
+          f"{len(r['saved_email']['linkedin_note'])}-character LinkedIn note)")
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    refresh_outreach() if "--outreach-only" in sys.argv else main()

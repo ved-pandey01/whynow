@@ -86,6 +86,8 @@ COMPANY_SIZE_CHECKS = 25     # how many matches get their size looked up before 
 NEWS_ITEMS = 3               # recent news items in the report
 NEWS_WINDOW_MONTHS = 6       # "recent" news means published in the last 6 months
 NEWS_CANDIDATES = 8          # news items fetched; the AI picks the 3 really about the company
+LINKEDIN_NOTE_MAX_CHARS = 300   # LinkedIn connection notes allow 300 characters
+CALL_OPENER_MAX_LINES = 2
 EMAIL_MAX_WORDS = 120        # outreach email length limit
 
 # ---------------------------------------------------------------------------

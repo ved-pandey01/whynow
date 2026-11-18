@@ -10,7 +10,7 @@ from datetime import date
 import pytest
 
 import report
-from models import AIReport, Claim, EmailDraft, NewsPick, Signal
+from models import AIReport, Claim, NewsPick, OutreachDraft, Signal
 
 
 def make_research(headcount=300, status="active", accounts="full"):
@@ -58,9 +58,11 @@ class FakeAI:
 def make_email(**changes):
     fields = dict(subject="Your new SDR hire",
                   body="Hi [First name], saw Acme is hiring an SDR. Worth a quick chat? [Your name]",
+                  linkedin_note="Hi [First name], saw Acme is hiring an SDR. Would be good to connect.",
+                  call_opener="[Your name] here, from [Your company]. I saw Acme is hiring an SDR.\nHow are you ramping new reps?",
                   trigger_source_ids=["S4"])
     fields.update(changes)
-    return EmailDraft(**fields)
+    return OutreachDraft(**fields)
 
 
 def news_urls(r):
@@ -341,7 +343,7 @@ def test_email_shortening_is_timed_and_failures_are_noted():
     r, _ = build(make_research(), make_draft())
 
     def failing_ai(prompt, shape):
-        if shape is EmailDraft:
+        if shape is OutreachDraft:
             return make_email(body="word " * 150)
         raise report.AIError("Gemini is having problems right now.")
 
@@ -456,3 +458,25 @@ def test_email_is_written_for_the_chosen_persona(persona, angle_words):
 def test_unknown_persona_falls_back_to_head_of_sales():
     r, _ = build(make_research(), make_draft())
     assert report.write_email(r, ai=FakeAI(make_email()), persona="Chief Wizard")["persona"] == "Head of Sales"
+
+
+# --- LinkedIn note and call opener (same AI request as the email) ------------------
+def test_email_note_and_opener_come_from_one_ai_request():
+    email, ai = email_for(make_draft(), make_email())
+    assert len(ai.prompts) == 1
+    assert email["linkedin_note"].startswith("Hi [First name]")
+    assert email["call_opener"].count("\n") == 1          # 2 lines
+
+
+def test_long_linkedin_note_is_cut_at_a_full_sentence():
+    note = "Hi [First name], saw Acme is hiring SDRs. " + "This sentence is filler to make it long. " * 10
+    email, _ = email_for(make_draft(), make_email(linkedin_note=note))
+    assert len(email["linkedin_note"]) <= 300
+    assert email["linkedin_note"].endswith(".")
+    assert any("LinkedIn note cut" in c for c in email["checks"])
+
+
+def test_call_opener_is_kept_to_two_lines_and_british():
+    email, _ = email_for(make_draft(), make_email(call_opener="Line one.\nWe help you optimize.\nLine three.\nLine four."))
+    assert email["call_opener"] == "Line one.\nWe help you optimise."
+    assert any("Call opener cut from 4 to 2 lines" in c for c in email["checks"])

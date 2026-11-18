@@ -44,8 +44,10 @@ class AIReport(BaseModel):
     not_found: list[str] = Field(description="Useful things we couldn't find, e.g. 'No funding news in the last 12 months'.")
 
 
-class EmailDraft(BaseModel):
-    """The outreach email, written only when the user asks for it."""
+class OutreachDraft(BaseModel):
+    """The outreach pack, written only when the user asks: email, LinkedIn note and call opener, in ONE AI request."""
     subject: str = Field(description="Short subject line, under 8 words.")
     body: str = Field(description="The outreach email, under 120 words, signed '[Your name]'.")
-    trigger_source_ids: list[str] = Field(description="Source IDs for the trigger the email opens with.")
+    linkedin_note: str = Field(description="LinkedIn connection note, under 300 characters, same trigger, no hard sell.")
+    call_opener: str = Field(description="What to say in the first 10 seconds of a call: exactly 2 short lines.")
+    trigger_source_ids: list[str] = Field(description="Source IDs for the trigger all three open with.")

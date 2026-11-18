@@ -265,3 +265,12 @@ def test_persona_selector_writes_one_email_per_persona(app, monkeypatch):
     app.get("button_group")[0].set_value("Head of Sales").run()
     assert app.code                                       # the Sales email is still there, free
     assert calls == ["Head of Sales", "Head of RevOps"]
+
+
+def test_linkedin_note_and_call_opener_each_have_a_copy_box(app, monkeypatch):
+    full = dict(EMAIL, linkedin_note="Hi [First name], congrats on the round.", call_opener="Line one.\nLine two?")
+    monkeypatch.setattr(report, "write_email", lambda r, **k: full)
+    research_and_open(app)
+    button(app, "Create email for this company").click().run()
+    assert [c.value for c in app.code] == [EMAIL["body"], full["linkedin_note"], full["call_opener"]]
+    assert "LinkedIn connection note" in html(app) and "Call opener" in html(app)

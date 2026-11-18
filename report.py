@@ -22,7 +22,7 @@ from datetime import date, timedelta
 import settings
 from ai.prompts import build_email_prompt, build_report_prompt, build_shorten_prompt
 from ai.provider import AIError, generate_structured, last_model_used
-from models import AIReport, Claim, EmailDraft
+from models import AIReport, Claim, OutreachDraft
 from sources import news_tavily as tavily
 from sources import uk_companies_house as ch
 
@@ -587,6 +587,32 @@ def _check_email(draft, valid, ai, checks, timings=None):
             "trigger_sources": triggers, "warnings": warnings}
 
 
+def _check_linkedin_note(note, checks):
+    """British spelling, and no more than 300 characters (cut at the last full sentence that fits)."""
+    note, fixed = to_british((note or "").strip())
+    if fixed:
+        checks.append("British spelling (LinkedIn note): " + ", ".join(fixed))
+    limit = settings.LINKEDIN_NOTE_MAX_CHARS
+    if len(note) <= limit:
+        return note
+    cut = max(note.rfind(end, 0, limit) for end in (". ", "? ", "! "))
+    short = note[:cut + 1] if cut > 0 else note[:limit - 1].rsplit(" ", 1)[0] + "…"
+    checks.append(f"LinkedIn note cut from {len(note)} to {len(short)} characters (LinkedIn allows {limit})")
+    return short
+
+
+def _check_call_opener(opener, checks):
+    """British spelling, and at most 2 lines."""
+    opener, fixed = to_british((opener or "").strip())
+    if fixed:
+        checks.append("British spelling (call opener): " + ", ".join(fixed))
+    lines = [line.strip() for line in opener.splitlines() if line.strip()]
+    if len(lines) > settings.CALL_OPENER_MAX_LINES:
+        checks.append(f"Call opener cut from {len(lines)} to {settings.CALL_OPENER_MAX_LINES} lines")
+        lines = lines[:settings.CALL_OPENER_MAX_LINES]
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # 3. The email (only when the user clicks "Create email")
 # ---------------------------------------------------------------------------
@@ -632,11 +658,13 @@ def write_email(r, ai=generate_structured, today=None, persona=None):
     started = time.monotonic()
     name = r.get("profile", {}).get("brand", {}).get("value") or r["company"]["name"]
     draft = ai(build_email_prompt(name, r["offer"], email_facts(r, persona), (today or date.today()).isoformat(),
-                                  persona), EmailDraft)
+                                  persona), OutreachDraft)
     timings["Email"] = round(time.monotonic() - started, 1)
     ai_model = _model_used(ai)
     valid = {s["id"] for s in r["sources"]}   # only sources the report cites
     email = _check_email(draft, valid, ai, checks, timings)
+    email["linkedin_note"] = _check_linkedin_note(draft.linkedin_note, checks)
+    email["call_opener"] = _check_call_opener(draft.call_opener, checks)
     if r["fit_score"] <= LOW_FIT_SCORE:
         email["warnings"].insert(0, LOW_FIT_NOTE)
     email["checks"], email["timings"], email["ai_model"], email["persona"] = checks, timings, ai_model, persona

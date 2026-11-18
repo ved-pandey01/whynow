@@ -307,6 +307,14 @@ def show_email_text(e, by_id):
     st.code(e["body"], language=None, wrap_lines=True)
     st.html(f'<div class="wn-quiet">{e["word_count"]} words · opening trigger '
             f'{ui.cite(e["trigger_sources"], by_id) or "none"}</div>')
+    # The LinkedIn note and call opener come from the same AI request as the email
+    if e.get("linkedin_note"):
+        st.html(f'<div class="wn-outreach-label">{ui.icon("person_add")}LinkedIn connection note '
+                f'<span class="wn-quiet">· {len(e["linkedin_note"])}/{settings.LINKEDIN_NOTE_MAX_CHARS} characters</span></div>')
+        st.code(e["linkedin_note"], language=None, wrap_lines=True)
+    if e.get("call_opener"):
+        st.html(f'<div class="wn-outreach-label">{ui.icon("call")}Call opener</div>')
+        st.code(e["call_opener"], language=None, wrap_lines=True)
     if e.get("ai_model"):
         st.html(ui.model_note(e["ai_model"]))
 
