@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 
 import settings
+import usage
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
@@ -47,11 +48,13 @@ def generate_structured(prompt, shape):
         try:
             answer = _ask_gemini(prompt, shape, model)
         except AIError as e:
+            usage.log_call("gemini", "generate", model=model)   # a failed request may still be billed
             # Key problems (or the last model failing) stop here: another model wouldn't help
             if not e.try_backup or model == models[-1]:
                 raise
             failed.append(f"{model} failed: {e}")
             continue
+        usage.log_call("gemini", "generate", model=model)
         _last.model = {"name": model, "backup": bool(failed), "reason": "; ".join(failed) or None}
         return answer
 

@@ -15,3 +15,6 @@ __pycache__/
 
 # Saved research for the sample script (rebuilt when needed)
 .cache/
+
+# Call log and daily search counts (running costs)
+.usage/

@@ -13,16 +13,20 @@ Run it with:
 """
 
 import hashlib
+import hmac
 import json
+import os
 import time
 from pathlib import Path
 
 import streamlit as st
 
 import batch
+import cache
 import exports
 import report
 import settings
+import usage
 from ai.provider import AIError
 from sources import uk_companies_house as ch
 from sources import news_tavily as tavily
@@ -60,14 +64,7 @@ def find_registered(typed):
     return {"match": match, "found": found, "error": None}
 
 
-REPORT_CACHE_SECONDS = 6 * 3600
-
-
-@st.cache_resource
-def report_store():
-    """Finished reports, shared by everyone using this app for 6 hours: {report_id: (saved_at, report)}.
-    Our own cache (not st.cache_data) so the live progress can be shown while a report is made."""
-    return {}
+REPORT_CACHE_SECONDS = settings.REPORT_CACHE_HOURS * 3600
 
 
 def report_id(company_number, typed, offer):
@@ -75,24 +72,75 @@ def report_id(company_number, typed, offer):
 
 
 def cached_report(rid):
-    saved = report_store().get(rid)
-    if saved and time.time() - saved[0] < REPORT_CACHE_SECONDS:
-        return saved[1]
-    return None
+    """A finished report made in the last 24 hours (kept on disk, so it survives restarts), or None."""
+    r = cache.get("report", rid, REPORT_CACHE_SECONDS)
+    return None if r is cache.MISSING else r
 
 
 def make_report(company_number, typed, offer, on_step=report._no_progress):
-    """A report from the cache if we made it in the last 6 hours (no API credits), otherwise a new one."""
+    """A report from the cache if we made it in the last 24 hours (no API credits), otherwise a new one."""
     rid = report_id(company_number, typed, offer)
     r = cached_report(rid)
     if r is None:
         research = report.research_company(company_number, typed, on_step=on_step)
         r = dict(report.build_report(research, offer=offer, on_step=on_step), report_id=rid)
-        report_store()[rid] = (time.time(), r)
+        cache.put("report", rid, r)
     else:
         for step in range(len(report.STEPS)):   # cached: every step is already done
             on_step(step, report.DONE)
     return r
+
+
+# ---------------------------------------------------------------------------
+# Running costs: who is visiting, daily limits, owner mode
+# ---------------------------------------------------------------------------
+def visitor_id():
+    """
+    A short hash of the visitor's IP address and browser, so the daily limit survives a refresh.
+    Only the hash is stored, never the IP address itself.
+    """
+    return usage.visitor_from(st.context.headers or {}, st.context.ip_address)
+
+
+def is_owner():
+    return bool(st.session_state.get("owner"))
+
+
+def check_owner_password(entered):
+    """True if it matches OWNER_PASSWORD in .env (compared safely). If no password is set, owner mode is off."""
+    expected = os.getenv("OWNER_PASSWORD") or ""
+    return bool(expected) and hmac.compare_digest(entered.encode(), expected.encode())
+
+
+def owner_login():
+    """A small, quiet 'Owner' area under the footer."""
+    if is_owner():
+        st.caption("Owner mode: no daily limit, 'Research a list' and usage totals are on.")
+        return
+    with st.expander("Owner", key="wn_owner_login"):
+        entered = st.text_input("Owner password", type="password", key="wn_owner_password")
+        if st.button("Unlock", key="wn_owner_unlock"):
+            if check_owner_password(entered):
+                st.session_state["owner"] = True
+                st.rerun()
+            st.error("That password isn't right.")
+
+
+def show_limit_card(reason):
+    """Friendly message when today's free live searches are used up, with a way to the sample."""
+    if reason == "visitor":
+        text = (f"You've used today's free live searches ({settings.VISITOR_LIVE_SEARCHES_PER_DAY} per day). "
+                f"You can still open the sample report, or any company researched in the last "
+                f"{settings.REPORT_CACHE_HOURS} hours. Come back tomorrow for more.")
+    else:
+        text = ("WhyNow has reached today's limit of live searches for everyone. You can still open the sample "
+                f"report, or any company researched in the last {settings.REPORT_CACHE_HOURS} hours. Try again tomorrow.")
+    st.info(text, icon=":material/hourglass_top:")
+    if load_sample() and st.button("See sample report", type="primary", icon=":material/visibility:", key="wn_limit_sample"):
+        st.session_state.update(report=load_sample(), sample=True, matches=None)
+        st.session_state.pop("email", None)
+        st.session_state.pop("emails", None)
+        st.rerun()
 
 
 def live_progress(company_name, box=None):
@@ -185,7 +233,8 @@ def try_chips():
         for name, website, number in settings.TRY_COMPANIES:
             if st.button(name, key=f"wn_try_{website}", type="tertiary"):
                 clicked = (name, website, number)
-        if st.button("Research a list", key="wn_batch_open", type="tertiary", icon=":material/format_list_bulleted:"):
+        if is_owner() and st.button("Research a list", key="wn_batch_open", type="tertiary",
+                                     icon=":material/format_list_bulleted:"):
             for key in ("report", "email", "emails", "sample", "matches"):
                 st.session_state.pop(key, None)
             st.session_state["batch_mode"] = True
@@ -204,7 +253,7 @@ def run_try(chip):
 
 
 def open_sample_from_link():
-    """A link ending in ?sample=1 opens the sample report; ?report=<id> opens a report from the 6-hour cache
+    """A link ending in ?sample=1 opens the sample report; ?report=<id> opens a report from the 24-hour cache
     (the links in the batch results table)."""
     if "report" in st.session_state:
         return
@@ -217,7 +266,8 @@ def open_sample_from_link():
         if r:
             st.session_state.update(report=r, sample=False, matches=None)
         else:
-            st.info("That report has expired (reports are kept for 6 hours). Search for the company again.")
+            st.info(f"That report has expired (reports are kept for {settings.REPORT_CACHE_HOURS} hours). "
+                    "Search for the company again.")
 
 
 def landing():
@@ -283,13 +333,23 @@ def pick_company():
 
 
 def run_report(choice):
+    typed = choice.get("typed") or st.session_state["typed"]
+    offer = st.session_state["offer"]
+    # A cached company (or the sample) is free. A fresh report counts towards today's limits.
+    fresh = cached_report(report_id(choice["company_number"], typed, offer)) is None
+    if fresh:
+        allowed, reason = usage.live_search_allowed(visitor_id(), owner=is_owner())
+        if not allowed:
+            show_limit_card(reason)
+            return
     on_step = live_progress(choice["name"])
     try:
-        r = make_report(choice["company_number"], choice.get("typed") or st.session_state["typed"],
-                        st.session_state["offer"], on_step)
+        r = make_report(choice["company_number"], typed, offer, on_step)
     except Exception as e:
         friendly_error(e)
         return
+    if fresh:
+        usage.record_live_search(visitor_id())
     st.session_state.update(report=r, matches=None, sample=False)
     st.session_state.pop("email", None)
     st.session_state.pop("emails", None)
@@ -381,6 +441,22 @@ def show_behind_the_scenes(r):
         models = [ui.model_details(r.get("ai_model"), "Report"), ui.model_details(email.get("ai_model"), "Email")]
         if any(models):
             st.markdown("**AI model:**\n" + "\n".join(f"- {safe(m)}" for m in models if m))
+        if is_owner():
+            show_usage_totals()
+
+
+def show_usage_totals():
+    """Owner only: today's paid API calls and live searches."""
+    t = usage.today_totals()
+    searches = usage.searches_today()
+    gemini = ", ".join(f"{model}: {n}" for model, n in t["gemini"].items()) or "none"
+    st.markdown(
+        "**Today's usage** (owner only)\n"
+        f"- Live searches: {searches['total']} of {settings.TOTAL_LIVE_SEARCHES_PER_DAY}\n"
+        f"- Tavily: {t['tavily_searches']} searches, {t['tavily_page_reads']} pages read, "
+        f"about {t['tavily_credits']} credits\n"
+        f"- Gemini requests: {gemini}\n"
+        f"- Answers reused from the cache (free): {t['cached']}")
 
 
 def report_bar(r):
@@ -443,7 +519,7 @@ def batch_page():
     st.warning(f"This uses more API credits: about {settings.TAVILY_CREDITS_PER_REPORT} Tavily credits and 1–4 Gemini "
                f"requests per company, so a list of {settings.BATCH_MAX_COMPANIES} uses about "
                f"{settings.TAVILY_CREDITS_PER_REPORT * settings.BATCH_MAX_COMPANIES} credits and a good share of Gemini's "
-               "free daily allowance. Companies researched in the last 6 hours are free.", icon=":material/warning:")
+               f"free daily allowance. Companies researched in the last {settings.REPORT_CACHE_HOURS} hours are free.", icon=":material/warning:")
     upload = st.file_uploader("Your list (CSV)", type=["csv"], key="wn_batch_file")
     if upload is not None:
         names, left_out = batch.parse_company_list(upload.getvalue().decode("utf-8-sig", errors="replace"))
@@ -460,6 +536,15 @@ def batch_page():
         show_batch_results()
 
 
+def batch_report(match, typed, offer, box):
+    """One company in 'Research a list': from the cache if possible; a fresh one counts towards today's total."""
+    fresh = cached_report(report_id(match["company_number"], typed, offer)) is None
+    r = make_report(match["company_number"], typed, offer, live_progress(match["name"], box))
+    if fresh:
+        usage.record_live_search(visitor_id())
+    return r
+
+
 def run_batch(names):
     """Research each company in turn with live progress (the work itself is in batch.research_list)."""
     offer = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
@@ -468,7 +553,7 @@ def run_batch(names):
     rows, reports = batch.research_list(
         names,
         find=find_companies,
-        make=lambda match, typed: make_report(match["company_number"], typed, offer, live_progress(match["name"], box)),
+        make=lambda match, typed: batch_report(match, typed, offer, box),
         company_name=exports.company_name,
         employees=lambda r: exports._value(r, "headcount"),
         friendly_errors=(ch.CompaniesHouseError, AIError),
@@ -510,7 +595,7 @@ def main():
     st.html(ui.css())
     open_sample_from_link()
     st.html(ui.topbar())
-    if st.session_state.get("batch_mode") and "report" not in st.session_state:
+    if st.session_state.get("batch_mode") and is_owner() and "report" not in st.session_state:
         batch_page()
     elif "report" in st.session_state or st.session_state.get("matches") is not None:
         search_form()          # the same search bar, above the picker or report
@@ -520,5 +605,7 @@ def main():
     else:
         landing()
     st.html(ui.footer())
+    if os.getenv("OWNER_PASSWORD"):
+        owner_login()
 
 main()

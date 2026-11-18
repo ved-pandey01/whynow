@@ -135,16 +135,3 @@ CALL OPENER (call_opener)
 
 All three use only the facts above, British English, and the same trigger (cite it in trigger_source_ids).
 """
-
-
-def build_shorten_prompt(email_body, word_count):
-    """Used if the first email is too long."""
-    return f"""This sales email is {word_count} words. Rewrite it to under {settings.EMAIL_MAX_WORDS - 10} words.
-Keep the same opening trigger, the same facts and the "[First name]" / "[Your name]" placeholders.
-Use British English spelling (personalise, organisation, optimise).
-Don't add any new facts. Return only the new email body as plain text in the "text" field
-and an empty list in "source_ids".
-
-EMAIL:
-{email_body}
-"""

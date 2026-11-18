@@ -49,7 +49,7 @@ def research_list(names, find, make, company_name, employees, friendly_errors=()
       find(typed)              → Companies House matches
       find_registered(typed)   → if there's no active close match: the company a public source says the
                                  brand is registered as (e.g. Gousto → SCA INVESTMENTS LIMITED), or None
-      make(match, typed)       → a finished report (cached for 6 hours by the app)
+      make(match, typed)       → a finished report (cached for 24 hours by the app)
       on_company(n, typed)     → called before each one, for the progress bar
     Returns (rows ranked by fit, the finished reports).
     """

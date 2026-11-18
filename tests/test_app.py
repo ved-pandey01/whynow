@@ -245,6 +245,7 @@ def test_try_chip_uses_its_fixed_company_number(app, monkeypatch):
 
 # --- Research a list -----------------------------------------------------------
 def test_research_a_list_opens_with_a_credit_warning(app):
+    app.session_state["owner"] = True
     app.run()
     button(app, "Research a list").click().run()
     assert not app.exception
@@ -272,6 +273,7 @@ def test_expired_report_link_says_so(app):
 def test_batch_results_table_and_csv(app, monkeypatch):
     rows = [{"typed": "acme.com", "company": "Acme", "fit_score": 8, "employees": 300,
              "top_reason": "Raised $5m.", "report_id": "abc", "status": "Done"}]
+    app.session_state["owner"] = True
     app.session_state["batch_mode"] = True
     app.session_state["batch_rows"] = rows
     app.session_state["batch_reports"] = [REPORT]

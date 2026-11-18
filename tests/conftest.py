@@ -12,6 +12,14 @@ class NoRealCalls(Exception):
 
 
 @pytest.fixture(autouse=True)
+def separate_cache_and_log(monkeypatch, tmp_path):
+    """Each test gets its own empty cache and usage log, never the real ones in .cache/ and .usage/."""
+    import settings
+    monkeypatch.setattr(settings, "CACHE_FOLDER", str(tmp_path / "cache"))
+    monkeypatch.setattr(settings, "USAGE_FOLDER", str(tmp_path / "usage"))
+
+
+@pytest.fixture(autouse=True)
 def block_real_api_calls(monkeypatch):
     def refuse(*args, **kwargs):
         raise NoRealCalls("Tests must not call real APIs: fake this reply in the test.")

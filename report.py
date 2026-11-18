@@ -20,7 +20,7 @@ import time
 from datetime import date, timedelta
 
 import settings
-from ai.prompts import build_email_prompt, build_report_prompt, build_shorten_prompt
+from ai.prompts import build_email_prompt, build_report_prompt
 from ai.provider import AIError, generate_structured, last_model_used
 from models import AIReport, Claim, OutreachDraft
 from sources import news_tavily as tavily
@@ -732,21 +732,34 @@ def to_british(text):
     return text, changed
 
 
+def trim_email(body, max_words):
+    """
+    Remove whole sentences from the middle until the email fits, keeping the first sentence
+    (the trigger) and the closing (the question and sign-off). Paragraph breaks are kept.
+    """
+    parts = re.split(r"(?<=[.!?])(\s+)", body)          # sentences, with the spaces/newlines after each
+    sentences = [[parts[i], parts[i + 1] if i + 1 < len(parts) else ""] for i in range(0, len(parts), 2)]
+    if len(sentences) <= 3:
+        return body
+    keep_end = 2 if "?" in sentences[-2][0] or "[Your name]" in sentences[-1][0] else 1
+    middle = list(range(1, len(sentences) - keep_end))
+    while middle and word_count("".join(a + b for a, b in sentences)) > max_words:
+        i = middle.pop()                                   # drop middle sentences from the end backwards
+        sentences[i] = ["", ""]
+    return "".join(a + b for a, b in sentences).strip()
+
+
 def _check_email(draft, valid, ai, checks, timings=None):
     """Make sure the email is short enough and opens with a trigger we can verify."""
     body = clean_ai_text(draft.body.strip())
     words = word_count(body)
     if words > settings.EMAIL_MAX_WORDS:
-        shorten_start = time.monotonic()
-        try:
-            shorter = ai(build_shorten_prompt(body, words), Claim).text.strip()
-            if word_count(shorter) <= settings.EMAIL_MAX_WORDS:
-                checks.append(f"Email shortened from {words} to {word_count(shorter)} words")
-                body, words = shorter, word_count(shorter)
-        except AIError as e:
-            checks.append(f"Couldn't shorten the email: {e}")
-        if timings is not None:
-            timings["Email shortening"] = round(time.monotonic() - shorten_start, 1)
+        # No second AI request (it costs money): code removes whole middle sentences instead
+        trimmed = trim_email(body, settings.EMAIL_MAX_WORDS)
+        if word_count(trimmed) < words:
+            checks.append(f"Email trimmed by code from {words} to {word_count(trimmed)} words "
+                          "(kept the opening trigger, the question and the sign-off)")
+            body, words = trimmed, word_count(trimmed)
     # British spelling, enforced by code as well as asked for in the prompt
     body, fixed_body = to_british(body)
     subject, fixed_subject = to_british(clean_ai_text(draft.subject.strip()))
@@ -833,7 +846,7 @@ def email_facts(r, persona=None):
 def write_email(r, ai=generate_structured, today=None, persona=None):
     """
     Write the outreach email for a finished report, for one persona (Head of Sales, Head of RevOps
-    or Founder / CEO). Code then checks it: under 120 words (shortened once if not), British spelling,
+    or Founder / CEO). Code then checks it: under 120 words (trimmed by code if not, no second AI request), British spelling,
     and an opening trigger that cites a source the report actually uses.
     """
     persona = persona if persona in settings.EMAIL_PERSONAS else settings.DEFAULT_PERSONA

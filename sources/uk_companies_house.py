@@ -24,6 +24,8 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
+import cache
+
 import settings
 
 # Load API keys from the .env file in the project folder
@@ -116,7 +118,20 @@ def company_page_url(company_number):
 
 
 def _call_api(path, params=None):
-    """Call Companies House and return the JSON. Turns every failure into a friendly error."""
+    """
+    Call Companies House and return the JSON. Turns every failure into a friendly error.
+    Good answers (including 'not found') are reused for COMPANIES_HOUSE_CACHE_DAYS; errors are never cached.
+    """
+    request = [path, params or {}]
+    saved = cache.get("companies_house", request, settings.COMPANIES_HOUSE_CACHE_DAYS * 86400)
+    if saved is not cache.MISSING:
+        return saved
+    answer = _call_api_live(path, params)
+    cache.put("companies_house", request, answer)
+    return answer
+
+
+def _call_api_live(path, params=None):
     api_key = os.getenv("COMPANIES_HOUSE_API_KEY")
     if not api_key:
         raise CompaniesHouseError(

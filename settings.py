@@ -154,3 +154,18 @@ AUTHOR_INITIALS = "VP"
 AUTHOR_LINKEDIN = "https://www.linkedin.com/in/ved-prakash-pandey-954493202/"
 AUTHOR_GITHUB = "https://github.com/ved-pandey01"
 SAMPLE_REPORT_FILE = "data/sample_report_paddle.json"   # the saved example behind "See a sample report"
+
+
+# ---------------------------------------------------------------------------
+# Running costs: limits and caches (keep WhyNow cheap to run)
+# ---------------------------------------------------------------------------
+VISITOR_LIVE_SEARCHES_PER_DAY = 2   # fresh reports per visitor per day (the sample and cached companies are free)
+TOTAL_LIVE_SEARCHES_PER_DAY = 30    # fresh reports across all visitors per day
+COMPANIES_HOUSE_CACHE_DAYS = 7      # Companies House replies are reused for 7 days (it's free, but polite and fast)
+TAVILY_CACHE_HOURS = 24             # Tavily searches and page reads are reused for 24 hours (never paid for twice)
+REPORT_CACHE_HOURS = 24             # finished reports are reused for 24 hours (no repeat Gemini requests)
+CACHE_FOLDER = ".cache"             # git-ignored
+USAGE_FOLDER = ".usage"             # git-ignored: the call log and daily search counts
+TAVILY_CREDITS_PER_SEARCH = 1       # Tavily's price for a basic search
+TAVILY_PAGES_PER_CREDIT = 5         # Tavily's price for reading pages: 1 credit per 5 pages
+MAX_SEARCH_CHARS = 100              # longest company name or website accepted

@@ -334,31 +334,10 @@ def test_low_fit_email_gets_the_note():
     assert email["warnings"][0] == report.LOW_FIT_NOTE
 
 
-def test_long_email_is_shortened():
-    short = Claim(text="Hi [First name], short version. [Your name]", source_ids=[])
-    email, ai = email_for(make_draft(), make_email(body="word " * 150), short)
-    assert email["word_count"] <= 120
-    assert len(ai.prompts) == 2
-    assert any("shortened" in c for c in email["checks"])
-
-
-def test_email_shortening_is_timed_and_failures_are_noted():
-    """Real problem: a failing shortening call added ~58 hidden seconds to the Sage report."""
-    r, _ = build(make_research(), make_draft())
-
-    def failing_ai(prompt, shape):
-        if shape is OutreachDraft:
-            return make_email(body="word " * 150)
-        raise report.AIError("Gemini is having problems right now.")
-
-    email = report.write_email(r, ai=failing_ai)
-    assert "Email shortening" in email["timings"]
-    assert any("Couldn't shorten the email" in c for c in email["checks"])
-    assert any("over the 120-word limit" in w for w in email["warnings"])
-
-
-def test_email_still_too_long_gets_a_warning():
-    email, _ = email_for(make_draft(), make_email(body="word " * 150), Claim(text="still " * 130, source_ids=[]))
+def test_long_email_with_no_sentences_keeps_a_warning():
+    """Code can only remove whole sentences; if it can't, the over-limit warning stays (no second AI request)."""
+    email, ai = email_for(make_draft(), make_email(body="word " * 150))
+    assert len(ai.prompts) == 1
     assert any("over the 120-word limit" in w for w in email["warnings"])
 
 

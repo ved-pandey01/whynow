@@ -27,7 +27,9 @@ from dotenv import load_dotenv
 from tavily import TavilyClient
 from tavily import errors as tavily_errors
 
+import cache
 import settings
+import usage
 from sources.uk_companies_house import is_exact_match
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -66,25 +68,49 @@ def _friendly(error):
     return NewsError("Couldn't get news from Tavily right now. Please try again.", temporary=True)
 
 
+TAVILY_CACHE_SECONDS = settings.TAVILY_CACHE_HOURS * 3600
+
+
 def _search(query, **options):
-    """Run one Tavily search and return its list of results."""
+    """Run one Tavily search and return its list of results. The same search within 24 hours is free (cached)."""
+    request = [query, options]
+    saved = cache.get("tavily_search", request, TAVILY_CACHE_SECONDS)
+    if saved is not cache.MISSING:
+        usage.log_call("tavily", "search", cached=True)
+        return saved
     try:
-        return _client().search(query, timeout=settings.TAVILY_TIMEOUT_SECONDS, **options).get("results", [])
+        results = _client().search(query, timeout=settings.TAVILY_TIMEOUT_SECONDS, **options).get("results", [])
     except NewsError:
         raise
     except Exception as e:
         raise _friendly(e)
+    usage.log_call("tavily", "search", cost=settings.TAVILY_CREDITS_PER_SEARCH)
+    cache.put("tavily_search", request, results)
+    return results
 
 
-def _extract_text(url):
-    """Read one web page as plain text. Returns None if the page can't be read."""
+def _read_pages(urls):
+    """Read pages in one Tavily request (24-hour cache). Returns [{"url", "raw_content"}] for pages that could be read."""
+    saved = cache.get("tavily_extract", urls, TAVILY_CACHE_SECONDS)
+    if saved is not cache.MISSING:
+        usage.log_call("tavily", "extract", cached=True, pages=len(urls))
+        return saved
     try:
-        result = _client().extract(urls=[url], format="text", timeout=settings.TAVILY_TIMEOUT_SECONDS)
+        result = _client().extract(urls=urls, format="text", timeout=settings.TAVILY_TIMEOUT_SECONDS)
     except NewsError:
         raise
     except Exception as e:
         raise _friendly(e)
     pages = result.get("results", [])
+    usage.log_call("tavily", "extract", pages=len(pages),
+                   cost=-(-len(pages) // settings.TAVILY_PAGES_PER_CREDIT))   # 1 credit per 5 pages read
+    cache.put("tavily_extract", urls, pages)
+    return pages
+
+
+def _extract_text(url):
+    """Read one web page as plain text. Returns None if the page can't be read."""
+    pages = _read_pages([url])
     return pages[0].get("raw_content") if pages else None
 
 
@@ -525,10 +551,4 @@ def find_registration(brand, website=None):
 
 def _extract_pages(urls):
     """Read several pages in one request. Pages that can't be read are simply skipped."""
-    try:
-        result = _client().extract(urls=urls, format="text", timeout=settings.TAVILY_TIMEOUT_SECONDS)
-    except NewsError:
-        raise
-    except Exception as e:
-        raise _friendly(e)
-    return [{"url": p.get("url"), "text": p.get("raw_content") or ""} for p in result.get("results", [])]
+    return [{"url": p.get("url"), "text": p.get("raw_content") or ""} for p in _read_pages(urls)]
