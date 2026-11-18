@@ -246,3 +246,9 @@ def test_every_card_says_not_found_when_empty():
     empty = {"directors": {}, "owners": {}, "competitors": {}, "hiring": {}}
     out = ui.more_about_cards({"more_about": empty, "profile": {}, "company": {"name": "X"}}, {})
     assert out.count(ui.NOT_FOUND) == 4
+
+
+def test_overview_and_details_cards_stretch_and_align_to_the_top():
+    css = ui.CSS_FILE.read_text()
+    assert ".st-key-wn_overview [data-testid=\"stHorizontalBlock\"] { align-items: stretch !important; }" in css
+    assert "justify-content: flex-start" in css.split(".st-key-wn_overview .wn-card {")[1].split("}")[0]
