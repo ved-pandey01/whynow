@@ -768,12 +768,21 @@ def _check_linkedin_note(note, checks):
     return short
 
 
-def _check_call_opener(opener, checks):
-    """British spelling, and at most 2 lines."""
+def _check_call_opener(opener, checks, company=None):
+    """British spelling, the caller is never 'from' the company being called, and exactly 2 lines at most."""
     opener, fixed = to_british(clean_ai_text((opener or "").strip()))
     if fixed:
         checks.append("British spelling (call opener): " + ", ".join(fixed))
+    # Real problem: "[Your name] here from Paddle" — the caller doesn't work at the company they're calling
+    if company:
+        wrong = re.compile(rf"(\[Your name\]\s+here,?\s+(?:from|at|with)\s+){re.escape(company)}\b", re.IGNORECASE)
+        if wrong.search(opener):
+            opener = wrong.sub(r"\1[Your company]", opener)
+            checks.append(f"Call opener said the caller was from {company}; changed to [Your company]")
     lines = [line.strip() for line in opener.splitlines() if line.strip()]
+    if len(lines) == 1:   # two sentences on one line: put the question on its own line
+        parts = re.split(r"(?<=[.!])\s+(?=[A-Z])", lines[0], maxsplit=1)
+        lines = [p.strip() for p in parts if p.strip()]
     if len(lines) > settings.CALL_OPENER_MAX_LINES:
         checks.append(f"Call opener cut from {len(lines)} to {settings.CALL_OPENER_MAX_LINES} lines")
         lines = lines[:settings.CALL_OPENER_MAX_LINES]
@@ -831,7 +840,7 @@ def write_email(r, ai=generate_structured, today=None, persona=None):
     valid = {s["id"] for s in r["sources"]}   # only sources the report cites
     email = _check_email(draft, valid, ai, checks, timings)
     email["linkedin_note"] = _check_linkedin_note(draft.linkedin_note, checks)
-    email["call_opener"] = _check_call_opener(draft.call_opener, checks)
+    email["call_opener"] = _check_call_opener(draft.call_opener, checks, name)
     if r["fit_score"] <= LOW_FIT_SCORE:
         email["warnings"].insert(0, LOW_FIT_NOTE)
     email["checks"], email["timings"], email["ai_model"], email["persona"] = checks, timings, ai_model, persona

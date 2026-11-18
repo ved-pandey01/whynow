@@ -130,6 +130,7 @@ LINKEDIN NOTE (linkedin_note)
 CALL OPENER (call_opener)
 - Exactly 2 short lines, one per line, for the first 10 seconds of a cold call.
 - Line 1: who you are ("[Your name] here, from [Your company]") and the real trigger.
+  You do NOT work at {company_name}: always write "[Your company]", never "{company_name}", for the caller's company.
 - Line 2: one open question that links the trigger to what they care about.
 
 All three use only the facts above, British English, and the same trigger (cite it in trigger_source_ids).

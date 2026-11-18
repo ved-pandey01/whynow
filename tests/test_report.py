@@ -642,3 +642,20 @@ def test_report_text_never_shows_typed_tags():
         signals=[Signal(signal_type="hiring_sales", text="Hiring an SDR [S4, S9].", source_ids=["S4"])]))
     assert r["overview"][0]["text"] == "Acme makes sales software."
     assert r["signals"][0]["text"] == "Hiring an SDR."
+
+
+
+def test_call_opener_never_says_the_caller_is_from_the_target_company():
+    """Real problem (live, Head of RevOps): '[Your name] here from Paddle, ...'."""
+    research = make_research()
+    research["typed"] = "Acme"
+    r, _ = build(research, make_draft())
+    email = report.write_email(r, ai=FakeAI(make_email(
+        call_opener="[Your name] here from Acme, I saw you are hiring SDRs. How are you ramping them?")))
+    assert email["call_opener"] == "[Your name] here from [Your company], I saw you are hiring SDRs.\nHow are you ramping them?"
+    assert any("changed to [Your company]" in c for c in email["checks"])
+
+
+def test_one_line_opener_is_split_into_two_lines():
+    email, _ = email_for(make_draft(), make_email(call_opener="[Your name] here, from [Your company]. Saw the news. Got a minute?"))
+    assert email["call_opener"] == "[Your name] here, from [Your company].\nSaw the news. Got a minute?"
