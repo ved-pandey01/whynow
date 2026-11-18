@@ -170,6 +170,11 @@ def research_company(company_number, typed, on_step=_no_progress):
                               f"appointed {d['appointed_on']}" for d in directors),
                     max((d["appointed_on"] for d in directors if d.get("appointed_on")), default=None))
 
+    try:   # for the "More about" section; a problem here never stops the report
+        research["directors"] = ch.get_current_directors(company_number)
+        research["owners"] = ch.get_owners(company_number)
+    except ch.CompaniesHouseError as e:
+        warnings.append(f"Directors and owners unavailable: {e}")
     research["timings"]["Companies House"] = round(time.monotonic() - started, 1)
     on_step(0, DONE)
     brand = brand_from(typed)
@@ -233,6 +238,10 @@ def research_company(company_number, typed, on_step=_no_progress):
                 sources.add("signal", f"[{signal_type}] {item['title']}", item["source"],
                             item["snippet"], item["date"])
         research["left_out_old"] = old
+        # The one extra search per report: job adverts for "Hiring now" (kept out of the AI's sources)
+        for item in run_step("Jobs", lambda: tavily.get_job_listings(brand, website)) or []:
+            if not too_old(item["date"]):
+                sources.add("job", f"[jobs] {item['title']}", item["source"], item["snippet"], item["date"])
         on_step(2, DONE)
     except tavily.NewsError as e:
         warnings.append(f"News and signals unavailable: {e}")
@@ -369,7 +378,9 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
 
 
     profile_facts = company_profile(research)
+    more_about = _more_about(research, sources)
     used = set(n["source"] for n in news)
+    used.update(_more_about_ids(more_about))
     for group in overview + overview_more + snapshot + fit_reasons + signals:
         used.update(group["sources"])
     used.update(f["source"] for f in profile_facts.values() if isinstance(f, dict) and f.get("source"))
@@ -391,6 +402,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
         "overview": overview,
         "overview_more": overview_more,
         "about_link": _about_link(sources, research),
+        "more_about": more_about,
         "snapshot": snapshot,
         "news": news,
         "signals": signals,
@@ -443,9 +455,68 @@ def renumber_sources(r):
                                 key=lambda s: int(s["id"][1:]))
     out["sources"] = out["all_sources"][:len(shown)]
     out["checks"] = [retag(c) for c in r.get("checks", [])]
+    if r.get("more_about"):
+        m = r["more_about"]
+        one = lambda i: new_id.get(i, i) if i else i   # noqa: E731
+        out["more_about"] = {
+            "directors": dict(m["directors"], source=one(m["directors"]["source"])),
+            "owners": dict(m["owners"], source=one(m["owners"]["source"])),
+            "competitors": dict(m["competitors"], source=one(m["competitors"]["source"])),
+            "hiring": dict(m["hiring"], open_roles_source=one(m["hiring"]["open_roles_source"]),
+                           roles=[dict(x, source=one(x["source"])) for x in m["hiring"]["roles"]]),
+        }
     if r.get("saved_email"):
         out["saved_email"] = email(r["saved_email"])
     return out
+
+
+def _more_about(research, sources):
+    """
+    The four 'More about' cards, built by code from sources only (no AI):
+    Key people and Owners from Companies House; Competitors and Hiring now from the company profile
+    and job adverts. Anything not found is left empty, and the page says 'Not found in public sources'.
+    """
+    card = research.get("card") or {}
+    card_id = sources._by_url.get(card.get("source"))
+    brand = brand_from(research.get("typed") or research["profile"]["name"])
+
+    directors = research.get("directors") or {}
+    people, people_id = directors.get("people") or [], None
+    if people:
+        people_id = sources.add("companies_house", "Companies House: directors", directors["source"],
+                                _lines([(p["name"], f"{p['role']}, appointed {p['appointed_on']}") for p in people]))
+        sources.get(people_id)["title"] = "Companies House: directors"   # also the new-director signal's page
+
+    owners_data = research.get("owners") or {}
+    owners, owners_id = owners_data.get("owners") or [], None
+    if owners:
+        owners_id = sources.add("companies_house", "Companies House: people with significant control", owners_data["source"],
+                                _lines([(o["name"], "; ".join(o["control"])) for o in owners]))
+
+    similar = (card.get("similar_companies") or [])[:settings.COMPETITORS_SHOWN]
+    roles, seen = [], set()
+    for s in sources.items:
+        if s["kind"] == "job" or (s["kind"] == "signal" and s["title"].startswith("[hiring_sales]")):
+            role = tavily.role_from_title(s["title"], brand)
+            if role and role.lower() not in seen:
+                seen.add(role.lower())
+                roles.append({"title": role, "sales": tavily.is_sales_role(role), "source": s["id"]})
+    roles.sort(key=lambda r: not r["sales"])   # sales roles first
+
+    return {
+        "directors": {"people": people, "total": directors.get("total", 0), "source": people_id},
+        "owners": {"owners": owners, "source": owners_id},
+        "competitors": {"names": similar, "source": card_id if similar else None},
+        "hiring": {"open_roles": card.get("open_roles"), "open_roles_source": card_id if card.get("open_roles") else None,
+                   "roles": roles[:settings.HIRING_EXAMPLES_SHOWN]},
+    }
+
+
+def _more_about_ids(m):
+    """Every source ID the 'More about' cards cite."""
+    ids = [m["directors"]["source"], m["owners"]["source"], m["competitors"]["source"],
+           m["hiring"]["open_roles_source"]] + [r["source"] for r in m["hiring"]["roles"]]
+    return {i for i in ids if i}
 
 
 def _about_link(sources, research):

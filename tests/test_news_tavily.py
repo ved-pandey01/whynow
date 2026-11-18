@@ -263,6 +263,7 @@ def test_signals_runs_one_search_per_type_and_tags_results(monkeypatch):
 
 # --- Friendly errors ----------------------------------------------------
 def test_missing_key_gives_friendly_error(monkeypatch):
+    monkeypatch.setattr(nt, "_client", nt.real_client_for_tests)   # checks the key before calling anything
     monkeypatch.delenv("TAVILY_API_KEY")
     with pytest.raises(nt.NewsError, match="key is missing"):
         nt.get_recent_news("Cognism")
@@ -305,3 +306,20 @@ def test_card_reads_last_round_open_roles_and_similar_companies():
 def test_card_without_extra_sections_gives_none():
     card = nt.parse_company_card(SAMPLE_CARD)
     assert card["last_round"] is None and card["open_roles"] is None and card["similar_companies"] is None
+
+
+@pytest.mark.parametrize("title, brand, role", [
+    ("[hiring_sales] Business Development Representative at Paddle | Dev Global Jobs", "Paddle", "Business Development Representative"),
+    ("Darktrace hiring Sales Development Representative - Expression of Interest | LinkedIn", "Darktrace", "Sales Development Representative"),
+    ("Paddle - Senior Backend Engineer", "Paddle", "Senior Backend Engineer"),
+    ("2 Aktuelle Jobs bei Cognism GmbH | Stepstone", "Cognism", None),    # a job board page, not a role
+    ("Paddle Careers", "Paddle", None),
+    ("Head of Data at Stripe", "Paddle", None),                            # a different company's job
+])
+def test_role_from_title(title, brand, role):
+    assert nt.role_from_title(title, brand) == role
+
+
+def test_sales_roles_are_spotted():
+    assert nt.is_sales_role("Senior Account Executive") and nt.is_sales_role("SDR")
+    assert not nt.is_sales_role("Senior Backend Engineer")

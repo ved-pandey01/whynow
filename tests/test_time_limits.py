@@ -63,6 +63,9 @@ def fake_sources(monkeypatch):
     """Companies House works; every Tavily step returns nothing unless a test changes it."""
     monkeypatch.setattr(report.ch, "get_company_profile", lambda n: dict(PROFILE))
     monkeypatch.setattr(report.ch, "get_recent_directors", lambda n: [])
+    monkeypatch.setattr(report.ch, "get_current_directors", lambda n: {"people": [], "total": 0, "source": "https://ch/officers"})
+    monkeypatch.setattr(report.ch, "get_owners", lambda n: {"owners": [], "source": "https://ch/psc"})
+    monkeypatch.setattr(report.tavily, "get_job_listings", lambda *a, **k: [])
     monkeypatch.setattr(report.tavily, "get_company_card", lambda *a, **k: None)
     monkeypatch.setattr(report.tavily, "get_website_text", lambda w: None)
     monkeypatch.setattr(report.tavily, "get_recent_news", lambda *a, **k: [])
@@ -102,7 +105,7 @@ def test_steps_after_the_time_budget_are_skipped(fake_sources):
     fake_sources.setattr(settings, "RESEARCH_TIME_BUDGET_SECONDS", -1)  # already out of time
     research = report.research_company("123", "Acme")
     skipped = [w for w in research["warnings"] if "skipped to keep the report under a minute" in w]
-    assert len(skipped) == 4  # profile, website, news, signals
+    assert len(skipped) == 5  # profile, website, news, signals, jobs
 
 
 # --- Backup model ------------------------------------------------------------

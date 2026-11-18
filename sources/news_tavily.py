@@ -358,6 +358,47 @@ def get_signals(brand, website=None, topic=None, out_of_time=lambda: False):
     return signals
 
 
+def get_job_listings(brand, website=None):
+    """
+    The one extra search per report, for the 'Hiring now' card: recent job adverts naming the company.
+    Costs 1 Tavily credit. Results are candidates; role names are taken from the titles by code.
+    """
+    results = _search(_with_context(f'"{brand}" jobs hiring', website, None), topic="general",
+                      start_date=_months_ago(settings.EVENT_WINDOW_MONTHS), max_results=8)
+    return [_to_item(r) for r in results if not _is_company_card(r.get("url")) and mentions(brand, r.get("title") or "")]
+
+
+ROLE_WORDS = re.compile(r"\b(manager|representative|executive|engineer|developer|designer|analyst|lead|head|director|"
+                        r"specialist|officer|associate|consultant|scientist|recruiter|coordinator|administrator|"
+                        r"architect|intern|sdr|bdr|vp|vice president|partner|advisor|owner|researcher|writer)\b", re.IGNORECASE)
+SALES_WORDS = re.compile(r"\b(sales|account executive|account manager|sdr|bdr|business development|revenue|"
+                         r"partnerships?|commercial|go-to-market|gtm)\b", re.IGNORECASE)
+NOT_A_ROLE = re.compile(r"\b(jobs|careers|vacancies|openings|salary|salaries|reviews)\b", re.IGNORECASE)
+
+
+def role_from_title(title, brand):
+    """
+    A job title from a job-advert headline, or None if it doesn't look like one for this company.
+    'Business Development Representative at Paddle | Dev Global Jobs' → 'Business Development Representative'.
+    """
+    title = re.sub(r"^\[\w+\]\s*", "", title or "")
+    if not mentions(brand, title):
+        return None
+    # 'Darktrace hiring Sales Development Representative - …' → 'Sales Development Representative - …'
+    title = re.sub(rf"^.*?\b{re.escape(brand)}\b[\w.]*\s+(?:is\s+)?hiring\s+(?:an?\s+)?", "", title, flags=re.IGNORECASE)
+    role = re.split(r"\s+(?:at|@)\s+|\s+[-–|]\s+|\s*\|\s*", title, maxsplit=1)[0].strip(" -–|")
+    if mentions(brand, role):          # e.g. 'Paddle - Account Executive': the role comes after the name
+        parts = [p.strip() for p in re.split(r"\s+[-–|]\s+|\s*\|\s*", title) if p.strip()]
+        role = next((p for p in parts if not mentions(brand, p)), "")
+    if not role or len(role) > 70 or NOT_A_ROLE.search(role) or not ROLE_WORDS.search(role):
+        return None
+    return role
+
+
+def is_sales_role(role):
+    return bool(SALES_WORDS.search(role or ""))
+
+
 # ---------------------------------------------------------------------------
 # 4. Website text
 # ---------------------------------------------------------------------------

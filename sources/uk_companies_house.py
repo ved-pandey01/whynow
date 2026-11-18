@@ -15,6 +15,7 @@ Test it from the terminal:
 
 import csv
 import os
+import re
 import sys
 from datetime import date, timedelta
 from functools import lru_cache
@@ -315,6 +316,82 @@ def is_not_worth_contacting(status, last_accounts_type):
 # ---------------------------------------------------------------------------
 # 3. Recently appointed directors ("new leader" signal)
 # ---------------------------------------------------------------------------
+DIRECTOR_ROLES = {"director": "Director", "corporate-director": "Director (a company)",
+                  "llp-member": "LLP member", "llp-designated-member": "LLP designated member"}
+
+
+def display_name(name):
+    """Companies House style 'BOWDEN, Laurel Charmaine' → 'Laurel Charmaine Bowden'. Company names are left as they are."""
+    name = (name or "").strip()
+    if "," not in name:
+        return name
+    surname, first = [part.strip() for part in name.split(",", 1)]
+    return f"{first} {surname.title()}".strip()
+
+
+def get_current_directors(company_number, limit=8):
+    """
+    Current directors (not resigned), newest first, for the 'Key people' card.
+    Returns {"people": [...], "total": how many current directors, "source": public officers page}.
+    """
+    data = _call_api(f"/company/{company_number}/officers", {"items_per_page": 100}) or {}
+    current = [o for o in data.get("items", [])
+               if not o.get("resigned_on") and o.get("officer_role") in DIRECTOR_ROLES]
+    current.sort(key=lambda o: o.get("appointed_on") or "", reverse=True)
+    return {
+        "people": [{"name": display_name(o.get("name")), "role": DIRECTOR_ROLES[o["officer_role"]],
+                    "appointed_on": o.get("appointed_on"), "occupation": o.get("occupation")}
+                   for o in current[:limit]],
+        "total": len(current),
+        "source": company_page_url(company_number) + "/officers",
+    }
+
+
+def control_in_words(nature):
+    """'ownership-of-shares-75-to-100-percent' → 'owns 75–100% of shares' (plain English)."""
+    via = ""
+    for suffix, words in (("-as-trust", " (as a trustee)"), ("-as-firm", " (through a firm)"),
+                          ("-as-control-over-trust", " (controls a trust)"), ("-as-control-over-firm", " (controls a firm)")):
+        if nature.endswith(suffix):
+            nature, via = nature[: -len(suffix)], words
+    m = re.match(r"(ownership-of-shares|voting-rights)-(\d+)-to-(\d+)-percent", nature)
+    if m:
+        what = "owns" if m.group(1) == "ownership-of-shares" else "holds"
+        thing = "of shares" if m.group(1) == "ownership-of-shares" else "of voting rights"
+        return f"{what} {m.group(2)}–{m.group(3)}% {thing}{via}"
+    if nature.startswith("right-to-appoint-and-remove"):
+        return "can appoint or remove directors" + via
+    if nature.startswith("significant-influence-or-control"):
+        return "has significant influence or control" + via
+    return nature.replace("-", " ") + via
+
+
+OWNER_KINDS = {"individual-person-with-significant-control": "Person",
+               "corporate-entity-person-with-significant-control": "Company",
+               "legal-person-person-with-significant-control": "Organisation",
+               "super-secure-person-with-significant-control": "Protected"}
+
+
+def get_owners(company_number):
+    """
+    Current people or companies with significant control (Companies House 'PSC' register).
+    Ceased owners are left out. Returns {"owners": [...], "source": public PSC page}.
+    """
+    data = _call_api(f"/company/{company_number}/persons-with-significant-control") or {}
+    owners = []
+    for item in data.get("items", []):
+        if item.get("ceased_on") or item.get("ceased"):
+            continue
+        kind = OWNER_KINDS.get(item.get("kind"), "Owner")
+        owners.append({
+            "name": item.get("name") or "Details protected by Companies House",
+            "kind": kind,
+            "control": [control_in_words(n) for n in item.get("natures_of_control") or []],
+            "since": item.get("notified_on"),
+        })
+    return {"owners": owners, "source": company_page_url(company_number) + "/persons-with-significant-control"}
+
+
 def get_recent_directors(company_number, today=None):
     """
     Directors appointed within the new-leader window who haven't resigned.

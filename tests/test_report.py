@@ -177,6 +177,9 @@ def test_old_search_results_never_reach_the_ai(monkeypatch):
         "address": "Leeds", "sic_codes": [], "sic_descriptions": [], "last_accounts_type": "full", "company_type": "ltd",
         "source": "https://ch/acme", "not_worth_contacting": False})
     monkeypatch.setattr(report.ch, "get_recent_directors", lambda n: [])
+    monkeypatch.setattr(report.ch, "get_current_directors", lambda n: {"people": [], "total": 0, "source": "https://ch/o"})
+    monkeypatch.setattr(report.ch, "get_owners", lambda n: {"owners": [], "source": "https://ch/p"})
+    monkeypatch.setattr(report.tavily, "get_job_listings", lambda *a, **k: [])
     monkeypatch.setattr(report.tavily, "get_company_card", lambda *a, **k: None)
     monkeypatch.setattr(report.tavily, "get_website_text", lambda w: None)
     monkeypatch.setattr(report.tavily, "get_recent_news", lambda *a, **k: [])
@@ -541,3 +544,43 @@ def test_about_link_only_from_a_fetched_source():
     assert r["about_link"] == {"url": "https://acme.com/about", "label": "About page"}
     plain, _ = build(make_research(), make_draft())
     assert plain["about_link"] == {"url": "https://acme.com", "label": "Visit website"}   # the website source
+
+
+# --- 'More about' data ---------------------------------------------------------------
+def research_with_more_about():
+    research = make_research()
+    research["card"].update(similar_companies=["chargebee", "stripe", "weavr", "fastspring", "2checkout"], open_roles=25)
+    research["directors"] = {"people": [{"name": "Scott Galit", "role": "Director", "appointed_on": "2024-01-02",
+                                         "occupation": None}], "total": 6, "source": "https://ch/acme/officers"}
+    research["owners"] = {"owners": [], "source": "https://ch/acme/psc"}
+    research["sources"].add("signal", "[hiring_sales] Account Executive at Acme | Jobs", "https://jobs/ae", "...")
+    research["sources"].add("job", "[jobs] Acme - Senior Backend Engineer", "https://jobs/be", "...")
+    research["sources"].add("job", "[jobs] Acme Careers", "https://jobs/careers", "...")
+    return research
+
+
+def test_more_about_is_built_from_sources_only():
+    r, _ = build(research_with_more_about(), make_draft())
+    m = r["more_about"]
+    by_id = {x["id"]: x for x in r["all_sources"]}
+    shown = {x["id"] for x in r["sources"]}
+    assert [p["name"] for p in m["directors"]["people"]] == ["Scott Galit"]
+    assert by_id[m["directors"]["source"]]["url"] == "https://ch/acme/officers"
+    assert m["owners"]["owners"] == [] and m["owners"]["source"] is None        # nothing current: 'Not found'
+    assert m["competitors"]["names"] == ["chargebee", "stripe", "weavr", "fastspring"]   # 4 at most
+    assert by_id[m["competitors"]["source"]]["url"] == "https://card/acme"
+    assert m["hiring"]["open_roles"] == 25
+    # sales roles first; "Acme Careers" is a careers page, not a role, so it's left out
+    assert [x["title"] for x in m["hiring"]["roles"]] == ["SDR", "Account Executive", "Senior Backend Engineer"]
+    assert [x["sales"] for x in m["hiring"]["roles"]] == [True, True, False]
+    assert all(x["source"] in shown for x in m["hiring"]["roles"])            # every role is tagged and listed
+    assert m["directors"]["source"] in shown and m["competitors"]["source"] in shown
+
+
+def test_more_about_with_nothing_found():
+    research = make_research()
+    research["card"] = None
+    r, _ = build(research, make_draft())
+    m = r["more_about"]
+    assert m["directors"]["people"] == [] and m["owners"]["owners"] == [] and m["competitors"]["names"] == []
+    assert m["hiring"]["open_roles"] is None and m["competitors"]["source"] is None

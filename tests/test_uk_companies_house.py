@@ -268,3 +268,40 @@ def test_closed_companies_go_to_the_bottom(monkeypatch):
                            {"title": "ACME PLC", "company_number": "3", "company_status": "liquidation"}],
              accounts={"1": ("group", "ltd"), "2": ("micro-entity", "ltd"), "3": ("group", "plc")})
     assert [m["company_number"] for m in ch.search_companies("Acme")] == ["2", "1", "3"]
+
+
+# --- Key people and owners ('More about') --------------------------------------
+def test_current_directors_only_newest_first_names_the_right_way_round(monkeypatch):
+    fake_reply(monkeypatch, json_data={"items": [
+        {"name": "BOWDEN, Laurel Charmaine", "officer_role": "director", "appointed_on": "2019-09-10"},
+        {"name": "GALIT, Scott Howard", "officer_role": "director", "appointed_on": "2024-01-02"},
+        {"name": "OLD, Gone", "officer_role": "director", "appointed_on": "2015-01-01", "resigned_on": "2020-01-01"},
+        {"name": "SECRETARY, Some", "officer_role": "secretary", "appointed_on": "2025-01-01"},
+    ]})
+    d = ch.get_current_directors("08172165")
+    assert [p["name"] for p in d["people"]] == ["Scott Howard Galit", "Laurel Charmaine Bowden"]
+    assert d["people"][0]["role"] == "Director" and d["total"] == 2
+    assert d["source"].endswith("/company/08172165/officers")
+
+
+def test_owners_are_current_only_in_plain_english(monkeypatch):
+    """Real cases: Darktrace Holdings is owned by Darktrace Limited; Paddle's owners have all ceased."""
+    fake_reply(monkeypatch, json_data={"items": [
+        {"kind": "corporate-entity-person-with-significant-control", "name": "Darktrace Limited",
+         "natures_of_control": ["ownership-of-shares-75-to-100-percent", "right-to-appoint-and-remove-directors"],
+         "notified_on": "2021-05-04"},
+        {"kind": "individual-person-with-significant-control", "name": "Mr Old Owner",
+         "natures_of_control": ["ownership-of-shares-25-to-50-percent"], "ceased_on": "2017-11-20"},
+    ]})
+    owners = ch.get_owners("08562035")["owners"]
+    assert owners == [{"name": "Darktrace Limited", "kind": "Company", "since": "2021-05-04",
+                       "control": ["owns 75–100% of shares", "can appoint or remove directors"]}]
+
+
+@pytest.mark.parametrize("nature, words", [
+    ("voting-rights-50-to-75-percent", "holds 50–75% of voting rights"),
+    ("ownership-of-shares-25-to-50-percent-as-trust", "owns 25–50% of shares (as a trustee)"),
+    ("significant-influence-or-control", "has significant influence or control"),
+])
+def test_control_in_words(nature, words):
+    assert ch.control_in_words(nature) == words
