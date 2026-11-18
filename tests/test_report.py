@@ -611,6 +611,9 @@ def test_read_more_never_repeats_the_overview():
     ("Revenue 26.49M GBP, 1500.5 units, dated 2026-10-13, see S12.", "Revenue 26.49M GBP, 1500.5 units, dated 2026-10-13, see S12."),
     ("Already 1,200 staff.", "Already 1,200 staff."),
     ("Call 2038580822 or +441234567.", "Call 2038580822 or +441234567."),     # phone numbers
+    ("Its official SIC code 56290 is Other food services.", "Its official SIC code 56290 is Other food services."),  # live Gousto bug
+    ("SIC codes 62012 and 70100.", "SIC codes 62012 and 70100."),
+    ("Company number 8027386, 1108 staff.", "Company number 8027386, 1,108 staff."),
 ])
 def test_numbers_get_commas(text, expected):
     assert report.with_commas(text) == expected

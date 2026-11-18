@@ -550,12 +550,21 @@ def clean_ai_text(text):
     return with_commas(strip_source_tags(text))
 
 
+_CODE_BEFORE = re.compile(r"\b(?:sic|codes?|numbers?|no\.?|ref(?:erence)?|id|account|postcode|tel(?:ephone)?|phone)\b"
+                          r"[\s:#.]*(?:is\s+)?(?:\d+\s*(?:and|,)\s*)*$", re.IGNORECASE)
+
+
 def with_commas(text):
     """'2604 employees' → '2,604 employees'. Years (1900–2099), dates, decimals, IDs and phone numbers are left alone."""
     def add(m):
         n = int(m.group(1))
         if len(m.group(1)) == 4 and 1900 <= n <= 2099:
             return m.group(1)          # most likely a year
+        before = m.string[max(0, m.start() - 25):m.start()]
+        previous = re.search(r"(\d+)\s*,\s*$", before)
+        listed_code = not previous or len(previous.group(1)) == len(m.group(1))   # 'codes 62012, 70100' (same length)
+        if listed_code and _CODE_BEFORE.search(before):
+            return m.group(1)          # a code or reference, e.g. 'SIC code 56290', 'company number 8027386'
         return f"{n:,}"
     return _BIG_NUMBER.sub(add, text or "")
 
