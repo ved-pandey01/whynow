@@ -55,6 +55,16 @@ def test_over_long_search_is_capped_and_never_crashes(app):
     assert "That's too long for a company name. Type the name or website only." in open("app.py").read()  # backstop
 
 
+
+def test_search_bar_hides_counter_and_enter_hint():
+    """The "0/100" counter and "Press Enter to submit form" hint are hidden; the cap and Enter still work."""
+    css = open("ui/style.css").read()
+    assert '.st-key-wn_search [data-testid="InputInstructions"] { display: none !important; }' in css
+    code = open("app.py").read()
+    assert 'with st.form("search"' in code              # a form, so Enter submits the search
+    assert "max_chars=settings.MAX_SEARCH_CHARS" in code  # the quiet 100-character cap
+    assert settings.MAX_SEARCH_CHARS == 100
+
 # --- Companies House ----------------------------------------------------------------
 @pytest.mark.parametrize("reply, words", [
     (FakeResponse(503), "Companies House isn't responding right now"),

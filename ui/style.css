@@ -130,6 +130,8 @@ a:hover { text-decoration: underline; }
 .st-key-wn_search input { background: transparent !important; color: var(--head) !important; font-size: 0.98rem; padding-left: 0;
   text-overflow: ellipsis; }
 .st-key-wn_search input::placeholder { color: var(--muted); opacity: 1; }
+/* No "0/100" counter or "Press Enter to submit form" hint: the 100-character cap still works quietly */
+.st-key-wn_search [data-testid="InputInstructions"] { display: none !important; }
 .st-key-wn_search [data-testid="stFormSubmitButton"] > button { border-radius: 999px; padding: 0 1.4rem; min-height: 2.75rem; white-space: nowrap; }
 /* "Change offer": a tiny link under the bar */
 .st-key-wn_offer details { background: transparent !important; border: none !important; box-shadow: none !important; }
