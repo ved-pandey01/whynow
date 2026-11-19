@@ -112,6 +112,11 @@ def check_owner_password(entered):
     return bool(expected) and hmac.compare_digest(entered.encode(), expected.encode())
 
 
+def owner_link_opened():
+    """The Owner area only appears when the address ends with ?owner=1, so normal visitors never see it."""
+    return st.query_params.get("owner") == "1"
+
+
 def owner_login():
     """A small, quiet 'Owner' area under the footer."""
     if is_owner():
@@ -625,7 +630,7 @@ def main():
     else:
         landing()
     st.html(ui.footer())
-    if os.getenv("OWNER_PASSWORD"):
+    if os.getenv("OWNER_PASSWORD") and owner_link_opened():
         owner_login()
 
 main()

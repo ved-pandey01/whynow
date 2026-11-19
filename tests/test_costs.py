@@ -145,6 +145,7 @@ def test_owner_has_no_limit_and_sees_research_a_list(page, monkeypatch):
     monkeypatch.setenv("OWNER_PASSWORD", "open-sesame")
     monkeypatch.setattr(settings, "VISITOR_LIVE_SEARCHES_PER_DAY", 0)
     at = page()
+    at.query_params["owner"] = "1"
     at.run()
     assert not [b for b in at.button if b.label == "Research a list"]   # hidden from visitors
     at.text_input(key="wn_owner_password").input("wrong").run()
@@ -158,9 +159,27 @@ def test_owner_has_no_limit_and_sees_research_a_list(page, monkeypatch):
     assert 'class="wn-badge strong"' in html(at)                         # no limit for the owner
 
 
+def test_owner_area_is_hidden_without_owner_1_in_the_address(page, monkeypatch):
+    monkeypatch.setenv("OWNER_PASSWORD", "open-sesame")
+    for params in ({}, {"owner": "0"}, {"owner": "yes"}, {"sample": "1"}):
+        at = page()
+        for k, v in params.items():
+            at.query_params[k] = v
+        at.run()
+        assert not at.exception
+        assert not [e for e in at.expander if e.label == "Owner"]
+        assert not at.get("text_input") or not [t for t in at.text_input if t.key == "wn_owner_password"]
+        assert "Owner mode" not in " ".join(c.value for c in at.caption)
+    at = page()
+    at.query_params["owner"] = "1"
+    at.run()
+    assert [e for e in at.expander if e.label == "Owner"]                # shown with ?owner=1
+
+
 def test_owner_mode_is_off_without_a_password(page, monkeypatch):
     monkeypatch.delenv("OWNER_PASSWORD", raising=False)
     at = page()
+    at.query_params["owner"] = "1"
     at.run()
     assert not [e for e in at.expander if e.label == "Owner"]
 

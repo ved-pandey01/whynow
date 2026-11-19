@@ -69,7 +69,7 @@ WhyNow is built to be cheap to run. Every limit is in the "Running costs" sectio
   - finished reports: 24 hours
 - **Gemini:** one request per report and one for all the outreach (email, LinkedIn note and call opener). Over-long emails are trimmed by code, not a second request. Each model is tried once before the next backup.
 - **Call log** ([usage.py](usage.py)): every Gemini and Tavily call, including cache hits at no cost, is logged to `.usage/`. No keys or search text are logged.
-- **Owner mode:** set `OWNER_PASSWORD` in `.env`, then open **Owner** under the footer. The owner has no daily limit and sees **Research a list** and today's usage totals in "Behind the scenes". With no password set, owner mode is off.
+- **Owner mode:** set `OWNER_PASSWORD` in `.env`, then open the page with `?owner=1` at the end of the address (e.g. `localhost:8501/?owner=1`) and use **Owner** under the footer. Without `?owner=1`, the Owner area is never shown. The owner has no daily limit and sees **Research a list** and today's usage totals in "Behind the scenes". With no password set, owner mode is off.
 
 ## When something goes wrong
 WhyNow never crashes: each problem gets a plain message saying what happened and what to try next.
