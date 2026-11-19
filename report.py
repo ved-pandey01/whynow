@@ -106,9 +106,16 @@ def _lines(pairs):
 # 1. Research
 # ---------------------------------------------------------------------------
 def brand_from(typed):
-    """What to search news for: 'https://www.paddle.com' → 'Paddle', 'Sage Group plc' → 'Sage Group'."""
-    words = [w for w in ch.clean_query(typed).split() if w not in ("ltd", "limited", "plc", "llp")]
-    return " ".join(words).title()
+    """
+    What to search news for: 'https://www.paddle.com' → 'Paddle', 'Sage Group plc' → 'Sage Group',
+    'BT Local Business – Home Counties North' → 'BT Local Business' (the user's own capitals are kept;
+    all-lower or ALL-CAPS text is tidied to 'Title Case').
+    """
+    text = typed if looks_like_website(typed) else ch.main_name(typed)
+    text = ch.clean_query(text) if looks_like_website(typed) else text
+    words = [w for w in text.split() if w.lower() not in ("ltd", "limited", "plc", "llp")]
+    joined = " ".join(words)
+    return joined.title() if joined.islower() or joined.isupper() else joined
 
 
 def looks_like_website(typed):

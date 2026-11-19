@@ -22,27 +22,27 @@ def no_page_crash(at):
 
 # --- Searching ------------------------------------------------------------------------
 def test_company_not_found(app, monkeypatch):
-    monkeypatch.setattr(ch, "search_companies", lambda typed: [])
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [])
     monkeypatch.setattr(nt, "find_registration", lambda brand, website=None: None)
     search(app, "Qwertyuiop Holdings")
     no_page_crash(app)
-    assert any("No UK company found" in i.value and "type the website" in i.value for i in app.info)
+    assert any("No UK company found" in w.value and "type the company's website" in w.value for w in app.warning)
 
 
 def test_misspelled_name_suggests_the_website(app, monkeypatch):
-    monkeypatch.setattr(ch, "search_companies", lambda typed: [dict(MATCHES[1], close_match=False)])
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [dict(MATCHES[1], close_match=False)])
     monkeypatch.setattr(nt, "find_registration", lambda brand, website=None: None)
     search(app, "Cognisn")
     no_page_crash(app)
-    assert any("No close match" in w.value and "type the website" in w.value for w in app.warning)
+    assert any("No close match" in w.value and "type the company's website" in w.value for w in app.warning)
 
 
 def test_only_dissolved_companies(app, monkeypatch):
-    monkeypatch.setattr(ch, "search_companies", lambda typed: [dict(MATCHES[0], status="dissolved")])
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [dict(MATCHES[0], status="dissolved")])
     monkeypatch.setattr(nt, "find_registration", lambda brand, website=None: None)
     search(app, "Old Co")
     no_page_crash(app)
-    assert any("Only closed companies match this name. Try the company's website instead." in i.value for i in app.info)
+    assert any("Untick 'Active companies only' in Filters" in i.value for i in app.info)
 
 
 def test_over_long_search_is_capped_and_never_crashes(app):
@@ -83,7 +83,7 @@ def test_companies_house_down_or_no_internet(monkeypatch, reply, words):
 
 
 def test_companies_house_down_shows_message_on_the_page(app, monkeypatch):
-    def down(typed):
+    def down(typed, **kw):
         raise ch.CompaniesHouseError(ch.CH_DOWN)
     monkeypatch.setattr(ch, "search_companies", down)
     search(app, "Cognism")

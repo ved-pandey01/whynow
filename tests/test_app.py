@@ -62,7 +62,7 @@ def app(monkeypatch):
     import streamlit as st
     st.cache_data.clear()      # don't reuse results from another test
     st.cache_resource.clear()  # including the 6-hour report cache
-    monkeypatch.setattr(ch, "search_companies", lambda typed: MATCHES)
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: MATCHES)
     monkeypatch.setattr(report, "research_company", lambda number, typed, **k: {"number": number})
     monkeypatch.setattr(report, "build_report", lambda research, offer=None, **k: REPORT)
     monkeypatch.setattr(report, "write_email", lambda r, **k: EMAIL)
@@ -140,20 +140,20 @@ def test_picker_shows_cards_with_details(app):
 
 
 def test_no_matches_gives_friendly_message(app, monkeypatch):
-    monkeypatch.setattr(ch, "search_companies", lambda typed: [])
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [])
     search(app, "Zzqx Widgets Ltd")
-    assert any("No UK company found" in i.value for i in app.info)
+    assert any("No UK company found" in w.value and "add a location in Filters" in w.value for w in app.warning)
 
 
 def test_loose_matches_get_a_warning(app, monkeypatch):
-    monkeypatch.setattr(ch, "search_companies", lambda typed: [dict(MATCHES[1], close_match=False)])
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [dict(MATCHES[1], close_match=False)])
     monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: None)
     search(app, "Zzqx Widgets Ltd")
     assert any("No close match" in w.value for w in app.warning)
 
 
 def test_companies_house_error_is_shown_kindly(app, monkeypatch):
-    def broken(typed):
+    def broken(typed, **kw):
         raise ch.CompaniesHouseError("Companies House rejected the API key.")
     monkeypatch.setattr(ch, "search_companies", broken)
     search(app)
@@ -233,7 +233,7 @@ def test_try_chip_uses_its_fixed_company_number(app, monkeypatch):
     """Real problem: the Darktrace chip opened DARKTRACE MIDCO I LIMITED instead of DARKTRACE HOLDINGS LIMITED."""
     researched, searched = [], []
     monkeypatch.setattr(report, "research_company", lambda number, typed, **k: researched.append((number, typed)) or {})
-    monkeypatch.setattr(ch, "search_companies", lambda typed: searched.append(typed) or MATCHES)
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: searched.append(typed) or MATCHES)
     app.run()
     button(app, "Darktrace").click().run()
     assert researched == [("08562035", "darktrace.com")]
@@ -305,7 +305,7 @@ GOUSTO_MATCH = dict(MATCHES[0], name="SCHOOLING LIMITED", company_number="072942
 
 def test_brand_found_under_its_registered_name(app, monkeypatch):
     """Real problem: searching 'Gousto' only found a dissolved takeaway."""
-    monkeypatch.setattr(ch, "search_companies", lambda typed: [DISSOLVED_TAKEAWAY])
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [DISSOLVED_TAKEAWAY])
     monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: GOUSTO_FOUND)
     monkeypatch.setattr(ch, "lookup_registration", lambda found: GOUSTO_MATCH if found == GOUSTO_FOUND else None)
     researched = []
@@ -321,11 +321,25 @@ def test_brand_found_under_its_registered_name(app, monkeypatch):
 
 
 def test_no_registered_name_found_says_so_and_flags_closed_only(app, monkeypatch):
-    monkeypatch.setattr(ch, "search_companies", lambda typed: [DISSOLVED_TAKEAWAY])
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [DISSOLVED_TAKEAWAY])
     monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: None)
     search(app, "Gousto")
-    assert any("couldn't find the registered company name" in w.value for w in app.warning)
-    assert "Only closed companies match this name. Try the company's website instead." in app.info[0].value
+    # One short message (it used to be two yellow warnings), and closed companies are hidden by default
+    assert len(app.warning) + len(app.info) == 1
+    assert "only closed ones match" in app.info[0].value
+    assert "Untick 'Active companies only' in Filters" in app.info[0].value
+    assert not [b for b in app.button if (b.key or "").startswith("pick_")]
+
+
+def test_unticking_active_only_shows_closed_companies_again(app, monkeypatch):
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [DISSOLVED_TAKEAWAY])
+    monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: None)
+    app.run()
+    app.checkbox(key="wn_active_only").uncheck().run()
+    search(app, "Gousto")
+    assert len(app.warning) + len(app.info) == 1
+    assert "Only closed companies match this name. Tip: add a location in Filters" in app.info[0].value
+    assert app.button(key=f"pick_{DISSOLVED_TAKEAWAY['company_number']}")
 
 
 def test_registered_name_lookup_is_skipped_when_an_active_match_exists(app, monkeypatch):

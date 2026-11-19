@@ -102,7 +102,7 @@ def page(monkeypatch):
     st.cache_data.clear()
     # In the test tool every session gets a new made-up IP; a real refresh keeps the same IP and browser
     monkeypatch.setattr(usage, "visitor_from", lambda headers, ip: "same-visitor")
-    monkeypatch.setattr(ch, "search_companies", lambda typed: MATCHES)
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: MATCHES)
     monkeypatch.setattr(report, "research_company", lambda number, typed, **k: {"number": number})
     monkeypatch.setattr(report, "build_report", lambda research, offer=None, **k: REPORT)
     monkeypatch.setattr(report, "write_email", lambda r, **k: EMAIL)

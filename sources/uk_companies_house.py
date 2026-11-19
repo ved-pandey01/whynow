@@ -75,15 +75,33 @@ def _strip_website(text):
     return q.split("/")[0].strip()
 
 
+def main_name(text):
+    """
+    The main company name, without extra words after a spaced dash or in brackets:
+    'BT Local Business – Home Counties North' → 'BT Local Business', 'Acme (UK) Ltd' → 'Acme Ltd'.
+    Websites and names like 'Rolls-Royce' (no spaces round the dash) are left alone.
+    """
+    t = (text or "").strip()
+    t = re.sub(r"\s*[(\[][^)\]]*[)\]]", " ", t)        # remove (…) and […]
+    t = re.split(r"[(\[]", t)[0]                           # and anything after an unclosed bracket
+    t = re.split(r"\s[-–—]+\s|\s*[–—]\s*", t)[0]          # cut at ' - ', or any en/em dash
+    return " ".join(t.split()) or (text or "").strip()
+
+
 def search_terms(text):
     """
-    What to search for. For a website, try the full domain first ('paddle.com'),
-    because many UK companies register under it (e.g. PADDLE.COM MARKET LIMITED),
-    then the short name ('paddle').
+    What to search for.
+    - A website: the full domain first ('paddle.com'), because many UK companies register under it
+      (e.g. PADDLE.COM MARKET LIMITED), then the short name ('paddle').
+    - A name: the main name first ('BT Local Business'), then the full text if it was different.
     """
     full = _strip_website(text)
-    short = clean_query(text)
-    return [full, short] if full != short else [short]
+    if "." in full and " " not in full:
+        short = clean_query(text)
+        return [full, short] if full != short else [short]
+    main = main_name(text).lower()
+    whole = " ".join((text or "").split()).lower()
+    return [main, whole] if whole != main else [main]
 
 
 # Legal endings that aren't really part of a company's name
@@ -96,6 +114,32 @@ def _words(text):
     """Split a name into plain lower-case words: 'The Sage Group plc.' → ['the', 'sage', 'group', 'plc']."""
     cleaned = "".join(c if c.isalnum() else " " for c in (text or "").lower())
     return cleaned.split()
+
+
+# Common words that don't identify a company on their own ("BT Local Business": only "BT" really counts)
+GENERIC_WORDS = {
+    "business", "businesses", "service", "services", "solution", "solutions", "local", "consulting", "consultancy",
+    "consultants", "system", "systems", "management", "international", "global", "national", "enterprise",
+    "enterprises", "trading", "partner", "partners", "associates", "company", "companies", "industries",
+    "technology", "technologies", "digital", "media", "network", "networks", "centre", "center", "home",
+    "counties", "county", "north", "south", "east", "west", "london", "england", "britain", "british", "europe",
+    "new", "first", "one", "best", "pro", "&",
+}
+
+
+def main_words(text):
+    """
+    The words that identify a company: no legal endings, filler or generic words.
+    'BT Local Business' → {'bt'}; 'paddle.com' → {'paddle'}. If only generic words were typed, those count.
+    """
+    words = [w for w in _words(_strip_website(main_name(text))) if w not in _FILLER_WORDS]
+    core = [w for w in words if w not in GENERIC_WORDS]
+    return set(core or words)
+
+
+def shares_main_word(query, company_name):
+    """True if the company's name has at least one of the main words searched for (so unrelated names are hidden)."""
+    return bool(main_words(query) & set(_words(company_name)))
 
 
 def is_exact_match(query, company_name):
@@ -179,9 +223,68 @@ def _format_address(addr):
 # ---------------------------------------------------------------------------
 # 1. Search
 # ---------------------------------------------------------------------------
-def search_companies(name):
+def sic_codes_for(industry):
+    """
+    Turn the Industry filter into SIC codes: '62012' or '62012, 62020' are used as they are;
+    a keyword like 'software' finds every official SIC code whose description has that word.
+    """
+    text = (industry or "").strip()
+    if not text:
+        return []
+    codes = [c for c in re.split(r"[,\s]+", text) if c]
+    if all(c.isdigit() for c in codes):
+        return codes
+    word = re.compile(rf"\b{re.escape(text.lower())}", re.IGNORECASE)
+    found = [code for code, meaning in _sic_table().items() if word.search(meaning)]
+    if not found:
+        raise CompaniesHouseError(f'No industry matches "{text}". Try a simpler word (e.g. software) '
+                                  "or a SIC code (e.g. 62012).")
+    return found[: settings.MAX_SIC_CODES]
+
+
+def _from_search(item):
+    """One result from the normal search, in our own shape."""
+    return {"name": item.get("title"), "company_number": item.get("company_number"),
+            "status": item.get("company_status"), "founded": item.get("date_of_creation"),
+            "address": item.get("address_snippet"), "company_type": item.get("company_type")}
+
+
+def _from_advanced_search(item):
+    """One result from the advanced search (it names things differently), in our own shape."""
+    return {"name": item.get("company_name"), "company_number": item.get("company_number"),
+            "status": item.get("company_status"), "founded": item.get("date_of_creation"),
+            "address": _format_address(item.get("registered_office_address")),
+            "company_type": item.get("company_type")}
+
+
+def _advanced_search(query, location, sic_codes, active_only):
+    """
+    Companies House advanced search, used when a Location or Industry filter is set.
+    Tries the main name first ('BT Local Business'), then just its main words ('BT') if that finds nothing.
+    """
+    tries = [query]
+    core = " ".join(w for w in re.findall(r"[^\W_]+", query) if w.lower() in main_words(query))   # keeps capitals
+    if core and core.lower() != query.lower():
+        tries.append(core)
+    for name in tries:
+        params = {"company_name_includes": name, "size": settings.ADVANCED_SEARCH_SIZE}
+        if location:
+            params["location"] = location.strip()
+        if sic_codes:
+            params["sic_codes"] = ",".join(sic_codes)
+        if active_only:
+            params["company_status"] = "active"
+        items = (_call_api("/advanced-search/companies", params) or {}).get("items", [])
+        if items:
+            return [_from_advanced_search(i) for i in items]
+    return []
+
+
+def search_companies(name, location=None, industry=None, active_only=False):
     """
     Return the top matches for a company name (or website). Empty list if nothing found.
+    With a Location or Industry filter, the Companies House advanced search is used instead.
+    Only companies whose name shares a main word with the search are kept (no unrelated names).
     Companies House's own ranking can bury the right company (e.g. THE SAGE GROUP PLC is 10th
     for "Sage Group", and small local firms buried the big Howden companies), so we fetch more
     results and re-rank them ourselves: close matches first, active before closed, bigger before
@@ -190,29 +293,30 @@ def search_companies(name):
     if not clean_query(name):
         raise CompaniesHouseError("Please type a company name or website.")
 
-    matches, seen = [], set()
     terms = search_terms(name)
-    domain = terms[0] if len(terms) > 1 else None   # e.g. "paddle.com" is searched as "paddle.com" then "paddle"
-    for term in terms:
-        data = _call_api("/search/companies", {"q": term, "items_per_page": 100})
-        for item in (data or {}).get("items", []):
-            number = item.get("company_number")
-            if number in seen:
-                continue  # already found by an earlier search term
-            seen.add(number)
-            matches.append({
-                "name": item.get("title"),
-                "company_number": number,
-                "status": item.get("company_status"),
-                "founded": item.get("date_of_creation"),
-                "address": item.get("address_snippet"),
-                "company_type": item.get("company_type"),
-                "exact_match": is_exact_match(name, item.get("title")),
-                "close_match": is_exact_match(name, item.get("title")) or is_close_match(name, item.get("title")),
-                # A finance/holding vehicle (Midco, Bidco…) goes after the main company, unless that's what was typed
-                "vehicle": is_vehicle(item.get("title")) and not is_vehicle(name),
-                "source": company_page_url(number),
-            })
+    is_website = "." in terms[0] and " " not in terms[0]
+    domain = terms[0] if is_website and len(terms) > 1 else None   # "paddle.com" is searched, then "paddle"
+    query = name if is_website else main_name(name)                   # matching uses the main name
+    if (location or "").strip() or (industry or "").strip():
+        found = _advanced_search(clean_query(name) if is_website else query, location,
+                                 sic_codes_for(industry), active_only)
+    else:
+        found = [_from_search(item) for term in terms
+                 for item in (_call_api("/search/companies", {"q": term, "items_per_page": 100}) or {}).get("items", [])]
+
+    matches, seen = [], set()
+    for m in found:
+        if m["company_number"] in seen or not shares_main_word(query, m["name"]):
+            continue   # already found by an earlier search term, or an unrelated name
+        seen.add(m["company_number"])
+        m.update({
+            "exact_match": is_exact_match(query, m["name"]),
+            "close_match": is_exact_match(query, m["name"]) or is_close_match(query, m["name"]),
+            # A finance/holding vehicle (Midco, Bidco…) goes after the main company, unless that's what was typed
+            "vehicle": is_vehicle(m["name"]) and not is_vehicle(name),
+            "source": company_page_url(m["company_number"]),
+        })
+        matches.append(m)
 
     # Companies House lists similar names roughly alphabetically, so big companies get buried
     # (real problem: HOWDEN GROUP HOLDINGS was 41st of 373 "Howden" results).
@@ -223,6 +327,8 @@ def search_companies(name):
         checked = i < settings.COMPANY_SIZE_CHECKS and m["close_match"]
         m.update(company_summary(m["company_number"]) if checked else _NO_SUMMARY)
     matches.sort(key=lambda m: _best_first(m, domain))
+    if active_only:
+        matches = [m for m in matches if (m["status"] or "active") == "active"]
     return matches[: settings.COMPANY_SEARCH_RESULTS]
 
 

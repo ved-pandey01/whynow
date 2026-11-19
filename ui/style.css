@@ -133,14 +133,14 @@ a:hover { text-decoration: underline; }
 /* No "0/100" counter or "Press Enter to submit form" hint: the 100-character cap still works quietly */
 .st-key-wn_search [data-testid="InputInstructions"] { display: none !important; }
 .st-key-wn_search [data-testid="stFormSubmitButton"] > button { border-radius: 999px; padding: 0 1.4rem; min-height: 2.75rem; white-space: nowrap; }
-/* "Change offer": a tiny link under the bar */
-.st-key-wn_offer details { background: transparent !important; border: none !important; box-shadow: none !important; }
-.st-key-wn_offer summary, .st-key-wn_offer summary:hover { background: transparent !important; }
-.st-key-wn_offer summary { padding: 0.35rem 0 0 1.25rem; color: var(--blue-bright); font-size: 0.8rem; font-weight: 600; }
-.st-key-wn_offer summary svg { width: 14px; height: 14px; }
-.st-key-wn_offer [data-testid="stExpanderDetails"] { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+/* "Filters" and "Change offer": tiny links under the bar */
+.st-key-wn_offer details, .st-key-wn_filters details { background: transparent !important; border: none !important; box-shadow: none !important; }
+.st-key-wn_offer summary, .st-key-wn_offer summary:hover, .st-key-wn_filters summary, .st-key-wn_filters summary:hover { background: transparent !important; }
+.st-key-wn_offer summary, .st-key-wn_filters summary { padding: 0.35rem 0 0 1.25rem; color: var(--blue-bright); font-size: 0.8rem; font-weight: 600; }
+.st-key-wn_offer summary svg, .st-key-wn_filters summary svg { width: 14px; height: 14px; }
+.st-key-wn_offer [data-testid="stExpanderDetails"], .st-key-wn_filters [data-testid="stExpanderDetails"] { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
   padding: 0.9rem 1rem 0.7rem !important; margin-top: 0.4rem; box-shadow: var(--shadow); }
-.st-key-wn_offer [data-testid="stCaptionContainer"] { color: var(--muted); font-size: 0.78rem; }
+.st-key-wn_offer [data-testid="stCaptionContainer"], .st-key-wn_filters [data-testid="stCaptionContainer"] { color: var(--muted); font-size: 0.78rem; }
 
 /* "Try: Cognism · Darktrace · Paddle" chips under the search bar */
 .st-key-wn_try { padding: 0.55rem 0 0 1.25rem; gap: 0.4rem !important; flex-wrap: wrap; }
@@ -158,7 +158,8 @@ a:hover { text-decoration: underline; }
 .st-key-wn_try .st-key-wn_batch_open button { background: transparent !important; border: none !important; padding: 0.2rem 0 !important;
   color: var(--blue-bright) !important; }
 .st-key-wn_try .st-key-wn_batch_open button:hover { background: transparent !important; color: var(--head) !important; }
-.st-key-wn_offer summary { padding-top: 0.15rem !important; }
+.st-key-wn_offer summary, .st-key-wn_filters summary { padding-top: 0.15rem !important; }
+.st-key-wn_filters [data-testid="stCheckbox"] p { font-size: 0.85rem; }
 
 /* ---------- Preview card (right column) ---------- */
 /* Solid (not see-through), so the growth line passes fully behind it */

@@ -381,6 +381,10 @@ def test_source_list_does_not_repeat_the_same_page():
     ("https://www.paddle.com", "Paddle"),
     ("Sage Group plc", "Sage Group"),
     ("cognism", "Cognism"),
+    ("BT Local Business", "BT Local Business"),                          # the user's capitals are kept
+    ("BT Local Business – Home Counties North", "BT Local Business"),    # words after the dash dropped
+    ("COGNISM LIMITED", "Cognism"),                                      # a Companies House name is tidied
+    ("SAGE GROUP PLC", "Sage Group"),
 ])
 def test_brand_from(typed, brand):
     assert report.brand_from(typed) == brand

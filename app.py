@@ -40,8 +40,26 @@ SAMPLE_FILE = Path(__file__).parent / settings.SAMPLE_REPORT_FILE
 # Fetching (cached, so looking at the same company again costs no API credits)
 # ---------------------------------------------------------------------------
 @st.cache_data(ttl=3600, show_spinner=False)
-def find_companies(typed):
-    return ch.search_companies(typed)
+def find_companies(typed, location=None, industry=None, active_only=False):
+    return ch.search_companies(typed, location=location, industry=industry, active_only=active_only)
+
+
+def search_filters():
+    """The optional 'Filters' under the search bar (collapsed by default). Active only is on by default."""
+    with st.expander("Filters", key="wn_filters"):
+        place, trade = st.columns(2)
+        place.text_input("Location", placeholder="Town or postcode, e.g. Bedford", key="wn_location",
+                         max_chars=60)
+        trade.text_input("Industry", placeholder="Keyword or SIC code, e.g. software", key="wn_industry",
+                         max_chars=60)
+        st.checkbox("Active companies only", value=True, key="wn_active_only")
+
+
+def current_filters():
+    """What's set in Filters now: location, industry and whether to show active companies only."""
+    return {"location": (st.session_state.get("wn_location") or "").strip(),
+            "industry": (st.session_state.get("wn_industry") or "").strip(),
+            "active_only": st.session_state.get("wn_active_only", True)}
 
 
 @st.cache_data(ttl=6 * 3600, show_spinner=False)
@@ -199,6 +217,7 @@ def search_form():
             typed = text.text_input("Company name or website", placeholder=settings.SEARCH_PLACEHOLDER,
                                     label_visibility="collapsed", max_chars=settings.MAX_SEARCH_CHARS)
             submitted = button.form_submit_button("Research →", type="primary")
+    search_filters()
     tried = try_chips()
     # The offer keeps its default unless the user opens "Change offer"
     with st.expander("Change offer", key="wn_offer"):
@@ -218,12 +237,20 @@ def search_form():
         st.session_state["offer"] = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
         st.session_state["typed"] = typed
         st.session_state.pop("registration", None)
+        filters = current_filters()
+        st.session_state["filters"] = filters
+        st.session_state["hidden_closed"] = False
         try:
-            matches = find_companies(typed)
+            matches = find_companies(typed, **filters)
+            if filters["active_only"]:
+                matches = [m for m in matches if (m.get("status") or "active") == "active"]
+            if not matches and filters["active_only"]:
+                # Nothing active: are there closed ones the "Active only" filter is hiding? (free)
+                st.session_state["hidden_closed"] = bool(find_companies(typed, **dict(filters, active_only=False)))
             if typed.strip() and not any(m["close_match"] and m["status"] == "active" for m in matches):
                 # No active company with this name: the brand may be registered under another name
                 with st.spinner("Looking for the registered company name in public sources…"):
-                    registration = find_registered(typed)
+                    registration = find_registered(typed if report.looks_like_website(typed) else ch.main_name(typed))
                 st.session_state["registration"] = registration
                 if registration["match"]:
                     number = registration["match"]["company_number"]
@@ -304,6 +331,30 @@ def landing():
 # ---------------------------------------------------------------------------
 # Company picker
 # ---------------------------------------------------------------------------
+TIP = "Tip: add a location in Filters, or type the company's website."
+
+
+def search_message(typed, matches, registration, hidden_closed=False):
+    """
+    One short message about the search, or (None, None) if all is well.
+    (It used to be two yellow warnings: one from Companies House and one from the public-sources lookup.)
+    """
+    name = f'"{safe(typed)}"'
+    looked_elsewhere = bool(registration) and not registration.get("match")
+    reason = f" ({registration['error']})" if looked_elsewhere and registration.get("error") else ""
+    where = "on Companies House or in public sources" if looked_elsewhere else "on Companies House"
+    if hidden_closed:
+        return "info", (f"No active company found for {name}; only closed ones match. "
+                        "Untick 'Active companies only' in Filters to see them.")
+    if not matches:
+        return "warning", f"No UK company found for {name} {where}{reason}. {TIP}"
+    if all((m.get("status") or "active") != "active" for m in matches):
+        return "info", f"Only closed companies match this name. {TIP}"
+    if not matches[0]["close_match"]:
+        return "warning", (f"No close match for {name} {where}{reason}. Only pick one below if you're sure. {TIP}")
+    return None, None
+
+
 def pick_company():
     """One card per Companies House match, each with its own button."""
     matches, typed = st.session_state.get("matches"), st.session_state.get("typed")
@@ -315,22 +366,16 @@ def pick_company():
         st.success(f'**{safe(found["registered_as"]["brand"])}** is registered as **{safe(found["name"])}** '
                    f'(company {found["company_number"]}), as stated on [{safe(found["registered_as"]["source_title"])}]'
                    f'({found["registered_as"]["source"]}).', icon=":material/verified:")
-    elif registration:
-        reason = f" ({registration['error']})" if registration.get("error") else ""
-        st.warning(f'We couldn\'t find the registered company name for "{safe(typed)}" in public sources '
-                   f'(its company profile, website footer, terms or privacy pages){reason}. '
-                   "Try the company's website instead, e.g. gousto.co.uk.", icon=":material/search_off:")
+    kind, message = search_message(typed, matches, registration, st.session_state.get("hidden_closed"))
+    if message:
+        (st.warning if kind == "warning" else st.info)(message, icon=":material/search_off:")
     if not matches:
-        st.info(f'No UK company found for "{safe(typed)}". Check the spelling, or type the website '
-                "(e.g. gousto.co.uk).", icon=":material/search_off:")
         return
-    if all((m.get("status") or "active") != "active" for m in matches):
-        st.info("Only closed companies match this name. Try the company's website instead.", icon=":material/info:")
-    elif not matches[0]["close_match"]:
-        st.warning(f'No close match found for "{safe(typed)}". Check the spelling, or type the website '
-                   "(e.g. gousto.co.uk). Only pick one below if you're sure it's right.")
     st.markdown("##### Which company did you mean?")
-    st.caption("Biggest first. Size is a guide from the accounts each company files, not a staff count.")
+    filters = st.session_state.get("filters") or {}
+    used = " · ".join(x for x in (filters.get("location"), filters.get("industry")) if x)
+    st.caption("Biggest first. Size is a guide from the accounts each company files, not a staff count."
+               + (f" Filtered by: {safe(used)}." if used else ""))
     typed_domain = domain_of(typed) if report.looks_like_website(typed) else None
     chosen = None
     for m in matches:
