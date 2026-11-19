@@ -188,3 +188,53 @@ def test_filters_skip_the_paid_registered_name_lookup_and_say_so(app, monkeypatc
     assert len(messages) == 1
     assert 'No company named "Cognism" matches your filters (London · software)' in messages[0]
     assert "Try removing a filter" in messages[0]
+
+
+# --- Typed websites where Companies House alone can't tell (found in Step 8) -----------
+def _m(name, exact=False, size="Small", status="active", number="1"):
+    return {"name": name, "company_number": number, "status": status, "exact_match": exact,
+            "close_match": True, "size": size}
+
+
+def test_registration_check_for_unclear_website_matches():
+    need = ch.registration_check_needed
+    assert need("tide.co", [_m("TIDE CONSTRUCTION LIMITED")])                       # wrong company on top
+    assert need("ravelin.com", [_m("RAVELIN LEASING SERVICES (UK) LIMITED")])
+    assert need("huboo.com", [_m("HUBOO LTD", exact=True, size=None)])              # brand-new, no accounts yet
+    assert not need("rightmove.co.uk", [_m("RIGHTMOVE PLC", exact=True, size="Large")])
+    assert not need("paddle.com", [_m("PADDLE.COM MARKET LIMITED")])                # the website is in its name
+    assert not need("Tide", [_m("TIDE CONSTRUCTION LIMITED")])                       # a typed name: the user picks
+    assert need("Gousto", [_m("GOUSTO TAKEAWAY LTD", status="dissolved")])           # no active match: as before
+
+
+def test_unclear_website_puts_the_registered_company_first(app, monkeypatch):
+    wrong = dict(MATCHES[0], name="TIDE CONSTRUCTION LIMITED", company_number="08656212", exact_match=False)
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [wrong])
+    found = {"number": "07209813", "website": "tide.co", "source": "https://www.tide.co/terms",
+             "source_title": "tide.co website"}
+    monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: found)
+    right = dict(MATCHES[0], name="TIDE PLATFORM LIMITED", company_number="07209813", exact_match=True)
+    monkeypatch.setattr(ch, "lookup_registration", lambda f: right if f == found else None)
+    search(app, "tide.co")
+    assert [b.key for b in app.button if (b.key or "").startswith("pick_")][0] == "pick_07209813"
+    assert "is registered as **TIDE PLATFORM LIMITED**" in app.success[0].value
+
+
+def test_batch_uses_the_registered_company_for_an_unclear_website():
+    import batch
+    wrong = _m("RAVELIN LEASING SERVICES (UK) LIMITED", number="11718215")
+    right = dict(_m("RAVELIN TECHNOLOGY LTD", number="08484303"), registered_as={"brand": "Ravelin"})
+    made = []
+    rows, _ = batch.research_list(
+        ["ravelin.com"], find=lambda t: [wrong], find_registered=lambda t: right,
+        make=lambda m, t: made.append(m["company_number"]) or {"fit_score": 7, "signals": [], "report_id": "x"},
+        company_name=lambda r: "Ravelin", employees=lambda r: None)
+    assert made == ["08484303"]
+
+
+def test_a_typed_website_counts_as_an_exact_name_match():
+    """Live test: 'gocardless.com' wasn't an exact match for GOCARDLESS LTD, so a paid lookup ran for nothing."""
+    assert ch.is_exact_match("gocardless.com", "GOCARDLESS LTD")
+    assert ch.is_exact_match("https://www.rightmove.co.uk/", "RIGHTMOVE PLC")
+    assert not ch.is_exact_match("tide.co", "TIDE CONSTRUCTION LIMITED")
+    assert not ch.registration_check_needed("gocardless.com", [_m("GOCARDLESS LTD", exact=True, size="Large")])

@@ -379,3 +379,13 @@ def test_impossible_revenue_is_treated_as_not_found():
         assert nt.plausible_revenue(good) == good
     for bad in ("15 USD", "9,999 USD", "", None):
         assert nt.plausible_revenue(bad) is None
+
+
+def test_card_website_is_a_plain_site_never_a_link_shortener():
+    """Live test: Featurespace's card said 'www.bit.ly/3l00luz'; Brandwatch's had a page path."""
+    assert nt.clean_website("www.bit.ly/3l00luz") is None
+    assert nt.clean_website("https://lnkd.in/abc") is None
+    assert nt.clean_website("www.brandwatch.com/suite/") == "www.brandwatch.com"
+    assert nt.clean_website("https://www.paddle.com") == "www.paddle.com"
+    assert nt.clean_website("") is None and nt.clean_website("not a site") is None
+    assert nt.parse_company_card(SAMPLE_CARD.replace("www.cognism.com", "www.bit.ly/3l00luz"))["website"] is None

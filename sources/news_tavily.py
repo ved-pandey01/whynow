@@ -129,6 +129,23 @@ def to_iso_date(published):
         return None
 
 
+LINK_SHORTENERS = {"bit.ly", "t.co", "goo.gl", "tinyurl.com", "lnkd.in", "linktr.ee", "ow.ly", "buff.ly", "rebrand.ly"}
+
+
+def clean_website(value):
+    """
+    A company website from a profile card, as a plain site: 'www.brandwatch.com/suite/' → 'www.brandwatch.com'.
+    Link shorteners like bit.ly aren't a company's website (live test: Featurespace's card said
+    'www.bit.ly/3l00luz'), so they count as not found.
+    """
+    if not value:
+        return None
+    site = re.sub(r"^https?://", "", value.strip(), flags=re.IGNORECASE).split("/")[0].strip()
+    if not site or " " in site or "." not in site or domain_of(site) in LINK_SHORTENERS:
+        return None
+    return site
+
+
 def domain_of(website):
     """'https://www.paddle.com/pricing' → 'paddle.com'."""
     w = (website or "").strip().lower()
@@ -190,7 +207,7 @@ def parse_company_card(text):
     rounds = field("Rounds")
     areas = field("Business areas")
     return {
-        "website": field("Website"),
+        "website": clean_website(field("Website")),
         "legal_name": field("Legal name"),
         "headquarters": field("Headquarters"),
         "industry": field("Industry"),

@@ -154,6 +154,41 @@ Anything unexpected shows "Something unexpected went wrong. Please try again in 
   - After 35 seconds of research, no new searches start, so the report stays near a minute.
   - Each report shows how long each part took.
 
+## Live test results (Step 8, 19 Nov 2026)
+18 real searches through the same steps as the app: 15 UK B2B companies of different sizes and sectors, plus 3 tricky ones. Run with [scripts/live_benchmark.py](scripts/live_benchmark.py) (live: about 11 Tavily credits and 1 Gemini request per company). Times are for the first, uncached run: the search, then research and the report.
+
+| Typed | Sector · size | Matched on Companies House | Correct? | Fit | Reasons to reach out | Wrong or unsourced facts | Time |
+|---|---|---|---|---|---|---|---|
+| Sage Group | Accounting software · large | THE SAGE GROUP PLC. | ✅ | 3 | 1 | None | 37s |
+| rightmove.co.uk | Property portal · large | RIGHTMOVE GROUP LIMITED | ✅ (operating company) | 4 | 1 | None | 50s |
+| autotrader.co.uk | Car marketplace · large | AUTOTRADER LIMITED | ✅ | 3 | 1 | None | 50s |
+| gocardless.com | Payments · mid | GOCARDLESS LTD | ✅ | 8 | 1 | None | 43s |
+| Thought Machine | Banking software · mid | THOUGHT MACHINE GROUP LIMITED | ✅ | 7 | 0 | None | 42s |
+| tide.co | Business banking · mid | TIDE PLATFORM LTD | ✅ | 8 | 3 | None | 39s |
+| onfido.com | Identity checks · mid | ONFIDO HOLDINGS LIMITED | ⚠️ parent company | 7 | 0 | Website shown as entrust.com (fixed) | 40s |
+| Featurespace | Fraud prevention · mid | FEATURESPACE LIMITED | ✅ | 5 | 1 | Website was a bit.ly link (fixed) | 46s |
+| peak.ai | AI software · small–mid | PEAK AI LIMITED | ✅ | 7 | 0 | None | 35s |
+| huboo.com | E-commerce fulfilment · mid | HUBOO TECH LIMITED | ✅ | 4 | 1 | None | 48s |
+| mention-me.com | Referral marketing · small | MENTION ME LIMITED | ✅ | 6 | 0 | None | 43s |
+| juro.com | Legal tech · small | JURO ONLINE LIMITED | ✅ | 6 | 0 | Missed a sales job ad (fixed: now 1) | 40s |
+| hyperexponential.com | Insurance software · small–mid | HYPEREXPONENTIAL LTD | ✅ | 9 | 1 | None | 43s |
+| ravelin.com | Fraud detection · small | RAVELIN TECHNOLOGY LTD | ✅ | 8 | 1 | None | 48s |
+| Ometria | Retail marketing · small | OMETRIA LTD | ✅ | 6 | 0 | Missed a sales job ad (fixed: now 1) | 44s |
+| **Brandwatch** (brand name) | Social intelligence | RUNTIME COLLECTIVE LIMITED, from a public source | ✅ | 9 | 1 | Website had a page path (fixed) | 131s (one slow Tavily reply) |
+| **Thougth Machine** (misspelt) | n/a | None picked; a clear message instead | ✅ no wrong match | n/a | n/a | n/a | 1s |
+| **Cazoo** (closed company) | Car retail | MOTORS.CO.UK LIMITED, the brand's current owner (the old Cazoo companies are closed) | ⚠️ | 3 | 2 | Old Cazoo profile facts (founded 2018, $2.19bn raised) shown against the new owner | 37s |
+
+- **Matching:** all 15 main companies went to the right company or group, and 14 of 15 to the exact trading company. No tricky search produced a wrong match.
+- **Facts:** no claim without a source reached a report (code removed 0). Every flagged problem came from a public source, not the AI. All except Cazoo are fixed.
+- **Speed:** **about 45 seconds per report on average** (median 41s; 32s to 121s), or about 48s including the company search. That compares with the 20–30 minutes an SDR typically spends researching an account by hand.
+- **Fixed after this test:**
+  - Typed websites like `tide.co`, `ravelin.com` and `huboo.com` first matched the wrong company. They now check the website's own footer or terms for the registered name when Companies House alone can't tell.
+  - A website now counts as an exact name match ("gocardless.com" = GOCARDLESS LTD), so that paid check isn't run for nothing.
+  - Sales job ads the AI skipped now become a "Hiring for sales" reason, linked to the ads.
+  - The website the user typed wins over the profile card's website.
+  - Link shorteners and page paths are never shown as a company's website.
+- **Credits:** run 1 used 197 Tavily credits and 17 Gemini requests. Re-testing the 5 fixed companies used 7 credits and 5 requests, thanks to the 24-hour cache.
+
 ## Running the tests
 ```
 .venv/bin/python -m pytest

@@ -294,6 +294,30 @@ def _add_card_source(sources, brand, card):
     ]))
 
 
+_HIRING_WORDS = re.compile(r"\b(hir\w*|recruit\w*|job\w*|vacanc\w*|open roles?|sales (?:roles?|executives?))\b",
+                           re.IGNORECASE)
+
+
+def _add_sales_hiring_signal(signals, more_about, brand, checks, most=3):
+    """
+    A job ad has no date, so the AI often skips it under the 'recent events only' rule, but an open sales role
+    is exactly the 'hiring for sales' reason to reach out. (Live test: Juro's 'Strategic Account Executive'
+    and Ometria's 'Enterprise Account Executive' ads were found but not used.) If the AI gave no hiring
+    reason, add one from the sales job ads in 'Hiring now', linked to those ads. Returns True if added.
+    """
+    if any(s["type"] == "hiring_sales" for s in signals):
+        return False
+    roles = [r for r in (more_about.get("hiring") or {}).get("roles", []) if r["sales"]][:most]
+    if not roles:
+        return False
+    names = ", ".join(r["title"] for r in roles)
+    who = brand or "The company"
+    signals.append({"type": "hiring_sales", "text": f"{who} has job ads for sales roles: {names}.",
+                    "sources": [r["source"] for r in roles]})
+    checks.append(f"Added a 'Hiring for sales' reason from job ads the AI skipped: {names}")
+    return True
+
+
 def company_profile(research):
     """
     The facts for the banner, profile card and stat tiles. Each is {"value", "source"}
@@ -307,12 +331,13 @@ def company_profile(research):
         return {"value": value, "source": source_id} if value not in (None, "", []) else None
 
     founded_year = (p.get("founded") or "")[:4] or None
-    website = card.get("website") or research.get("website")
+    typed_site = research.get("website") if looks_like_website(research.get("typed") or "") else None
+    website = typed_site or card.get("website") or research.get("website")   # the site the user typed wins
     return {
         "brand": fact(brand_from(research.get("typed") or p["name"]), None),
         "legal_name": fact(p["name"], ch_id),
         "status": fact(p["status"], ch_id),
-        "website": fact(website, card_id if card.get("website") else sources._by_url.get(website)),
+        "website": fact(website, sources._by_url.get(website) if website != card.get("website") else card_id),
         "domain": tavily.domain_of(website) if website else None,
         "headquarters": fact(card.get("headquarters"), card_id),
         "industry": (fact(card.get("industry"), card_id)
@@ -410,6 +435,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
 
     profile_facts = company_profile(research)
     more_about = _more_about(research, sources)
+    hiring_added = _add_sales_hiring_signal(signals, more_about, (profile_facts.get("brand") or {}).get("value"), checks)
     used = set(n["source"] for n in news)
     used.update(_more_about_ids(more_about))
     for group in overview + overview_more + snapshot + fit_reasons + signals:
@@ -417,6 +443,8 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
     used.update(f["source"] for f in profile_facts.values() if isinstance(f, dict) and f.get("source"))
 
     not_found = [clean_ai_text(x) for x in draft.not_found]
+    if hiring_added:   # don't say "no sales hiring found" next to the job ads we just used
+        not_found = [x for x in not_found if not _HIRING_WORDS.search(x)]
     if not research["card"]:
         not_found.append("Company profile (headcount, funding) not found or couldn't be confirmed")
     if not research["website"]:

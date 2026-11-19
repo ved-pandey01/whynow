@@ -7,6 +7,7 @@ import csv
 import io
 
 import settings
+from sources import uk_companies_house as ch
 
 # Column names we recognise in an uploaded list. A website is the most accurate way to find a company.
 WEBSITE_COLUMNS = ("website", "domain", "url")
@@ -87,7 +88,9 @@ def research_list(names, find, make, company_name, employees, friendly_errors=()
         try:
             matches = find(typed)
             active = [m for m in matches if m["close_match"] and m.get("status", "active") == "active"]
-            match = active[0] if active else (find_registered(typed) if find_registered else None)
+            match = active[0] if active else None
+            if find_registered and ch.registration_check_needed(typed, matches):
+                match = find_registered(typed) or match   # the registered company a public source states, if any
             closed = [m for m in matches if m["close_match"]]
             if not match and closed:
                 match = closed[0]   # really closed: its report says "not worth contacting"

@@ -144,7 +144,9 @@ def shares_main_word(query, company_name):
 
 def is_exact_match(query, company_name):
     """True if the name is exactly what was typed, ignoring Ltd/PLC/The: 'Sage Group' = 'THE SAGE GROUP PLC'."""
-    typed = [w for w in _words(_strip_website(query)) if w not in _LEGAL_WORDS]
+    full = _strip_website(query)
+    typed_text = clean_query(query) if "." in full and " " not in full else full   # 'gocardless.com' → 'gocardless'
+    typed = [w for w in _words(typed_text) if w not in _LEGAL_WORDS]
     name = [w for w in _words(company_name) if w not in _LEGAL_WORDS]
     return bool(typed) and typed == name
 
@@ -330,6 +332,26 @@ def search_companies(name, location=None, industry=None, active_only=False):
     if active_only:
         matches = [m for m in matches if (m["status"] or "active") == "active"]
     return matches[: settings.COMPANY_SEARCH_RESULTS]
+
+
+def registration_check_needed(typed, matches):
+    """
+    Should we look for the registered name in public sources (the website footer, terms, company profile)?
+    - Always when there's no active close match (a brand like 'Gousto').
+    - For a typed website, also when Companies House alone can't tell which company is behind it: the top
+      match doesn't have the website in its name and isn't an exact-name company with filed accounts.
+      (Real problems: tide.co → TIDE CONSTRUCTION LIMITED, ravelin.com → RAVELIN LEASING SERVICES,
+      huboo.com → a brand-new HUBOO LTD with no accounts.)
+    """
+    active = [m for m in matches if m["close_match"] and (m.get("status") or "active") == "active"]
+    if not active:
+        return True
+    full = _strip_website(typed)
+    if not ("." in full and " " not in full):
+        return False                       # a typed name: the user picks from the list as before
+    top = active[0]
+    has_website = full in (top["name"] or "").lower()
+    return not (has_website or (top["exact_match"] and top.get("size")))
 
 
 def _website_first(m, domain):

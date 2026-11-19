@@ -252,8 +252,8 @@ def search_form():
                 st.session_state["hidden_closed"] = bool(find_companies(typed, **dict(filters, active_only=False)))
             filtered = bool(filters["location"] or filters["industry"])
             # The public-sources lookup ignores Location and Industry, so it isn't run (or paid for) when they're set
-            if typed.strip() and not filtered and not any(m["close_match"] and m["status"] == "active" for m in matches):
-                # No active company with this name: the brand may be registered under another name
+            if typed.strip() and not filtered and ch.registration_check_needed(typed, matches):
+                # No active company with this name (or, for a website, no clear one): look for the registered name
                 with st.spinner("Looking for the registered company name in public sources…"):
                     registration = find_registered(typed if report.looks_like_website(typed) else ch.main_name(typed))
                 st.session_state["registration"] = registration

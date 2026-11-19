@@ -167,7 +167,7 @@ def test_old_events_are_left_out_of_reasons_to_reach_out():
     research = research_with_signal_story("2026-02-03")   # 9 months before the report date
     r, _ = build(research, make_draft(
         news=[], signals=[Signal(signal_type="expansion", text="Launched SECURE AI.", source_ids=["S5"])]))
-    assert r["signals"] == []
+    assert ai_signals(r) == []
     assert any("older than 6 months" in c for c in r["checks"])
 
 
@@ -231,7 +231,7 @@ def test_old_or_undated_signal_stories_are_not_news(story_date):
 def test_unknown_signal_types_are_removed():
     r, _ = build(make_research(), make_draft(signals=[
         Signal(signal_type="vibes", text="They seem nice.", source_ids=["S4"])]))
-    assert r["signals"] == []
+    assert ai_signals(r) == []
 
 
 # --- Hard ICP rules applied by code ---------------------------------------
@@ -491,7 +491,7 @@ def test_recent_round_is_kept():
     research["sources"].add("signal", "[funding] Acme raises $40m", "https://f", "...", "2026-10-02")   # S5
     r, _ = build(research, make_draft(signals=[
         Signal(signal_type="funding", text="Acme raised $40m in a Series B.", source_ids=["S5"])]))
-    assert [s["type"] for s in r["signals"]] == ["funding"]
+    assert [s["type"] for s in ai_signals(r)] == ["funding"]
 
 
 @pytest.mark.parametrize("text, old", [
@@ -660,3 +660,36 @@ def test_outreach_dashes_are_spaced_en_dashes():
     assert report.spaced_dashes("[Your name] here, from [Your company]—I saw") == "[Your name] here, from [Your company] – I saw"
     assert report.spaced_dashes("Funding 2020–2024") == "Funding 2020–2024"     # ranges stay tight
     assert report._tidy("Hi — we [S2] help") == "Hi – we help"
+
+
+def ai_signals(r):
+    """The reasons the AI gave, without the 'Hiring for sales' one code adds from job ads."""
+    return [s for s in r["signals"] if not s["text"].startswith("Acme has job ads for sales roles")]
+
+
+# --- Found in the Step 8 live test ------------------------------------------------------
+def test_sales_job_ads_become_a_hiring_reason_when_the_ai_skips_them():
+    r, _ = build(make_research(), make_draft(signals=[], not_found=["No sales hiring found in the last 6 months."]))
+    hiring = [s for s in r["signals"] if s["type"] == "hiring_sales"]
+    assert hiring and hiring[0]["text"] == "Acme has job ads for sales roles: SDR."
+    assert hiring[0]["sources"]                                         # linked to the job ad
+    assert not any("hiring" in x.lower() for x in r["not_found"])      # no contradiction
+    assert any("job ads the AI skipped" in c for c in r["checks"])
+
+
+def test_no_extra_hiring_reason_when_the_ai_already_gave_one():
+    r, _ = build(make_research(), make_draft(signals=[
+        Signal(signal_type="hiring_sales", text="Acme is hiring SDRs.", source_ids=["S3"])]))
+    assert [s["text"] for s in r["signals"] if s["type"] == "hiring_sales"] == ["Acme is hiring SDRs."]
+
+
+def test_typed_website_wins_over_the_profile_cards_website():
+    """Live test: onfido.com was typed, but the card (after the Entrust deal) said entrust.com."""
+    research = make_research()
+    research["typed"] = "onfido.com"
+    research["website"] = "https://onfido.com"
+    research["sources"].add("website", "Onfido website", "https://onfido.com", "Identity verification")
+    research["card"]["website"] = "www.entrust.com"
+    profile = report.company_profile(research)
+    assert profile["website"]["value"] == "https://onfido.com"
+    assert profile["website"]["source"]
