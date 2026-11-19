@@ -386,3 +386,18 @@ a.wn-preview-link:hover .wn-pv-view { color: var(--emerald-bright); }
   .st-key-wn_search [data-testid="stHorizontalBlock"] { padding-left: 14px; }
   .st-key-wn_search [data-testid="stFormSubmitButton"] > button { padding: 0 1rem; }
 }
+/* Free searches left today: a small grey line under the search bar (not shown in owner mode) */
+.wn-searches-left { color: var(--muted); font-size: 0.78rem; padding: 0.15rem 0 0 1.25rem; }
+/* The tiny scroll scripts take no space */
+[class*="st-key-wn_scroll_"] { height: 0 !important; min-height: 0 !important; overflow: hidden !important;
+  margin-bottom: -1rem !important; }
+/* "Choose a different company": a quiet link beside "Back to home" */
+.st-key-wn_report_links { gap: 1.1rem !important; }
+.st-key-wn_report_links [data-testid="stElementContainer"] { width: auto !important; flex: 0 0 auto !important; }
+.st-key-wn_choose_again button { background: transparent !important; border: none !important; padding: 0 !important;
+  min-height: 0; color: var(--blue-bright) !important; font-size: 0.85rem; font-weight: 600; box-shadow: none !important; }
+.st-key-wn_choose_again button p { font-size: 0.85rem; font-weight: 600; }
+.st-key-wn_choose_again button:hover { color: var(--head) !important; background: transparent !important; }
+/* While research runs, the progress card sits right under the search bar */
+.st-key-wn_progress { scroll-margin-top: 1rem; }
+.st-key-wn_report_links { scroll-margin-top: 1rem; }

@@ -63,6 +63,8 @@ Results are cached: looking up the same company again within 24 hours costs no A
 ## Running costs
 WhyNow is built to be cheap to run. Every limit is in the "Running costs" section of [settings.py](settings.py).
 - **Daily limits:** each visitor gets **2 live searches a day**, with **30 a day across all visitors**. The sample report and any company researched in the last 24 hours are free and don't count. The count is kept on the server (a hash of the visitor's IP address and browser, never the IP itself), so a refresh doesn't reset it. When the limit is reached, a friendly message offers the sample report instead.
+- **When a search counts:** only when research actually starts after **Research this company** (not when the company list is shown). A failed attempt is given back. Visitors see a small grey line under the search bar, e.g. "2 free searches left today" (hidden in owner mode).
+- **Picking a company:** **Research this company** is the only way to start research (the name and card aren't clickable). The list then collapses, the live progress card appears under the search bar and the page scrolls to it; when the report is ready the page scrolls to its top. **Choose a different company** above the report brings the list back.
 - **Caches** ([cache.py](cache.py), on disk in `.cache/`, so they survive restarts):
   - Companies House replies: 7 days
   - Tavily searches and page reads: 24 hours, so the same Tavily request is never paid for twice

@@ -87,6 +87,27 @@ def record_live_search(visitor):
         pass
 
 
+def undo_live_search(visitor):
+    """Give a search back when the research failed before a report was made (the visitor got nothing)."""
+    counts = searches_today()
+    if counts["visitors"].get(visitor, 0) <= 0:
+        return
+    counts["total"] = max(0, counts["total"] - 1)
+    counts["visitors"][visitor] -= 1
+    try:
+        _searches_file().write_text(json.dumps(counts))
+    except OSError:
+        pass
+
+
+def searches_left(visitor):
+    """How many free live searches this visitor has left today (their own limit or everyone's, whichever is lower)."""
+    counts = searches_today()
+    mine = settings.VISITOR_LIVE_SEARCHES_PER_DAY - counts["visitors"].get(visitor, 0)
+    everyone = settings.TOTAL_LIVE_SEARCHES_PER_DAY - counts["total"]
+    return max(0, min(mine, everyone))
+
+
 def live_search_allowed(visitor, owner=False):
     """(True, None) if this visitor may run a fresh search now, else (False, 'visitor' or 'total')."""
     if owner:

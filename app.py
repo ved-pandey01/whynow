@@ -217,6 +217,8 @@ def search_form():
             typed = text.text_input("Company name or website", placeholder=settings.SEARCH_PLACEHOLDER,
                                     label_visibility="collapsed", max_chars=settings.MAX_SEARCH_CHARS)
             submitted = button.form_submit_button("Research →", type="primary")
+    if not is_owner():
+        st.html(ui.searches_left_line(usage.searches_left(visitor_id())))
     search_filters()
     tried = try_chips()
     # The offer keeps its default unless the user opens "Change offer"
@@ -236,7 +238,8 @@ def search_form():
             st.session_state.pop(key, None)
         st.session_state["offer"] = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
         st.session_state["typed"] = typed
-        st.session_state.pop("registration", None)
+        for key in ("registration", "last_matches", "chosen"):
+            st.session_state.pop(key, None)
         filters = current_filters()
         st.session_state["filters"] = filters
         st.session_state["hidden_closed"] = False
@@ -283,7 +286,7 @@ def try_chips():
 def run_try(chip):
     """Research a 'Try' company straight away, using its fixed Companies House number (no search, no guessing)."""
     name, website, number = chip
-    for key in ("report", "email", "emails", "sample", "matches"):
+    for key in ("report", "email", "emails", "sample", "matches", "last_matches", "chosen"):
         st.session_state.pop(key, None)
     st.session_state["offer"] = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
     st.session_state["typed"] = website   # the website still guides the news and signal searches
@@ -356,9 +359,16 @@ def search_message(typed, matches, registration, hidden_closed=False):
 
 
 def pick_company():
-    """One card per Companies House match, each with its own button."""
+    """
+    One card per Companies House match. 'Research this company' is the only way to start research
+    (the name and card aren't clickable). Once clicked, the list collapses and the live progress
+    shows straight under the search bar; if research can't start or fails, the list comes back.
+    """
     matches, typed = st.session_state.get("matches"), st.session_state.get("typed")
     if matches is None:
+        return
+    chosen = st.session_state.pop("chosen", None)
+    if chosen and run_report(chosen):
         return
     registration = st.session_state.get("registration")
     if registration and registration["match"]:
@@ -377,7 +387,6 @@ def pick_company():
     st.caption("Biggest first. Size is a guide from the accounts each company files, not a staff count."
                + (f" Filtered by: {safe(used)}." if used else ""))
     typed_domain = domain_of(typed) if report.looks_like_website(typed) else None
-    chosen = None
     for m in matches:
         with st.container(border=True, key=f"wn_box_pick_{m['company_number']}"):
             text, button = st.columns([4, 1.4], vertical_alignment="center")
@@ -385,38 +394,67 @@ def pick_company():
             closed = (m.get("status") or "active") != "active"
             if button.button("Research this company", key=f"pick_{m['company_number']}",
                              type="secondary" if closed else "primary", use_container_width=True):
-                chosen = m
-    if chosen:
-        run_report(chosen)   # after the cards, so the live progress shows as its own card
+                st.session_state["chosen"] = m
+                st.rerun()   # redraw without the list, with the live progress under the search bar
+
+
+def scroll_to(selector, name):
+    """Smoothly scroll the page to an element (a tiny script; the box holding it is hidden by the CSS)."""
+    with st.container(key=f"wn_scroll_{name}"):
+        st.html(ui.scroll_script(selector), unsafe_allow_javascript=True)
+
+
+def go_back_to_list():
+    """'Choose a different company': bring back the list the report was picked from."""
+    st.session_state["matches"] = st.session_state.pop("last_matches")
+    for key in ("report", "email", "emails", "sample"):
+        st.session_state.pop(key, None)
 
 
 def run_report(choice):
+    """
+    Make the report for a chosen company, with the live progress card. Returns True when research started
+    and the report is ready (the page then reloads), False if it couldn't start or failed.
+    Only fresh research counts towards today's limits, counted as it starts; the sample and cached
+    companies are free, and a failed attempt is given back.
+    """
     typed = choice.get("typed") or st.session_state["typed"]
     offer = st.session_state["offer"]
-    # A cached company (or the sample) is free. A fresh report counts towards today's limits.
     fresh = cached_report(report_id(choice["company_number"], typed, offer)) is None
     if fresh:
         allowed, reason = usage.live_search_allowed(visitor_id(), owner=is_owner())
         if not allowed:
             show_limit_card(reason)
-            return
-    on_step = live_progress(choice["name"])
+            return False
+        usage.record_live_search(visitor_id())     # counted now, as the research starts (the owner adds to the total)
+    with st.container(key="wn_progress"):
+        on_step = live_progress(choice["name"])
+    scroll_to(".st-key-wn_progress", "progress")
     try:
         r = make_report(choice["company_number"], typed, offer, on_step)
     except AllModelsBusy:
+        give_back(fresh)
         st.error(f"The AI couldn't write the report right now (all models are busy). The research is saved for "
                  f"{settings.TAVILY_CACHE_HOURS} hours, so trying again in a few minutes won't use search credits.",
                  icon=":material/hourglass_top:")
-        return
+        return False
     except Exception as e:
+        give_back(fresh)
         friendly_error(e)
-        return
-    if fresh:
-        usage.record_live_search(visitor_id())
-    st.session_state.update(report=r, matches=None, sample=False)
+        return False
+    if st.session_state.get("matches"):
+        st.session_state["last_matches"] = st.session_state["matches"]   # for 'Choose a different company'
+    st.session_state.update(report=r, matches=None, sample=False, scroll_to_report=True)
     st.session_state.pop("email", None)
     st.session_state.pop("emails", None)
     st.rerun()
+    return True
+
+
+def give_back(fresh):
+    """A failed fresh search doesn't use up one of the visitor's free searches."""
+    if fresh:
+        usage.undo_live_search(visitor_id())
 
 
 # ---------------------------------------------------------------------------
@@ -532,7 +570,13 @@ def report_bar(r):
     email = st.session_state.get("email")
     name = "whynow-" + "".join(c if c.isalnum() else "-" for c in exports.company_name(r).lower()).strip("-")
     left, right = st.columns([1, 1], vertical_alignment="center")
-    left.html(ui.back_link())
+    with left, st.container(key="wn_report_links", horizontal=True, vertical_alignment="center", gap="medium"):
+        st.html(ui.back_link())
+        if st.session_state.get("last_matches") and not st.session_state.get("sample"):
+            if st.button("Choose a different company", key="wn_choose_again", type="tertiary",
+                         icon=":material/list:"):
+                go_back_to_list()
+                st.rerun()
     with right, st.container(key="wn_downloads", horizontal=True, horizontal_alignment="right", gap="small"):
         st.download_button("Download PDF", exports.report_to_pdf(r, email), file_name=f"{name}.pdf",
                            mime="application/pdf", icon=":material/picture_as_pdf:")
@@ -542,6 +586,8 @@ def report_bar(r):
 
 def show_report(r):
     by_id = {s["id"]: s for s in r["all_sources"]}
+    if st.session_state.pop("scroll_to_report", False):
+        scroll_to(".st-key-wn_report_links", "report")   # the top of the report: its 'Back to home' row
     report_bar(r)
     if st.session_state.get("sample"):
         st.info(f"Saved example from {r.get('saved_on', 'an earlier run')}. "

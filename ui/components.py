@@ -7,6 +7,7 @@ code to our page. Links only allow http(s) addresses.
 """
 
 import html
+import json
 import re
 from datetime import date
 from pathlib import Path
@@ -115,6 +116,31 @@ def author_pill():
 
 HOME_URL = "./"   # the home page without "?sample=1"; loading it starts fresh, so the report is cleared
 SAMPLE_URL = "./?sample=1"   # opens the saved sample report
+
+
+def searches_left_line(left):
+    """The small grey line under the search bar for normal visitors: '2 free searches left today'."""
+    if left <= 0:
+        text = "No free searches left today. The sample and recently researched companies are still free."
+    else:
+        text = f"{left} free search{'' if left == 1 else 'es'} left today"
+    return f'<div class="wn-searches-left">{esc(text)}</div>'
+
+
+def scroll_script(selector):
+    """
+    A tiny script that smoothly scrolls the page to an element. The page is still loading when it runs,
+    so it keeps checking for about 3 seconds and nudges again until the element is near the top
+    (or as near as the page allows). No '<' inside the script: it stops Streamlit loading it.
+    """
+    target = json.dumps(selector)
+    return ("<script>(function(){var tries=0,last=null;function go(){var d=(window.parent||window).document;"
+            f"var el=d.querySelector({target});tries++;"
+            "if(el){var top=Math.round(el.getBoundingClientRect().top);"
+            "if(top>40||0>top){if(top!==last){el.scrollIntoView({behavior:'smooth',block:'start'});}last=top;}"
+            "else{return;}}"
+            "if(25>tries){setTimeout(go,150);}}"
+            "setTimeout(go,300);})();</script>")
 
 
 def back_link():
