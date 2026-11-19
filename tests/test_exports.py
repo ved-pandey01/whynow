@@ -57,3 +57,33 @@ def test_pdf_with_more_about_still_builds():
                                    for i in ("S3",)]
     pdf = exports.report_to_pdf(dict(REPORT, more_about=MORE, sources=sources, all_sources=sources))
     assert pdf.startswith(b"%PDF")
+
+
+def test_pdf_overview_has_the_short_overview_then_the_read_more_sentences(monkeypatch):
+    """'Read more' only adds sentences, so the PDF must print both parts, in order (it used to drop the first)."""
+    from fpdf import FPDF
+    printed = []
+    real = FPDF.multi_cell
+    monkeypatch.setattr(FPDF, "multi_cell", lambda self, w, h, txt="", *a, **k: (printed.append(txt), real(self, w, h, txt, *a, **k))[1])
+    r = dict(REPORT,
+             overview=[{"text": "Acme makes billing software.", "sources": ["S1"]}],
+             overview_more=[{"text": "Its products include invoicing tools.", "sources": ["S1"]}])
+    exports.report_to_pdf(r, EMAIL)
+    overview = next(t for t in printed if "Acme makes billing software." in t)
+    assert overview.index("Acme makes billing software.") < overview.index("Its products include invoicing tools.")
+
+
+def test_pdf_never_strands_a_heading_at_the_bottom_of_a_page(monkeypatch):
+    """Each section heading moves to a new page if there isn't room under it."""
+    from fpdf import FPDF
+    pages_at_heading = []
+    real = FPDF.multi_cell
+    def spy(self, w, h, txt="", *a, **k):
+        out = real(self, w, h, txt, *a, **k)
+        if txt.startswith("OUTREACH EMAIL"):
+            pages_at_heading.append(self.h - self.b_margin - self.get_y())   # room left below the heading
+        return out
+    monkeypatch.setattr(FPDF, "multi_cell", spy)
+    long = [{"text": "A long sentence about the company and its products. " * 6, "sources": ["S1"]}] * 12
+    exports.report_to_pdf(dict(REPORT, overview=long), EMAIL)
+    assert pages_at_heading and pages_at_heading[0] > 45

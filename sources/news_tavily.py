@@ -204,7 +204,7 @@ def parse_company_card(text):
         "total_raised": re.findall(r"^Total raised:\s*(.+)$", text, re.MULTILINE) or None,
         "description": (field("Description") or "")[:500] or None,
         "linkedin_followers": int(followers.group(1).replace(",", "")) if followers else None,
-        "annual_revenue": field("Annual revenue"),
+        "annual_revenue": plausible_revenue(field("Annual revenue")),
         # e.g. {"type": "Debt Financing", "date": "2025-08-17", "amount": "25.00M USD"}
         "last_round": {"type": last.group(1), "date": last.group(2), "amount": last.group(3).strip()} if last else None,
         "open_roles": int(open_roles) if open_roles and open_roles.isdigit() else None,
@@ -212,6 +212,23 @@ def parse_company_card(text):
         "investors": [x.strip() for x in investors.split(",")][:12] if investors else None,
         "similar_companies": _list_after("Similar companies", text),
     }
+
+
+MIN_PLAUSIBLE_REVENUE = 10_000   # a company card sometimes says "Annual revenue: 15 USD": that's broken data
+
+
+def plausible_revenue(value):
+    """
+    The revenue text (e.g. '26.49M GBP') only if the amount is believable; otherwise None, so the report
+    says 'not found' instead of showing nonsense like '15 USD'. Text we can't read as a number is kept.
+    """
+    if not value:
+        return None
+    m = re.match(r"^\s*[$£€]?\s*([\d,]+(?:\.\d+)?)\s*([KMBT]?)\b", value, re.IGNORECASE)
+    if not m:
+        return value
+    amount = float(m.group(1).replace(",", "")) * {"": 1, "K": 1e3, "M": 1e6, "B": 1e9, "T": 1e12}[m.group(2).upper()]
+    return value if amount >= MIN_PLAUSIBLE_REVENUE else None
 
 
 def _list_after(heading, text):

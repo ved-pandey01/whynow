@@ -541,10 +541,11 @@ def batch_page():
     st.html(f'<div class="wn-card wn-card-head"><h4>{ui.icon("format_list_bulleted")}Research a list</h4></div>')
     st.caption(f"Upload a CSV with up to {settings.BATCH_MAX_COMPANIES} companies: one per row, as names or websites "
                "(a column called company or website is used if there is one). Websites find the right company fastest.")
-    st.warning(f"This uses more API credits: about {settings.TAVILY_CREDITS_PER_REPORT} Tavily credits and 1–4 Gemini "
-               f"requests per company, so a list of {settings.BATCH_MAX_COMPANIES} uses about "
-               f"{settings.TAVILY_CREDITS_PER_REPORT * settings.BATCH_MAX_COMPANIES} credits and a good share of Gemini's "
-               f"free daily allowance. Companies researched in the last {settings.REPORT_CACHE_HOURS} hours are free.", icon=":material/warning:")
+    st.warning(f"This uses more API credits: about {settings.TAVILY_CREDITS_PER_REPORT} Tavily credits and 1 Gemini "
+               f"request per company, so a list of {settings.BATCH_MAX_COMPANIES} uses about "
+               f"{settings.TAVILY_CREDITS_PER_REPORT * settings.BATCH_MAX_COMPANIES} Tavily credits and "
+               f"{settings.BATCH_MAX_COMPANIES} Gemini requests. Companies researched in the last "
+               f"{settings.REPORT_CACHE_HOURS} hours are free.", icon=":material/warning:")
     upload = st.file_uploader("Your list (CSV)", type=["csv"], key="wn_batch_file")
     if upload is not None:
         names, left_out, problem = batch.read_upload(upload.getvalue())

@@ -368,3 +368,14 @@ def test_find_registration_falls_back_to_the_profile_legal_name(monkeypatch):
 def test_find_registration_returns_none_when_no_source_says(monkeypatch):
     monkeypatch.setattr(nt, "_search", lambda q, **o: [{"url": "https://news.com/x", "title": "Gousto recipes"}])
     assert nt.find_registration("Gousto") is None
+
+
+def test_impossible_revenue_is_treated_as_not_found():
+    """A real card said 'Annual revenue: 15 USD' for a 137-person company: don't show nonsense."""
+    card = nt.parse_company_card(SAMPLE_CARD.replace("32.93M GBP", "15 USD"))
+    assert card["annual_revenue"] is None
+    assert nt.parse_company_card(SAMPLE_CARD)["annual_revenue"] == "32.93M GBP"
+    for good in ("26.49M GBP", "$1.2B", "500K GBP", "12,500 GBP"):
+        assert nt.plausible_revenue(good) == good
+    for bad in ("15 USD", "9,999 USD", "", None):
+        assert nt.plausible_revenue(bad) is None

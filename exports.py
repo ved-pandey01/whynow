@@ -121,7 +121,10 @@ def report_to_pdf(r, email=None, today=None):
         pdf.set_text_color(*colour)
         pdf.multi_cell(0, height, words, align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    def heading(words):
+    def heading(words, room_needed=35):
+        # Never leave a heading alone at the bottom of a page: start a new page if there's little room under it
+        if pdf.get_y() + room_needed > pdf.h - pdf.b_margin:
+            pdf.add_page()
         pdf.ln(3)
         text(words.upper(), size=8, bold=True, colour=BLUE, height=5)
         pdf.set_draw_color(226, 232, 240)
@@ -150,8 +153,9 @@ def report_to_pdf(r, email=None, today=None):
     c = r["company"]
     text(company_name(r), size=17, bold=True, height=8)
     text(f"{c['name']} · Companies House {c['number']} · {c['status'] or 'status not found'}", size=9, colour=GREY)
-    # Overview: the full "Read more" version if there is one, else the short one
-    overview = r.get("overview_more") or r.get("overview") or ([r["what_they_do"]] if r.get("what_they_do") else [])
+    # Overview: the short version plus the extra "Read more" sentences (they only add, never repeat)
+    overview = ((r.get("overview") or []) + (r.get("overview_more") or [])
+                or ([r["what_they_do"]] if r.get("what_they_do") else []))
     if overview:
         pdf.ln(1.5)
         text(" ".join(c["text"] + cite(c["sources"]) for c in overview))
@@ -243,7 +247,7 @@ def report_to_pdf(r, email=None, today=None):
 
     # Email, only if it has been created
     if email:
-        heading("Outreach email" + (f" · for the {email['persona']}" if email.get("persona") else ""))
+        heading("Outreach email" + (f" · for the {email['persona']}" if email.get("persona") else ""), room_needed=60)
         text(f"Subject: {email['subject']}", bold=True)
         pdf.ln(1)
         text(email["body"])
