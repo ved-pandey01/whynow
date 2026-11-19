@@ -222,6 +222,7 @@ def research_company(company_number, typed, on_step=_no_progress):
             research["card"] = card
             website = website or card["website"]
             _add_card_source(sources, brand, card)
+            _check_former_business(research, brand, profile, card, sources)
         topic = tavily.topic_hint(card)
 
         web = run_step("Website", lambda: tavily.get_website_text(website))
@@ -270,6 +271,39 @@ def research_company(company_number, typed, on_step=_no_progress):
                 warnings.append(f"{NEWS_UNAVAILABLE} for: {parts} ({reason}). The report uses the rest of the research.")
 
     return research
+
+
+def ownership_note(research):
+    """The note at the top of the report when the brand now belongs to a different company, else None."""
+    former = research.get("former_business")
+    if not former:
+        return None
+    owner = research["profile"]["name"]
+    return {"owner": owner, "former": former["name"], "former_source": former["source"],
+            "text": f"This brand is now owned by {owner}. Some details may describe the former business."}
+
+
+def _check_former_business(research, brand, profile, card, sources):
+    """
+    If the brand used to be run by a company that has closed (Cazoo → now MOTORS.CO.UK LIMITED), remember it:
+    the report then shows a note at the top and prefers Companies House for the founded date, because the
+    company profile may describe the former business. The AI is told too, through a Companies House source.
+    """
+    try:
+        former = ch.former_business(brand, profile["name"], card.get("founded"))
+    except ch.CompaniesHouseError:
+        former = None
+    if not former:
+        return
+    research["former_business"] = {"name": former["name"], "number": former["company_number"],
+                                   "status": former["status"], "source": former["source"]}
+    sources.add("companies_house", f"Companies House: {former['name']} (the brand's former company)",
+                former["source"], _lines([
+                    ("Note", f"The {brand} brand now belongs to {profile['name']}. {former['name']} ran it before "
+                             f"and is now {former['status']}. Company profile facts (founded, funding, revenue, "
+                             f"headcount) may describe that former business: use Companies House for the founded date."),
+                    ("Former company", former["name"]), ("Status", former["status"]), ("Founded", former.get("founded")),
+                ]))
 
 
 def _add_card_source(sources, brand, card):
@@ -331,6 +365,7 @@ def company_profile(research):
         return {"value": value, "source": source_id} if value not in (None, "", []) else None
 
     founded_year = (p.get("founded") or "")[:4] or None
+    changed_owner = bool(research.get("former_business"))   # the card may describe the former business
     typed_site = research.get("website") if looks_like_website(research.get("typed") or "") else None
     website = typed_site or card.get("website") or research.get("website")   # the site the user typed wins
     return {
@@ -342,7 +377,8 @@ def company_profile(research):
         "headquarters": fact(card.get("headquarters"), card_id),
         "industry": (fact(card.get("industry"), card_id)
                      or fact(ch.sic_description((p.get("sic_codes") or [None])[0]), ch_id)),
-        "founded": fact(card.get("founded"), card_id) or fact(founded_year, ch_id),
+        "founded": ((fact(founded_year, ch_id) or fact(card.get("founded"), card_id)) if changed_owner
+                    else (fact(card.get("founded"), card_id) or fact(founded_year, ch_id))),
         "headcount": fact(card.get("headcount"), card_id),
         "headcount_change": fact(card.get("headcount_yearly_change"), card_id),
         "total_raised": fact(", ".join(card.get("total_raised") or []), card_id),
@@ -470,6 +506,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
         "suggested_role": draft.suggested_role,
         "role_reason": clean_ai_text(draft.role_reason),
         "not_found": not_found,
+        "ownership_note": ownership_note(research),
         "sources": [s for s in sources.items if s["id"] in used],
         "all_sources": sources.items,
         "checks": checks,

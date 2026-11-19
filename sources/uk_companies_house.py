@@ -334,6 +334,33 @@ def search_companies(name, location=None, industry=None, active_only=False):
     return matches[: settings.COMPANY_SEARCH_RESULTS]
 
 
+def former_business(brand, registered_name, brand_founded=None):
+    """
+    Did this brand used to be run by a different company that has since closed? Returns that closed
+    company (a search match) or None. Used when a public source says the brand now belongs to a company
+    with a different name (live test: Cazoo → MOTORS.CO.UK LIMITED, while CAZOO GROUP LTD is closed).
+    All three must be true, so brands that were always registered under another name aren't flagged:
+      1. the registered company's name doesn't include the brand ('MOTORS.CO.UK' has no 'cazoo'),
+      2. Companies House has a closed company named after the brand, and
+      3. it was set up around the brand's own founding year (from its company profile): from 1 year
+         before to FORMER_BUSINESS_YEARS after. (Gousto's closed lookalike is an unrelated 2024 takeaway.)
+    """
+    words = main_words(brand)
+    year = str(brand_founded or "")[:4]
+    if not words or words & set(_words(registered_name)) or not year.isdigit():
+        return None
+    try:
+        matches = search_companies(brand)
+    except CompaniesHouseError:
+        return None
+    for m in matches:
+        founded = (m.get("founded") or "")[:4]
+        if (m["close_match"] and (m.get("status") or "active") != "active" and founded.isdigit()
+                and -1 <= int(founded) - int(year) <= settings.FORMER_BUSINESS_YEARS):
+            return m
+    return None
+
+
 def registration_check_needed(typed, matches):
     """
     Should we look for the registered name in public sources (the website footer, terms, company profile)?

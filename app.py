@@ -598,6 +598,10 @@ def show_report(r):
     if st.session_state.pop("scroll_to_report", False):
         scroll_to(".st-key-wn_report_links", "report")   # the top of the report: its 'Back to home' row
     report_bar(r)
+    note = r.get("ownership_note")
+    if note:   # e.g. Cazoo → MOTORS.CO.UK LIMITED: the profile may describe the former business
+        st.warning(f'{safe(note["text"])} The former company, [{safe(note["former"])}]({note["former_source"]}), '
+                   "is closed. The founded date and status come from Companies House.", icon=":material/swap_horiz:")
     if st.session_state.get("sample"):
         st.info(f"Saved example from {r.get('saved_on', 'an earlier run')}. "
                 "Search above to research any UK company live.", icon=":material/history:")

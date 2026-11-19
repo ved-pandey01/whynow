@@ -153,6 +153,9 @@ def report_to_pdf(r, email=None, today=None):
     c = r["company"]
     text(company_name(r), size=17, bold=True, height=8)
     text(f"{c['name']} · Companies House {c['number']} · {c['status'] or 'status not found'}", size=9, colour=GREY)
+    if r.get("ownership_note"):
+        pdf.ln(1)
+        text(r["ownership_note"]["text"], size=9, bold=True, colour=(180, 83, 9))
     # Overview: the short version plus the extra "Read more" sentences (they only add, never repeat)
     overview = ((r.get("overview") or []) + (r.get("overview_more") or [])
                 or ([r["what_they_do"]] if r.get("what_they_do") else []))
