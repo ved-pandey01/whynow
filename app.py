@@ -250,7 +250,9 @@ def search_form():
             if not matches and filters["active_only"]:
                 # Nothing active: are there closed ones the "Active only" filter is hiding? (free)
                 st.session_state["hidden_closed"] = bool(find_companies(typed, **dict(filters, active_only=False)))
-            if typed.strip() and not any(m["close_match"] and m["status"] == "active" for m in matches):
+            filtered = bool(filters["location"] or filters["industry"])
+            # The public-sources lookup ignores Location and Industry, so it isn't run (or paid for) when they're set
+            if typed.strip() and not filtered and not any(m["close_match"] and m["status"] == "active" for m in matches):
                 # No active company with this name: the brand may be registered under another name
                 with st.spinner("Looking for the registered company name in public sources…"):
                     registration = find_registered(typed if report.looks_like_website(typed) else ch.main_name(typed))
@@ -337,12 +339,18 @@ def landing():
 TIP = "Tip: add a location in Filters, or type the company's website."
 
 
-def search_message(typed, matches, registration, hidden_closed=False):
+def search_message(typed, matches, registration, hidden_closed=False, filters=None):
     """
     One short message about the search, or (None, None) if all is well.
     (It used to be two yellow warnings: one from Companies House and one from the public-sources lookup.)
     """
     name = f'"{safe(typed)}"'
+    used = " · ".join(x for x in ((filters or {}).get("location"), (filters or {}).get("industry")) if x)
+    if used and not hidden_closed and (not matches or not matches[0]["close_match"]):
+        what = "matches" if not matches else "closely matches"
+        return "warning", (f"No company named {name} {what} your filters ({safe(used)}). Companies House records "
+                           "the registered office and official industry codes, which can differ from where a company "
+                           "works or what it sells. Try removing a filter, or type the company's website.")
     looked_elsewhere = bool(registration) and not registration.get("match")
     reason = f" ({registration['error']})" if looked_elsewhere and registration.get("error") else ""
     where = "on Companies House or in public sources" if looked_elsewhere else "on Companies House"
@@ -376,7 +384,8 @@ def pick_company():
         st.success(f'**{safe(found["registered_as"]["brand"])}** is registered as **{safe(found["name"])}** '
                    f'(company {found["company_number"]}), as stated on [{safe(found["registered_as"]["source_title"])}]'
                    f'({found["registered_as"]["source"]}).', icon=":material/verified:")
-    kind, message = search_message(typed, matches, registration, st.session_state.get("hidden_closed"))
+    kind, message = search_message(typed, matches, registration, st.session_state.get("hidden_closed"),
+                                   st.session_state.get("filters"))
     if message:
         (st.warning if kind == "warning" else st.info)(message, icon=":material/search_off:")
     if not matches:

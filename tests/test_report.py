@@ -653,3 +653,10 @@ def test_all_ai_text_uses_british_spelling():
     r, _ = build(make_research(), make_draft(
         overview=[Claim(text="Acme provides specialized tools to optimize billing.", source_ids=["S2"])]))
     assert r["overview"][0]["text"] == "Acme provides specialised tools to optimise billing."
+
+
+def test_outreach_dashes_are_spaced_en_dashes():
+    """Found in the health check: '[Your company]—I saw' (a tight em dash) in a call opener."""
+    assert report.spaced_dashes("[Your name] here, from [Your company]—I saw") == "[Your name] here, from [Your company] – I saw"
+    assert report.spaced_dashes("Funding 2020–2024") == "Funding 2020–2024"     # ranges stay tight
+    assert report._tidy("Hi — we [S2] help") == "Hi – we help"

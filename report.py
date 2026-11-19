@@ -566,9 +566,15 @@ def strip_source_tags(text):
     return _INLINE_TAGS.sub("", text or "").strip()
 
 
+def spaced_dashes(text):
+    """British style: a spaced en dash between words ('[Your company] – I saw'), never a tight em dash."""
+    return re.sub(r"\s*—\s*|(?<=\S) – (?=\S)|\s+–\s*|\s*–\s+", " – ", text) if text else text
+
+
 def _tidy(text):
-    """Typed source tags removed and numbers given commas (the outreach checks fix and list spelling themselves)."""
-    return with_commas(strip_source_tags(text))
+    """Typed source tags removed, numbers given commas, dashes spaced (the outreach checks fix and list spelling
+    themselves)."""
+    return spaced_dashes(with_commas(strip_source_tags(text)))
 
 
 def clean_ai_text(text):

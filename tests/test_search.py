@@ -171,3 +171,20 @@ def test_registered_name_lookup_uses_the_main_name(app, monkeypatch):
     monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: asked.append(brand))
     search(app, "Zzqx Widgets – Home Counties North")
     assert asked == ["Zzqx Widgets"]
+
+
+def test_filters_skip_the_paid_registered_name_lookup_and_say_so(app, monkeypatch):
+    """Found in the health check: a filtered search ran the public-sources lookup (2 Tavily credits),
+    which ignores the filters, and blamed the company instead of the filters."""
+    asked = []
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [])
+    monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: asked.append(brand))
+    app.run()
+    app.text_input(key="wn_location").input("London")
+    app.text_input(key="wn_industry").input("software")
+    search(app, "Cognism")
+    assert asked == []
+    messages = [w.value for w in app.warning]
+    assert len(messages) == 1
+    assert 'No company named "Cognism" matches your filters (London · software)' in messages[0]
+    assert "Try removing a filter" in messages[0]
