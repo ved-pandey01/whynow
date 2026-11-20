@@ -18,3 +18,10 @@ __pycache__/
 
 # Call log and daily search counts (running costs)
 .usage/
+
+# Personal notes: kept on this Mac only, never uploaded
+CLAUDE.md
+project_plan.md
+
+# Local backup of the Git history from before the clean-up (20 Nov 2026)
+.history-backup/
