@@ -55,14 +55,12 @@ Sales reps lose time researching accounts by hand, then send outreach that is ge
 - **Honest when data isn't found.** The report says "not found" rather than guessing.
 
 ## How it works
-```mermaid
-flowchart LR
-    A[Company name<br/>or website] --> B[Companies House<br/>official UK data]
-    B --> C[Tavily<br/>profile, news, signals, jobs]
-    C --> D[Gemini<br/>writes the report<br/>from sources only]
-    D --> E[Code checks<br/>sources, dates, size rules]
-    E --> F[Report, fit score,<br/>email, PDF / CSV]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/how-it-works-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/diagrams/how-it-works-light.svg">
+  <img alt="How WhyNow works: 1. Find the company on Companies House, with a brand-to-legal-name lookup. 2. Research the company profile, news, buying signals and hiring with Tavily, filtering out events older than 6 months. 3. Gemini writes from fetched sources only, then code checks every claim, date and size rule. Output: sourced report, 1 to 10 fit score, persona email, LinkedIn note, call opener, PDF and CSV, in about 45 seconds." src="assets/diagrams/how-it-works-light.svg" width="100%">
+</picture>
+
 1. Find the right company on Companies House.
 2. Research the company profile, website, news, signals and job ads.
 3. Gemini writes the report from those sources only.
