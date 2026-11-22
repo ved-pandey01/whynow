@@ -273,8 +273,10 @@ def status_chip(status):
 
 def picker_card(m, typed_domain=None):
     """One Companies House match: name, status, then one quiet line of details."""
-    details = [m.get("industry"), m.get("size"), f"Founded {m['founded'][:4]}" if m.get("founded") else None,
-               m.get("city")]
+    details = [f"No. {m['company_number']}" if m.get("company_number") else None,
+               f"Incorporated {nice_date(m['founded'])}" if m.get("founded") else None,
+               m.get("postcode") or m.get("city"),
+               m.get("industry"), m.get("size")]
     if typed_domain and typed_domain in (m.get("name") or "").lower():
         details.append(typed_domain)   # the website the user typed, only when it's in this company's name
     meta = " · ".join(esc(d) for d in details if d) or "No details found"
@@ -475,7 +477,7 @@ def signal_tile(s, by_id, today=None):
 
 def signals_card(r, by_id, today=None):
     if not r["signals"]:
-        body = '<p class="wn-empty">No reasons to reach out now were found.</p>'
+        body = '<p class="wn-empty">No recent public signals found.</p>'
     else:
         body = f'<div class="wn-signals">{"".join(signal_tile(s, by_id, today) for s in r["signals"])}</div>'
     return card(settings.SIGNALS_TITLE, "bolt", body)
@@ -560,8 +562,8 @@ def nice_company(name):
     return " ".join(w if w[:1].isdigit() else w[:1].upper() + w[1:] for w in name.split())
 
 
-def _mini_card(title, icon_name, body):
-    return f'<div class="wn-mini-card"><h5>{icon(icon_name)}{esc(title)}</h5>{body}</div>'
+def _mini_card(title, icon_name, body, wide=False):
+    return f'<div class="wn-mini-card{" wide" if wide else ""}"><h5>{icon(icon_name)}{esc(title)}</h5>{body}</div>'
 
 
 def _not_found():
@@ -640,4 +642,31 @@ def more_about_cards(r, by_id):
     m = r.get("more_about") or {}
     brand = ((r.get("profile") or {}).get("brand") or {}).get("value") or r["company"]["name"]
     return ('<div class="wn-more-grid">' + key_people_card(m, brand, by_id) + owners_card(m, by_id)
-            + competitors_card(m, by_id) + hiring_card(m, by_id) + "</div>")
+            + competitors_card(m, by_id) + hiring_card(m, by_id) + filings_card(m, by_id) + "</div>")
+
+
+def filings_card(m, by_id):
+    """Filing history from Companies House, full width under the 2×2 grid (useful for small companies)."""
+    f = m.get("filings")
+    if f is None:          # a report saved before this card existed
+        return ""
+    accounts = []
+    if f.get("last_accounts"):
+        accounts.append(f"Last accounts made up to {nice_date(f['last_accounts']) or f['last_accounts']}")
+    if f.get("next_accounts_due"):
+        accounts.append(f"next due {nice_date(f['next_accounts_due']) or f['next_accounts_due']}")
+    lead = ""
+    if accounts:
+        overdue = ' <span class="wn-chip">Accounts overdue</span>' if f.get("accounts_overdue") else ""
+        lead = (f'<div class="wn-hiring-count">{esc(", ".join(accounts))}{overdue}'
+                f'{cite([f["profile_source"]], by_id) if f.get("profile_source") else ""}</div>')
+    if not f.get("filings"):
+        return _mini_card("Filing history", "description", lead + _not_found(), wide=True)
+    rows = "".join(f'<li><div class="wn-person"><b>{esc(x["what"])}</b>'
+                   f'<span class="wn-quiet">{esc(nice_date(x["date"]) or x["date"] or "date not given")}</span></div></li>'
+                   for x in f["filings"])
+    total = f.get("total") or len(f["filings"])
+    return _mini_card("Filing history", "description",
+                      f'{lead}<ul class="wn-mini-list">{rows}</ul><div class="wn-mini-foot">Latest {len(f["filings"])} '
+                      f'of {total:,} filings at Companies House{cite([f["source"]], by_id) if f.get("source") else ""}</div>',
+                      wide=True)

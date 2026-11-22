@@ -18,6 +18,7 @@ def test_research_is_rebuilt_from_the_saved_sample(monkeypatch):
         "not_worth_contacting": False})
     monkeypatch.setattr(ch, "get_current_directors", lambda n: {"people": [], "total": 0, "source": "https://ch/o"})
     monkeypatch.setattr(ch, "get_owners", lambda n: {"owners": [], "source": "https://ch/p"})
+    monkeypatch.setattr(ch, "get_filing_history", lambda n: {"filings": [], "total": 0, "source": "https://ch/filings"})   # fake: no real API calls in tests
     research = save_sample.research_from_saved(saved)        # Tavily is blocked in tests: none was needed
     assert [s["url"] for s in research["sources"].items] == \
         [s["url"] for s in sorted(saved["all_sources"], key=lambda s: int(s["id"][1:]))]

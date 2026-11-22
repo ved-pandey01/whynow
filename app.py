@@ -41,25 +41,46 @@ SAMPLE_FILE = Path(__file__).parent / settings.SAMPLE_REPORT_FILE
 # ---------------------------------------------------------------------------
 @st.cache_data(ttl=3600, show_spinner=False)
 def find_companies(typed, location=None, industry=None, active_only=False):
+    """Used by 'Research a list' (one company per row)."""
     return ch.search_companies(typed, location=location, industry=industry, active_only=active_only)
 
 
 def search_filters():
-    """The optional 'Filters' under the search bar (collapsed by default). Active only is on by default."""
+    """The optional 'Filters' under the search bar (collapsed by default). Active companies by default."""
     with st.expander("Filters", key="wn_filters"):
         place, trade = st.columns(2)
         place.text_input("Location", placeholder="Town or postcode, e.g. Bedford", key="wn_location",
                          max_chars=60)
         trade.text_input("Industry", placeholder="Keyword or SIC code, e.g. software", key="wn_industry",
                          max_chars=60)
-        st.checkbox("Active companies only", value=True, key="wn_active_only")
+        st.toggle("Include dissolved companies", value=False, key="wn_include_dissolved")
 
 
 def current_filters():
-    """What's set in Filters now: location, industry and whether to show active companies only."""
+    """What's set in Filters now: location, industry and whether closed companies are included."""
     return {"location": (st.session_state.get("wn_location") or "").strip(),
             "industry": (st.session_state.get("wn_industry") or "").strip(),
-            "active_only": st.session_state.get("wn_active_only", True)}
+            "include_dissolved": bool(st.session_state.get("wn_include_dissolved", False))}
+
+
+def picker_search(typed, filters):
+    """
+    The picker's search: the matches to show, plus what was hidden and why, so nothing is hidden silently.
+    Returns (matches, info). Free: Companies House only.
+    """
+    everything = ch.search_companies(typed, location=filters["location"], industry=filters["industry"],
+                                     active_only=False, limit=settings.COMPANY_SEARCH_RESULTS * 3)
+    active = [m for m in everything if (m.get("status") or "active") == "active"]
+    matches = (everything if filters["include_dissolved"] else active)[: settings.COMPANY_SEARCH_RESULTS]
+    filtered = bool(filters["location"] or filters["industry"])
+    info = {
+        "hidden_closed": [] if filters["include_dissolved"] else
+                         [m for m in everything if m not in active and m.get("close_match")][:5],
+        "hidden_by_filters": ch.hidden_by_filters(typed, everything, filters["include_dissolved"]) if filtered else [],
+        "spelling": next((m["spelling"] for m in matches if m.get("spelling")), None),
+        "nearest": bool(matches) and all(m.get("nearest") for m in matches),
+    }
+    return matches, info
 
 
 @st.cache_data(ttl=6 * 3600, show_spinner=False)
@@ -238,21 +259,18 @@ def search_form():
             st.session_state.pop(key, None)
         st.session_state["offer"] = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
         st.session_state["typed"] = typed
-        for key in ("registration", "last_matches", "chosen"):
+        for key in ("registration", "last_matches", "chosen", "search_info"):
             st.session_state.pop(key, None)
         filters = current_filters()
         st.session_state["filters"] = filters
-        st.session_state["hidden_closed"] = False
         try:
-            matches = find_companies(typed, **filters)
-            if filters["active_only"]:
-                matches = [m for m in matches if (m.get("status") or "active") == "active"]
-            if not matches and filters["active_only"]:
-                # Nothing active: are there closed ones the "Active only" filter is hiding? (free)
-                st.session_state["hidden_closed"] = bool(find_companies(typed, **dict(filters, active_only=False)))
+            matches, info = picker_search(typed, filters)
+            st.session_state["search_info"] = info
             filtered = bool(filters["location"] or filters["industry"])
-            # The public-sources lookup ignores Location and Industry, so it isn't run (or paid for) when they're set
-            if typed.strip() and not filtered and ch.registration_check_needed(typed, matches):
+            # The public-sources lookup ignores Location and Industry, so it isn't run (or paid for) when they're
+            # set; a company number or a spelling suggestion already points at a registered company
+            if (typed.strip() and not filtered and not ch.as_company_number(typed) and not info["spelling"]
+                    and ch.registration_check_needed(typed, matches)):
                 # No active company with this name (or, for a website, no clear one): look for the registered name
                 with st.spinner("Looking for the registered company name in public sources…"):
                     registration = find_registered(typed if report.looks_like_website(typed) else ch.main_name(typed))
@@ -337,33 +355,60 @@ def landing():
 # Company picker
 # ---------------------------------------------------------------------------
 TIP = "Tip: add a location in Filters, or type the company's website."
+EMPTY_TIP = ("Check the spelling, or search by the 8-digit company number (for example 00445790) "
+             "or the company's website.")
 
 
-def search_message(typed, matches, registration, hidden_closed=False, filters=None):
+def _names(matches, most=3):
+    """'CARILLION PLC (liquidation)' for up to 3 companies, for the messages."""
+    return ", ".join(f'{safe(m["name"])} ({safe(m.get("status") or "status not found")})' for m in matches[:most])
+
+
+def search_messages(typed, matches, registration, info=None, filters=None):
     """
-    One short message about the search, or (None, None) if all is well.
-    (It used to be two yellow warnings: one from Companies House and one from the public-sources lookup.)
+    Short messages about the search, most important first: [(kind, text), ...], or [] if all is well.
+    Whatever a filter hid is always mentioned, so no result is hidden silently.
     """
+    info, out = info or {}, []
     name = f'"{safe(typed)}"'
     used = " · ".join(x for x in ((filters or {}).get("location"), (filters or {}).get("industry")) if x)
-    if used and not hidden_closed and (not matches or not matches[0]["close_match"]):
-        what = "matches" if not matches else "closely matches"
-        return "warning", (f"No company named {name} {what} your filters ({safe(used)}). Companies House records "
-                           "the registered office and official industry codes, which can differ from where a company "
-                           "works or what it sells. Try removing a filter, or type the company's website.")
     looked_elsewhere = bool(registration) and not registration.get("match")
     reason = f" ({registration['error']})" if looked_elsewhere and registration.get("error") else ""
     where = "on Companies House or in public sources" if looked_elsewhere else "on Companies House"
+    hidden_closed, hidden_by_filters = info.get("hidden_closed") or [], info.get("hidden_by_filters") or []
+    close = [m for m in matches if m.get("close_match")]
+
+    if used and not close:
+        what = "matches" if not matches else "closely matches"
+        out.append(("warning", f"No company named {name} {what} your filters ({safe(used)}). Companies House records "
+                               "the registered office and official industry codes, which can differ from where a "
+                               "company works or what it sells. Try removing a filter, or type the company's website."))
+    elif info.get("spelling") and matches:
+        out.append(("info", f'No company matches {name} exactly. Did you mean "{safe(info["spelling"].upper())}"? '
+                            f"It's listed first. {EMPTY_TIP}"))
+    elif info.get("nearest"):
+        out.append(("warning", f"No close match for {name} {where}{reason}. These are the nearest names on "
+                               f"Companies House; only pick one if you're sure. {EMPTY_TIP}"))
+    elif not matches and not hidden_closed:
+        out.append(("warning", f"No company found for {name} {where}{reason}. {EMPTY_TIP}"))
+    elif matches and all((m.get("status") or "active") != "active" for m in matches):
+        out.append(("info", f"Only closed companies match this name. {TIP}"))
+    elif matches and not close:
+        out.append(("warning", f"No close match for {name} {where}{reason}. Only pick one below if you're sure. {TIP}"))
+
     if hidden_closed:
-        return "info", (f"No active company found for {name}; only closed ones match. "
-                        "Untick 'Active companies only' in Filters to see them.")
-    if not matches:
-        return "warning", f"No UK company found for {name} {where}{reason}. {TIP}"
-    if all((m.get("status") or "active") != "active" for m in matches):
-        return "info", f"Only closed companies match this name. {TIP}"
-    if not matches[0]["close_match"]:
-        return "warning", (f"No close match for {name} {where}{reason}. Only pick one below if you're sure. {TIP}")
-    return None, None
+        one = len(hidden_closed) == 1
+        lead = (f"No active company found for {name}; only closed ones match" if not close
+                else f"{len(hidden_closed)} closed {'company' if one else 'companies'} with this name "
+                     f"{'is' if one else 'are'} hidden")
+        out.append(("info", f"{lead}: {_names(hidden_closed)}. Turn on 'Include dissolved companies' in Filters "
+                            "to see them."))
+    if hidden_by_filters:
+        one = len(hidden_by_filters) == 1
+        out.append(("info", f"Your filters ({safe(used)}) hide {len(hidden_by_filters)} other "
+                            f"{'company' if one else 'companies'} with this name: {_names(hidden_by_filters)}. "
+                            "Remove a filter to see them."))
+    return out
 
 
 def pick_company():
@@ -384,16 +429,16 @@ def pick_company():
         st.success(f'**{safe(found["registered_as"]["brand"])}** is registered as **{safe(found["name"])}** '
                    f'(company {found["company_number"]}), as stated on [{safe(found["registered_as"]["source_title"])}]'
                    f'({found["registered_as"]["source"]}).', icon=":material/verified:")
-    kind, message = search_message(typed, matches, registration, st.session_state.get("hidden_closed"),
-                                   st.session_state.get("filters"))
-    if message:
+    for kind, message in search_messages(typed, matches, registration, st.session_state.get("search_info"),
+                                         st.session_state.get("filters")):
         (st.warning if kind == "warning" else st.info)(message, icon=":material/search_off:")
     if not matches:
         return
     st.markdown("##### Which company did you mean?")
     filters = st.session_state.get("filters") or {}
     used = " · ".join(x for x in (filters.get("location"), filters.get("industry")) if x)
-    st.caption("Biggest first. Size is a guide from the accounts each company files, not a staff count."
+    st.caption("Biggest first. Size is a guide from the accounts each company files, not a staff count. "
+               "Not the right one? Search by its 8-digit company number."
                + (f" Filtered by: {safe(used)}." if used else ""))
     typed_domain = domain_of(typed) if report.looks_like_website(typed) else None
     for m in matches:

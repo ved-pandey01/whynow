@@ -82,8 +82,9 @@ def test_filters_use_the_advanced_search_with_location_industry_and_status(monke
     assert params["company_name_includes"] == "BT Local Business"
     assert params["location"] == "Bedford"
     assert params["sic_codes"] == "62012"
-    assert params["company_status"] == "active"
-    assert not any("/search/companies" in u and "advanced" not in u for u, _ in calls)   # the normal search isn't used
+    assert "company_status" not in params      # closed ones are hidden by WhyNow, so it can say how many
+    assert calls[0][0].endswith("/advanced-search/companies")   # the filtered search comes first; the normal
+    # search then runs only to spot close matches the filters hid (see test_filters_never_hide_silently)
     assert matches[0]["name"] == "BT LOCAL BUSINESS (HOME COUNTIES) LIMITED"
     assert matches[0]["address"] == "1 High St, Bedford, MK40 1AA"
 
@@ -123,11 +124,11 @@ def test_active_only_hides_closed_companies_in_the_normal_search(monkeypatch):
 
 
 # --- The page --------------------------------------------------------------------------
-def test_filters_are_collapsed_with_active_only_on_by_default(app):
+def test_filters_are_collapsed_and_dissolved_companies_are_off_by_default(app):
     app.run()
     filters = [e for e in app.expander if e.label == "Filters"]
     assert filters and not filters[0].proto.expanded
-    assert app.checkbox(key="wn_active_only").value is True
+    assert app.toggle(key="wn_include_dissolved").value is False
     assert app.text_input(key="wn_location").value == ""
 
 
@@ -138,7 +139,8 @@ def test_filters_are_passed_to_the_search_and_shown(app, monkeypatch):
     app.text_input(key="wn_location").input("Bedford")
     app.text_input(key="wn_industry").input("software")
     search(app, "Acme")
-    assert seen[0] == {"location": "Bedford", "industry": "software", "active_only": True}
+    assert seen[0]["location"] == "Bedford" and seen[0]["industry"] == "software"
+    assert seen[0]["active_only"] is False          # closed ones are hidden by the page, so it can say so
     assert any("Filtered by: Bedford · software." in c.value for c in app.caption)
 
 

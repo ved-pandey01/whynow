@@ -252,3 +252,13 @@ def test_overview_and_details_cards_stretch_and_align_to_the_top():
     css = ui.CSS_FILE.read_text()
     assert ".st-key-wn_overview [data-testid=\"stHorizontalBlock\"] { align-items: stretch !important; }" in css
     assert "justify-content: flex-start" in css.split(".st-key-wn_overview .wn-card {")[1].split("}")[0]
+
+
+def test_picker_card_shows_number_incorporation_date_postcode_and_status():
+    m = {"name": "ADEL GLOBAL LTD", "company_number": "17100522", "status": "active", "founded": "2026-03-12",
+         "postcode": "LS16 9JG", "city": "Leeds", "industry": None, "size": None, "source": "https://ch/17100522"}
+    card = ui.picker_card(m)
+    assert "No. 17100522" in card and "Incorporated 12 Mar 2026" in card and "LS16 9JG" in card
+    assert "Active" in card                                         # the status chip
+    assert "LS16 9JG" in ui.picker_card(dict(m, postcode=None, city="LS16 9JG")) or "Leeds" in ui.picker_card(
+        dict(m, postcode=None))                                     # the town when there's no postcode

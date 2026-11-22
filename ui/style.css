@@ -401,3 +401,6 @@ a.wn-preview-link:hover .wn-pv-view { color: var(--emerald-bright); }
 /* While research runs, the progress card sits right under the search bar */
 .st-key-wn_progress { scroll-margin-top: 1rem; }
 .st-key-wn_report_links { scroll-margin-top: 1rem; }
+
+/* Filing history: a full-width card under the More about grid */
+.wn-mini-card.wide { grid-column: 1 / -1; }

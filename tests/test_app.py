@@ -135,14 +135,15 @@ def test_picker_shows_cards_with_details(app):
     search(app)
     page = html(app)
     assert "ACME LTD" in page and "ACME HOLDINGS LTD" in page
-    assert "Business and domestic software development · Large: parent of a group · Founded 2015 · Leeds" in page
+    assert ("No. 123 · Incorporated 1 Jan 2015 · Leeds · Business and domestic software development · "
+            "Large: parent of a group") in page
     assert len([b for b in app.button if b.label == "Research this company"]) == 2
 
 
 def test_no_matches_gives_friendly_message(app, monkeypatch):
     monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [])
     search(app, "Zzqx Widgets Ltd")
-    assert any("No UK company found" in w.value and "add a location in Filters" in w.value for w in app.warning)
+    assert any("No company found" in w.value and "search by the 8-digit company number" in w.value for w in app.warning)
 
 
 def test_loose_matches_get_a_warning(app, monkeypatch):
@@ -327,15 +328,16 @@ def test_no_registered_name_found_says_so_and_flags_closed_only(app, monkeypatch
     # One short message (it used to be two yellow warnings), and closed companies are hidden by default
     assert len(app.warning) + len(app.info) == 1
     assert "only closed ones match" in app.info[0].value
-    assert "Untick 'Active companies only' in Filters" in app.info[0].value
+    assert "Turn on 'Include dissolved companies' in Filters" in app.info[0].value
+    assert DISSOLVED_TAKEAWAY["name"] in app.info[0].value                 # says which company is hidden
     assert not [b for b in app.button if (b.key or "").startswith("pick_")]
 
 
-def test_unticking_active_only_shows_closed_companies_again(app, monkeypatch):
+def test_include_dissolved_toggle_shows_closed_companies_again(app, monkeypatch):
     monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [DISSOLVED_TAKEAWAY])
     monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: None)
     app.run()
-    app.checkbox(key="wn_active_only").uncheck().run()
+    app.toggle(key="wn_include_dissolved").set_value(True).run()
     search(app, "Gousto")
     assert len(app.warning) + len(app.info) == 1
     assert "Only closed companies match this name. Tip: add a location in Filters" in app.info[0].value

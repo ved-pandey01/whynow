@@ -261,13 +261,16 @@ def test_recent_directors_keeps_only_new_and_current(monkeypatch):
     assert recent[0]["source"].endswith("/officers")
 
 
-def test_closed_companies_go_to_the_bottom(monkeypatch):
+def test_closed_companies_go_to_the_bottom_unless_the_name_is_exact(monkeypatch):
+    """Closed lookalikes go last; a closed exact-name match ranks by size (live check: 'Carillion plc' fell
+    outside the list behind its active subsidiaries)."""
     fake_api(monkeypatch,
-             search_items=[{"title": "ACME LIMITED", "company_number": "1", "company_status": "dissolved"},
+             search_items=[{"title": "ACME OLD THINGS LIMITED", "company_number": "1", "company_status": "dissolved"},
                            {"title": "ACME WIDGETS LTD", "company_number": "2", "company_status": "active"},
                            {"title": "ACME PLC", "company_number": "3", "company_status": "liquidation"}],
              accounts={"1": ("group", "ltd"), "2": ("micro-entity", "ltd"), "3": ("group", "plc")})
-    assert [m["company_number"] for m in ch.search_companies("Acme")] == ["2", "1", "3"]
+    assert [m["company_number"] for m in ch.search_companies("Acme")] == ["3", "2", "1"]
+    assert [m["company_number"] for m in ch.search_companies("Acme", active_only=True)] == ["2"]
 
 
 # --- Key people and owners ('More about') --------------------------------------

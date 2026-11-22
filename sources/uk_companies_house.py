@@ -105,15 +105,33 @@ def search_terms(text):
 
 
 # Legal endings that aren't really part of a company's name
-_LEGAL_WORDS = {"ltd", "limited", "plc", "llp", "the"}
+_LEGAL_WORDS = {"ltd", "limited", "plc", "llp", "lp", "llc", "inc", "cic", "cio", "the"}
 # Extra words that don't help tell companies apart (incl. website endings)
 _FILLER_WORDS = _LEGAL_WORDS | {"group", "uk", "holdings", "co", "and", "com", "io", "net", "org"}
 
 
 def _words(text):
-    """Split a name into plain lower-case words: 'The Sage Group plc.' → ['the', 'sage', 'group', 'plc']."""
-    cleaned = "".join(c if c.isalnum() else " " for c in (text or "").lower())
-    return cleaned.split()
+    """
+    Split a name into plain lower-case words, ignoring punctuation and case: 'The Sage Group plc.' →
+    ['the', 'sage', 'group', 'plc']. Apostrophes join ("Sainsbury's" = "Sainsburys"), '&' means 'and',
+    and a misspelt 'Limited' at the end ('Limted', 'Limitd') counts as 'limited'.
+    """
+    text = (text or "").lower().replace("'", "").replace("\u2019", "").replace("&", " and ")
+    words = "".join(c if c.isalnum() else " " for c in text).split()
+    if words and words[-1] not in _LEGAL_WORDS and len(words[-1]) >= 5 and _edit_distance(words[-1], "limited") <= 2:
+        words[-1] = "limited"
+    return words
+
+
+def _edit_distance(a, b):
+    """How many single-letter changes turn a into b (used for 'Limted' and spelling suggestions)."""
+    previous = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        current = [i]
+        for j, cb in enumerate(b, 1):
+            current.append(min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (ca != cb)))
+        previous = current
+    return previous[-1]
 
 
 # Common words that don't identify a company on their own ("BT Local Business": only "BT" really counts)
@@ -244,25 +262,37 @@ def sic_codes_for(industry):
     return found[: settings.MAX_SIC_CODES]
 
 
+_POSTCODE = re.compile(r"\b([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\b")
+
+
+def postcode_of(address):
+    """The UK postcode at the end of an address line, or None: '1 High St, Bedford, MK40 1AA' → 'MK40 1AA'."""
+    found = _POSTCODE.findall((address or "").upper())
+    return found[-1] if found else None
+
+
 def _from_search(item):
     """One result from the normal search, in our own shape."""
     return {"name": item.get("title"), "company_number": item.get("company_number"),
             "status": item.get("company_status"), "founded": item.get("date_of_creation"),
-            "address": item.get("address_snippet"), "company_type": item.get("company_type")}
+            "address": item.get("address_snippet"), "company_type": item.get("company_type"),
+            "postcode": postcode_of(item.get("address_snippet"))}
 
 
 def _from_advanced_search(item):
     """One result from the advanced search (it names things differently), in our own shape."""
+    address = item.get("registered_office_address") or {}
     return {"name": item.get("company_name"), "company_number": item.get("company_number"),
             "status": item.get("company_status"), "founded": item.get("date_of_creation"),
-            "address": _format_address(item.get("registered_office_address")),
-            "company_type": item.get("company_type")}
+            "address": _format_address(address), "company_type": item.get("company_type"),
+            "postcode": address.get("postal_code") or postcode_of(_format_address(address))}
 
 
-def _advanced_search(query, location, sic_codes, active_only):
+def _advanced_search(query, location, sic_codes):
     """
     Companies House advanced search, used when a Location or Industry filter is set.
     Tries the main name first ('BT Local Business'), then just its main words ('BT') if that finds nothing.
+    No status filter here: closed companies are hidden afterwards, so the page can say how many were hidden.
     """
     tries = [query]
     core = " ".join(w for w in re.findall(r"[^\W_]+", query) if w.lower() in main_words(query))   # keeps capitals
@@ -274,51 +304,186 @@ def _advanced_search(query, location, sic_codes, active_only):
             params["location"] = location.strip()
         if sic_codes:
             params["sic_codes"] = ",".join(sic_codes)
-        if active_only:
-            params["company_status"] = "active"
         items = (_call_api("/advanced-search/companies", params) or {}).get("items", [])
         if items:
             return [_from_advanced_search(i) for i in items]
     return []
 
 
-def search_companies(name, location=None, industry=None, active_only=False):
+# An 8-digit company number (leading zeros optional), or 2 letters and 6 digits (e.g. SC123456, OC401234)
+_COMPANY_NUMBER = re.compile(r"^(?:[A-Z]{2}\d{6}|\d{5,8})$")
+
+
+def as_company_number(text):
+    """'445790' or '00445790' → '00445790'; 'sc 123456' → 'SC123456'; anything else → None."""
+    t = re.sub(r"[\s-]", "", text or "").upper()
+    if not _COMPANY_NUMBER.match(t):
+        return None
+    return t.zfill(8) if t.isdigit() else t
+
+
+def _by_number(number):
+    """The one company with this number, as a search match (free: one Companies House call). [] if none."""
+    data = _call_api(f"/company/{number}")
+    if not data:
+        return []
+    m = {"name": data.get("company_name"), "company_number": data.get("company_number") or number,
+         "status": data.get("company_status"), "founded": data.get("date_of_creation"),
+         "address": _format_address(data.get("registered_office_address")), "company_type": data.get("type"),
+         "postcode": (data.get("registered_office_address") or {}).get("postal_code"),
+         "exact_match": True, "close_match": True, "vehicle": False, "by_number": True,
+         "source": company_page_url(number)}
+    m.update(company_summary(number))
+    return [m]
+
+
+def _spelling_variants(word):
+    """Small spelling changes, most likely first: a doubled letter (gregs → greggs), a missing one, a swap."""
+    doubled = [word[:i + 1] + word[i] + word[i + 1:] for i in range(len(word))]
+    missing = [word[:i] + word[i + 1:] for i in range(len(word))]
+    swapped = [word[:i] + word[i + 1] + word[i] + word[i + 2:] for i in range(len(word) - 1)]
+    seen, out = {word}, []
+    for v in doubled + missing + swapped:
+        if v not in seen and len(v) >= 3:
+            seen.add(v)
+            out.append(v)
+    return out
+
+
+def _spelling_suggestions(query):
     """
-    Return the top matches for a company name (or website). Empty list if nothing found.
-    With a Location or Industry filter, the Companies House advanced search is used instead.
-    Only companies whose name shares a main word with the search are kept (no unrelated names).
-    Companies House's own ranking can bury the right company (e.g. THE SAGE GROUP PLC is 10th
-    for "Sage Group", and small local firms buried the big Howden companies), so we fetch more
-    results and re-rank them ourselves: close matches first, active before closed, bigger before
-    smaller (from the accounts they file), then exact names. A typed website's exact match always comes first.
+    Companies House's search isn't fuzzy ('Gregs' never finds GREGGS PLC), so when nothing matches closely
+    we try small spelling changes to the main words and keep companies whose name matches the corrected
+    spelling. At most SPELLING_CHECKS quick Companies House calls (free, cached for 7 days).
+    """
+    words = [w for w in _words(_strip_website(main_name(query))) if w not in _LEGAL_WORDS]
+    core = [w for w in words if w in main_words(query) and len(w) >= 4]
+    if not words or not core or len(words) > 3:
+        return []
+    found, calls = [], 0
+    for word in core:
+        for variant in _spelling_variants(word):
+            if calls >= settings.SPELLING_CHECKS:
+                return found
+            corrected = " ".join(variant if w == word else w for w in words)
+            calls += 1
+            items = (_call_api("/search/companies", {"q": corrected, "items_per_page": 20}) or {}).get("items", [])
+            for item in items:
+                title = item.get("title")
+                if is_exact_match(corrected, title) or (len(words) > 1 and is_close_match(corrected, title)):
+                    found.append(dict(_from_search(item), spelling=corrected))
+    return found
+
+
+def _raw_search(terms):
+    return [_from_search(item) for term in terms
+            for item in (_call_api("/search/companies", {"q": term, "items_per_page": 100}) or {}).get("items", [])]
+
+
+def search_companies(name, location=None, industry=None, active_only=False, limit=None):
+    """
+    The best matches for a company name, website ('greggs.co.uk') or company number ('00502851', 'SC123456'),
+    best first: up to `limit` (COMPANY_SEARCH_RESULTS by default). With a Location or Industry filter, the
+    Companies House advanced search is used. Each match can carry a flag for the page:
+      'spelling' - found through a spelling suggestion ('Gregs' → 'greggs')
+      'nearest'  - nothing matched closely, so this is just one of the nearest names Companies House returned
+      'by_number'- found directly by its company number
     """
     if not clean_query(name):
-        raise CompaniesHouseError("Please type a company name or website.")
+        raise CompaniesHouseError("Please type a company name, website or company number.")
+    limit = limit or settings.COMPANY_SEARCH_RESULTS
+    filtered = bool((location or "").strip() or (industry or "").strip())
+    number = as_company_number(name)
+    everything = _by_number(number) if number and not filtered else []
+    if not everything:
+        everything = _ranked(name, location, industry)["matches"]
+        if not filtered and not any(m["close_match"] for m in everything):
+            suggested = _ranked(name, spelling=True)
+            if suggested and suggested["matches"]:
+                everything = suggested["matches"]
+        elif not filtered and _worth_a_spelling_check(name, everything):
+            # 'Gregs' finds small 'GREGS …' companies, but the user almost certainly meant GREGGS PLC:
+            # a large company one spelling change away goes first, labelled as a suggestion
+            suggested = _ranked(name, spelling=True) or {"matches": []}
+            numbers = {m["company_number"] for m in everything}
+            big = [m for m in suggested["matches"] if m["size_rank"] <= BIG_COMPANY_RANK and m["company_number"] not in numbers]
+            everything = big[:2] + everything
+    if active_only:
+        everything = [m for m in everything if (m["status"] or "active") == "active"]
+    return everything[:limit]
 
+
+BIG_COMPANY_RANK = 2   # a plc, or a company filing group or full accounts
+
+
+def _worth_a_spelling_check(name, matches):
+    """A one-word search with no exact-name match and no big company in the list: maybe a misspelt big brand."""
+    if as_company_number(name) or "." in _strip_website(name):
+        return False
+    return (len(main_words(name)) == 1 and not any(m["exact_match"] for m in matches)
+            and not any(m.get("size_rank", SIZE_UNKNOWN) <= BIG_COMPANY_RANK for m in matches))
+
+
+def hidden_by_filters(name, shown, include_dissolved=False):
+    """Close matches that Location / Industry hid, so the page never hides results silently."""
+    numbers = {m["company_number"] for m in shown}
+    return [m for m in search_companies(name, active_only=not include_dissolved)
+            if m["close_match"] and m["company_number"] not in numbers][:5]
+
+
+def find_companies(name, location=None, industry=None, include_dissolved=False):
+    """
+    Everything the picker needs in one dict (used by the search check script):
+    matches, hidden_closed, hidden_by_filters, spelling and nearest. See search_companies().
+    """
+    everything = search_companies(name, location, industry, limit=settings.COMPANY_SEARCH_RESULTS * 3)
+    active = [m for m in everything if (m["status"] or "active") == "active"]
+    shown = (everything if include_dissolved else active)[: settings.COMPANY_SEARCH_RESULTS]
+    filtered = bool((location or "").strip() or (industry or "").strip())
+    return {"matches": shown,
+            "hidden_closed": [] if include_dissolved else [m for m in everything if m not in active and m["close_match"]][:5],
+            "hidden_by_filters": hidden_by_filters(name, everything, include_dissolved) if filtered else [],
+            "spelling": next((m["spelling"] for m in shown if m.get("spelling")), None),
+            "nearest": bool(shown) and all(m.get("nearest") for m in shown)}
+
+
+def _ranked(name, location=None, industry=None, spelling=False):
+    """Search, keep related names, rank best first, and look up sizes. Returns {'matches', 'spelling', 'nearest'}."""
     terms = search_terms(name)
     is_website = "." in terms[0] and " " not in terms[0]
     domain = terms[0] if is_website and len(terms) > 1 else None   # "paddle.com" is searched, then "paddle"
     query = name if is_website else main_name(name)                   # matching uses the main name
-    if (location or "").strip() or (industry or "").strip():
-        found = _advanced_search(clean_query(name) if is_website else query, location,
-                                 sic_codes_for(industry), active_only)
+    result = {"matches": [], "spelling": None, "nearest": False}
+    if spelling:
+        found = _spelling_suggestions(query)
+        if not found:
+            return None
+        result["spelling"] = found[0]["spelling"]
+    elif (location or "").strip() or (industry or "").strip():
+        found = _advanced_search(clean_query(name) if is_website else query, location, sic_codes_for(industry))
     else:
-        found = [_from_search(item) for term in terms
-                 for item in (_call_api("/search/companies", {"q": term, "items_per_page": 100}) or {}).get("items", [])]
+        core = sorted(main_words(query))
+        if not is_website and len(core) == 1 and len(core[0]) <= 4:
+            terms = terms + [f"{core[0]} group"]      # very short brands: 'BT' → BT GROUP PLC is buried otherwise
+        found = _raw_search(terms)
 
     matches, seen = [], set()
     for m in found:
-        if m["company_number"] in seen or not shares_main_word(query, m["name"]):
-            continue   # already found by an earlier search term, or an unrelated name
+        target = m.get("spelling") or query
+        if m["company_number"] in seen or not shares_main_word(target, m["name"]):
+            continue   # already found by an earlier search, or an unrelated name
         seen.add(m["company_number"])
-        m.update({
-            "exact_match": is_exact_match(query, m["name"]),
-            "close_match": is_exact_match(query, m["name"]) or is_close_match(query, m["name"]),
-            # A finance/holding vehicle (Midco, Bidco…) goes after the main company, unless that's what was typed
-            "vehicle": is_vehicle(m["name"]) and not is_vehicle(name),
-            "source": company_page_url(m["company_number"]),
-        })
+        m.update(_match_flags(target, name, m))
         matches.append(m)
+    if not matches and found and not spelling:
+        # Companies House returned names, but none share a main word: show the nearest ones, never "no results"
+        result["nearest"] = True
+        for m in found:
+            if m["company_number"] not in seen:
+                seen.add(m["company_number"])
+                m.update(_match_flags(query, name, m), nearest=True)
+                matches.append(m)
+        matches = matches[: settings.COMPANY_SEARCH_RESULTS]
 
     # Companies House lists similar names roughly alphabetically, so big companies get buried
     # (real problem: HOWDEN GROUP HOLDINGS was 41st of 373 "Howden" results).
@@ -326,12 +491,19 @@ def search_companies(name, location=None, industry=None, active_only=False):
     matches.sort(key=lambda m: _likely_big_first(m, domain))
     # 2. Look up the real size (from filed accounts) of the top few only, then sort properly.
     for i, m in enumerate(matches):
-        checked = i < settings.COMPANY_SIZE_CHECKS and m["close_match"]
+        checked = i < settings.COMPANY_SIZE_CHECKS and (m["close_match"] or m.get("spelling"))
         m.update(company_summary(m["company_number"]) if checked else _NO_SUMMARY)
     matches.sort(key=lambda m: _best_first(m, domain))
-    if active_only:
-        matches = [m for m in matches if (m["status"] or "active") == "active"]
-    return matches[: settings.COMPANY_SEARCH_RESULTS]
+    result["matches"] = matches
+    return result
+
+
+def _match_flags(target, typed, m):
+    return {"exact_match": is_exact_match(target, m["name"]),
+            "close_match": is_exact_match(target, m["name"]) or is_close_match(target, m["name"]),
+            # A finance/holding vehicle (Midco, Bidco…) goes after the main company, unless that's what was typed
+            "vehicle": is_vehicle(m["name"]) and not is_vehicle(typed),
+            "source": company_page_url(m["company_number"])}
 
 
 def former_business(brand, registered_name, brand_founded=None):
@@ -395,10 +567,11 @@ def _likely_big_first(m, domain):
 
 def _best_first(m, domain):
     """
-    Final order: closed or dissolved companies always last (the page greys them out);
-    then the typed website's company, close matches, biggest, exact name. Ties keep the order from before.
+    Final order: closed or dissolved companies go last unless the name is an exact match (so 'Carillion plc'
+    finds CARILLION PLC, in liquidation, when closed companies are included); then the typed website's company,
+    close matches, biggest, exact name. Ties keep the order from before.
     """
-    return (m["status"] != "active", _website_first(m, domain), not m["close_match"],
+    return (m["status"] != "active" and not m["exact_match"], _website_first(m, domain), not m["close_match"],
             m.get("vehicle", False), m["size_rank"], not m["exact_match"])
 
 
@@ -486,10 +659,34 @@ def get_company_profile(company_number):
                              for c in sic_codes],
         "is_software_sic": any(code in settings.SOFTWARE_SIC_CODES for code in sic_codes),
         "last_accounts_type": last_accounts_type,
+        # Filing record: useful for small companies with no news (all from the same free call)
+        "last_accounts_made_up_to": (data.get("accounts") or {}).get("last_accounts", {}).get("made_up_to"),
+        "next_accounts_due": (data.get("accounts") or {}).get("next_due"),
+        "accounts_overdue": bool((data.get("accounts") or {}).get("overdue")),
+        "last_confirmation_statement": (data.get("confirmation_statement") or {}).get("last_made_up_to"),
+        "confirmation_statement_overdue": bool((data.get("confirmation_statement") or {}).get("overdue")),
         "has_insolvency_history": data.get("has_insolvency_history", False),
         "not_worth_contacting": is_not_worth_contacting(status, last_accounts_type),
         "source": source,
     }
+
+
+def filing_in_words(item):
+    """A filing in plain English: 'confirmation-statement-with-no-updates' → 'Confirmation statement with no updates'."""
+    words = (item.get("description") or item.get("type") or "filing").replace("-", " ").strip()
+    words = words.replace("accounts with accounts type ", "accounts: ")
+    return words[:1].upper() + words[1:]
+
+
+def get_filing_history(company_number, limit=5):
+    """
+    The latest filings at Companies House (free, one call), newest first:
+    {"filings": [{"date", "what"}], "total": n, "source": public filing-history page}.
+    """
+    data = _call_api(f"/company/{company_number}/filing-history", {"items_per_page": limit}) or {}
+    filings = [{"date": i.get("date"), "what": filing_in_words(i)} for i in (data.get("items") or [])[:limit]]
+    return {"filings": filings, "total": data.get("total_count") or len(filings),
+            "source": f"{company_page_url(company_number)}/filing-history"}
 
 
 def is_not_worth_contacting(status, last_accounts_type):

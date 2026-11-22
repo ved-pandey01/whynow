@@ -203,7 +203,7 @@ def report_to_pdf(r, email=None, today=None):
         when = f" ({max(dates)})" if dates else ""
         bullet(s["text"] + when + cite(s["sources"]))
     if not r.get("signals"):
-        text("No reasons to reach out now were found.", colour=GREY)
+        text("No recent public signals found.", colour=GREY)
 
     # News
     if r.get("news"):
@@ -242,6 +242,17 @@ def report_to_pdf(r, email=None, today=None):
             bullet(role["title"] + (" (sales)" if role["sales"] else "") + cite([role["source"]]))
         if not h.get("open_roles") and not h.get("roles"):
             text(not_found, colour=GREY)
+        f = _more(r, "filings")
+        if f:
+            text("Filing history (Companies House)", bold=True, size=9.5)
+            if f.get("last_accounts"):
+                text(f"Last accounts made up to {f['last_accounts']}"
+                     + (f", next due {f['next_accounts_due']}" if f.get("next_accounts_due") else "")
+                     + (" (overdue)" if f.get("accounts_overdue") else ""))
+            for x in f.get("filings", []):
+                bullet(f"{x['date']}: {x['what']}" + cite([f["source"]] if f.get("source") else []))
+            if not f.get("filings") and not f.get("last_accounts"):
+                text(not_found, colour=GREY)
 
     if r.get("not_found"):
         heading("What we couldn't find")

@@ -26,7 +26,8 @@ def test_company_not_found(app, monkeypatch):
     monkeypatch.setattr(nt, "find_registration", lambda brand, website=None: None)
     search(app, "Qwertyuiop Holdings")
     no_page_crash(app)
-    assert any("No UK company found" in w.value and "type the company's website" in w.value for w in app.warning)
+    assert any("No company found" in w.value and "company number" in w.value and "the company's website" in w.value
+               for w in app.warning)
 
 
 def test_misspelled_name_suggests_the_website(app, monkeypatch):
@@ -42,7 +43,7 @@ def test_only_dissolved_companies(app, monkeypatch):
     monkeypatch.setattr(nt, "find_registration", lambda brand, website=None: None)
     search(app, "Old Co")
     no_page_crash(app)
-    assert any("Untick 'Active companies only' in Filters" in i.value for i in app.info)
+    assert any("Turn on 'Include dissolved companies' in Filters" in i.value for i in app.info)
 
 
 def test_over_long_search_is_capped_and_never_crashes(app):
@@ -105,6 +106,7 @@ def test_tavily_down_or_out_of_credits_still_gives_a_report(monkeypatch, error, 
     monkeypatch.setattr(report.ch, "get_recent_directors", lambda n: [])
     monkeypatch.setattr(report.ch, "get_current_directors", lambda n: {"people": [], "total": 0, "source": "x"})
     monkeypatch.setattr(report.ch, "get_owners", lambda n: {"owners": [], "source": "y"})
+    monkeypatch.setattr(report.ch, "get_filing_history", lambda n: {"filings": [], "total": 0, "source": "https://ch/filings"})   # fake: no real API calls in tests
 
     def broken(*a, **k):
         raise error

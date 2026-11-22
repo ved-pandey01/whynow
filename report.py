@@ -166,6 +166,11 @@ def research_company(company_number, typed, on_step=_no_progress):
         ("Status", profile["status"]), ("Closed on", profile["closed_on"]),
         ("Founded", profile["founded"]), ("Registered address", profile["address"]),
         ("Industry codes (SIC)", sic), ("Last accounts type", profile["last_accounts_type"]),
+        ("Last accounts made up to", profile.get("last_accounts_made_up_to")),
+        ("Next accounts due", profile.get("next_accounts_due")),
+        ("Accounts overdue", "yes" if profile.get("accounts_overdue") else None),
+        ("Last confirmation statement", profile.get("last_confirmation_statement")),
+        ("Confirmation statement overdue", "yes" if profile.get("confirmation_statement_overdue") else None),
     ]))
 
     research = {"profile": profile, "card": None, "website": None,
@@ -184,6 +189,12 @@ def research_company(company_number, typed, on_step=_no_progress):
     try:   # for the "More about" section; a problem here never stops the report
         research["directors"] = ch.get_current_directors(company_number)
         research["owners"] = ch.get_owners(company_number)
+        filings = ch.get_filing_history(company_number)
+        if filings["filings"]:
+            research["filings"] = filings
+            sources.add("companies_house", "Companies House: filing history", filings["source"],
+                        _lines([(f["date"], f["what"]) for f in filings["filings"]]),
+                        filings["filings"][0]["date"])
     except ch.CompaniesHouseError as e:
         warnings.append(f"Directors and owners unavailable: {e}")
     research["timings"]["Companies House"] = round(time.monotonic() - started, 1)
@@ -561,6 +572,9 @@ def renumber_sources(r):
             "hiring": dict(m["hiring"], open_roles_source=one(m["hiring"]["open_roles_source"]),
                            roles=[dict(x, source=one(x["source"])) for x in m["hiring"]["roles"]]),
         }
+        if m.get("filings"):
+            out["more_about"]["filings"] = dict(m["filings"], source=one(m["filings"]["source"]),
+                                                profile_source=one(m["filings"]["profile_source"]))
     if r.get("saved_email"):
         out["saved_email"] = email(r["saved_email"])
     return out
@@ -599,7 +613,15 @@ def _more_about(research, sources):
                 roles.append({"title": role, "sales": tavily.is_sales_role(role), "source": s["id"]})
     roles.sort(key=lambda r: not r["sales"])   # sales roles first
 
+    filings = research.get("filings") or {}
+    filings_id = sources._by_url.get(filings.get("source"))
+    profile = research["profile"]
     return {
+        "filings": {"filings": filings.get("filings") or [], "total": filings.get("total", 0), "source": filings_id,
+                    "last_accounts": profile.get("last_accounts_made_up_to"),
+                    "next_accounts_due": profile.get("next_accounts_due"),
+                    "accounts_overdue": profile.get("accounts_overdue", False),
+                    "profile_source": sources._by_url.get(profile["source"])},
         "directors": {"people": people, "total": directors.get("total", 0), "source": people_id},
         "owners": {"owners": owners, "source": owners_id},
         "competitors": {"names": similar, "source": card_id if similar else None},
@@ -612,6 +634,8 @@ def _more_about_ids(m):
     """Every source ID the 'More about' cards cite."""
     ids = [m["directors"]["source"], m["owners"]["source"], m["competitors"]["source"],
            m["hiring"]["open_roles_source"]] + [r["source"] for r in m["hiring"]["roles"]]
+    if m.get("filings"):
+        ids += [m["filings"]["source"], m["filings"]["profile_source"]]
     return {i for i in ids if i}
 
 

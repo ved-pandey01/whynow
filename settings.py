@@ -81,7 +81,8 @@ SOFTWARE_SIC_CODES = {
 # ---------------------------------------------------------------------------
 # Limits
 # ---------------------------------------------------------------------------
-COMPANY_SEARCH_RESULTS = 5   # how many Companies House matches to show
+COMPANY_SEARCH_RESULTS = 10  # how many Companies House matches to show in the picker
+SPELLING_CHECKS = 24         # most spelling variants tried when nothing matches closely (free, cached)
 COMPANY_SIZE_CHECKS = 25     # how many matches get their size looked up before ranking (free, ~0.1s each)
 ADVANCED_SEARCH_SIZE = 100    # results asked for when a Location or Industry filter is used
 MAX_SIC_CODES = 50           # an Industry keyword can match many SIC codes; send at most this many

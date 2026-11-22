@@ -179,6 +179,7 @@ def test_old_search_results_never_reach_the_ai(monkeypatch):
     monkeypatch.setattr(report.ch, "get_recent_directors", lambda n: [])
     monkeypatch.setattr(report.ch, "get_current_directors", lambda n: {"people": [], "total": 0, "source": "https://ch/o"})
     monkeypatch.setattr(report.ch, "get_owners", lambda n: {"owners": [], "source": "https://ch/p"})
+    monkeypatch.setattr(report.ch, "get_filing_history", lambda n: {"filings": [], "total": 0, "source": "https://ch/filings"})   # fake: no real API calls in tests
     monkeypatch.setattr(report.tavily, "get_job_listings", lambda *a, **k: [])
     monkeypatch.setattr(report.tavily, "get_company_card", lambda *a, **k: None)
     monkeypatch.setattr(report.tavily, "get_website_text", lambda w: None)
