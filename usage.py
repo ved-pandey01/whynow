@@ -9,13 +9,13 @@ import hashlib
 import json
 import time
 from datetime import date
-from pathlib import Path
 
+import config
 import settings
 
 
 def _folder():
-    return Path(__file__).resolve().parent / settings.USAGE_FOLDER
+    return config.data_folder(settings.USAGE_FOLDER)
 
 
 def _today_file(name):

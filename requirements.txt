@@ -16,3 +16,5 @@ pydantic==2.14.3
 pytest==9.2.0
 # Making the downloadable PDF report
 fpdf2==2.9.0
+# The "Research a list" results table (Streamlit installs it too; pinned here so the cloud gets the same version)
+pandas==3.1.1

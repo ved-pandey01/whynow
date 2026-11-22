@@ -10,15 +10,15 @@ Only good answers are saved: errors are never cached.
 import hashlib
 import json
 import time
-from pathlib import Path
 
+import config
 import settings
 
 MISSING = object()   # "not in the cache" (different from a cached None)
 
 
 def _folder():
-    return Path(__file__).resolve().parent / settings.CACHE_FOLDER / "api"
+    return config.data_folder(settings.CACHE_FOLDER) / "api"
 
 
 def _path(service, request):

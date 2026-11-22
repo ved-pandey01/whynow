@@ -16,23 +16,20 @@ Test it from the terminal (uses about 9 Tavily credits):
     .venv/bin/python -m sources.news_tavily "Cognism" "COGNISM LIMITED"
 """
 
-import os
 import re
 import sys
 from datetime import date, timedelta
 from email.utils import parsedate_to_datetime
-from pathlib import Path
 
-from dotenv import load_dotenv
 from tavily import TavilyClient
 from tavily import errors as tavily_errors
 
 import cache
+import config
 import settings
 import usage
 from sources.uk_companies_house import is_exact_match
 
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class NewsError(Exception):
@@ -50,7 +47,7 @@ class NewsError(Exception):
 # Talking to Tavily
 # ---------------------------------------------------------------------------
 def _client():
-    api_key = os.getenv("TAVILY_API_KEY")
+    api_key = config.get_secret("TAVILY_API_KEY")
     if not api_key:
         raise NewsError("Tavily API key is missing. Add TAVILY_API_KEY to your .env file.")
     return TavilyClient(api_key=api_key)

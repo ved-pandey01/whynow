@@ -15,7 +15,6 @@ Run it with:
 import hashlib
 import hmac
 import json
-import os
 import time
 from pathlib import Path
 
@@ -25,6 +24,7 @@ import batch
 import cache
 import exports
 import report
+import config
 import settings
 import usage
 from ai.provider import AIError, AllModelsBusy
@@ -147,7 +147,7 @@ def is_owner():
 
 def check_owner_password(entered):
     """True if it matches OWNER_PASSWORD in .env (compared safely). If no password is set, owner mode is off."""
-    expected = os.getenv("OWNER_PASSWORD") or ""
+    expected = config.get_secret("OWNER_PASSWORD") or ""
     return bool(expected) and hmac.compare_digest(entered.encode(), expected.encode())
 
 
@@ -780,7 +780,7 @@ def main():
     else:
         landing()
     st.html(ui.footer())
-    if os.getenv("OWNER_PASSWORD") and owner_link_opened():
+    if config.get_secret("OWNER_PASSWORD") and owner_link_opened():
         owner_login()
 
 main()

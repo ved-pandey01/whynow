@@ -20,6 +20,13 @@ def separate_cache_and_log(monkeypatch, tmp_path):
 
 
 @pytest.fixture(autouse=True)
+def no_real_secrets(monkeypatch):
+    """Tests use fake keys from the environment, never a real .streamlit/secrets.toml on this computer."""
+    import config
+    monkeypatch.setattr(config, "_from_streamlit_secrets", lambda name: None)
+
+
+@pytest.fixture(autouse=True)
 def block_real_api_calls(monkeypatch):
     def refuse(*args, **kwargs):
         raise NoRealCalls("Tests must not call real APIs: fake this reply in the test.")

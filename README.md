@@ -8,7 +8,7 @@ Sales reps lose time researching accounts by hand, then send outreach that is ge
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.67-FF4B4B?logo=streamlit&logoColor=white)
 ![Gemini](https://img.shields.io/badge/AI-Gemini-8E75B2?logo=googlegemini&logoColor=white)
 ![Tavily](https://img.shields.io/badge/Search-Tavily-0A66C2)
-![Tests](https://img.shields.io/badge/tests-441%20passing-2EA44F)
+![Tests](https://img.shields.io/badge/tests-454%20passing-2EA44F)
 
 **[Live demo](#live-demo)** (coming soon) · **[Sample report](#sample-report)** · [How it works in detail](docs/how-it-works.md)
 
@@ -85,7 +85,7 @@ A real report for Paddle, saved from a live run.
 - **Model fallbacks.** gemini-3.6-flash is the main model, with 3 backup models. Each is tried once, with no hidden retries.
 - **Caching.** Companies House data is kept for 7 days, and search results and finished reports for 24 hours, so nothing is paid for twice.
 - **Rate limits.** Daily limits are counted on the server, so a page refresh doesn't reset them.
-- **441 automated tests.** They use fake API replies, so they run in seconds, cost nothing and need no keys.
+- **454 automated tests.** They use fake API replies, so they run in seconds, cost nothing and need no keys.
 - **Live test on 18 companies.** Real searches through the full pipeline, with the error patterns found and fixed (see Results).
 - **Secrets never committed.** API keys live only in a git-ignored `.env` file, and the full Git history was scanned before publishing.
 
@@ -128,7 +128,7 @@ A live test on 19 Nov 2026: 15 UK B2B companies of different sizes and sectors, 
 | News, signals, job ads | [Tavily](https://tavily.com/) search API |
 | AI | Google Gemini, with structured answers checked by Pydantic |
 | Exports | fpdf2 for PDF, Python's csv module for CSV |
-| Tests | pytest, 441 tests |
+| Tests | pytest, 454 tests |
 
 ## Run it locally
 You need Python 3.13 and three API keys: Companies House (free), Tavily (free tier available) and Gemini.
@@ -161,6 +161,11 @@ To change what you're selling, the ICP or the limits, edit [settings.py](setting
 
 ## Live demo
 A hosted version is coming soon. Until then, follow [Run it locally](#run-it-locally). The sample report works without any API keys.
+
+### Deploy to Streamlit Community Cloud
+1. On [share.streamlit.io](https://share.streamlit.io), choose **Create app**, then this repository, branch `main` and main file `app.py`.
+2. Under **Advanced settings**, choose Python 3.13 and paste your secrets in the format of [.streamlit/secrets.toml.example](.streamlit/secrets.toml.example).
+3. Deploy. Keys and the owner password are read from Streamlit's secrets when deployed and from `.env` locally ([config.py](config.py)). Caches and usage logs create their own folders, so caching and the daily limits work online. They reset when the app restarts.
 
 ## Roadmap
 - **HubSpot push.** Send the report and email straight to the CRM.

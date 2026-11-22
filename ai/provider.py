@@ -8,17 +8,14 @@ To swap Gemini for another AI later, add a new _ask_<provider> function here
 and change AI_PROVIDER in settings.py. Nothing else needs to change.
 """
 
-import os
 import threading
-from pathlib import Path
 
-from dotenv import load_dotenv
 from pydantic import ValidationError
 
+import config
 import settings
 import usage
 
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 NO_INTERNET = "Couldn't connect to the internet. Check your connection and try again."
@@ -74,7 +71,7 @@ def _ask_gemini(prompt, shape, model):
     from google import genai
     from google.genai import errors, types
 
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = config.get_secret("GEMINI_API_KEY")
     if not api_key:
         raise AIError("Gemini API key is missing. Add GEMINI_API_KEY to your .env file.")
 

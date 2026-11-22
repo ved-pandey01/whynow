@@ -14,7 +14,6 @@ Test it from the terminal:
 """
 
 import csv
-import os
 import re
 import sys
 from datetime import date, timedelta
@@ -22,14 +21,13 @@ from functools import lru_cache
 from pathlib import Path
 
 import requests
-from dotenv import load_dotenv
 
 import cache
 
+import config
 import settings
 
 # Load API keys from the .env file in the project folder
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 API_BASE = "https://api.company-information.service.gov.uk"
 PUBLIC_SITE = "https://find-and-update.company-information.service.gov.uk"
@@ -201,7 +199,7 @@ def _call_api(path, params=None):
 
 
 def _call_api_live(path, params=None):
-    api_key = os.getenv("COMPANIES_HOUSE_API_KEY")
+    api_key = config.get_secret("COMPANIES_HOUSE_API_KEY")
     if not api_key:
         raise CompaniesHouseError(
             "Companies House API key is missing. Add COMPANIES_HOUSE_API_KEY to your .env file."
