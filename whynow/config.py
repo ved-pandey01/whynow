@@ -1,5 +1,5 @@
 """
-config.py: where WhyNow gets its keys and where it saves its caches.
+whynow/config.py: where WhyNow gets its keys and where it saves its caches.
 
 Keys and the owner password:
   - Deployed on Streamlit Community Cloud: from the app's Secrets (App settings → Secrets), read with st.secrets.
@@ -16,7 +16,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent   # the project folder (this file is in whynow/)
 load_dotenv(ROOT / ".env")        # local only: .env is git-ignored and never deployed
 
 SECRET_NAMES = ("COMPANIES_HOUSE_API_KEY", "TAVILY_API_KEY", "GEMINI_API_KEY", "OWNER_PASSWORD")

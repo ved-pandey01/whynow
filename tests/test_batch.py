@@ -2,7 +2,7 @@
 
 import pytest
 
-import batch
+from whynow import batch
 from sources import uk_companies_house as ch
 
 

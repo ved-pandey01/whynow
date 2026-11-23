@@ -1,12 +1,12 @@
 """
-batch.py — the simple parts of "Research a list": reading the uploaded CSV and ranking the results.
+whynow/batch.py — the simple parts of "Research a list": reading the uploaded CSV and ranking the results.
 (The page itself, with live progress, is in app.py.)
 """
 
 import csv
 import io
 
-import settings
+from whynow import settings
 from sources import uk_companies_house as ch
 
 # Column names we recognise in an uploaded list. A website is the most accurate way to find a company.

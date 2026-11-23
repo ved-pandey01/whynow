@@ -157,7 +157,7 @@ You need Python 3.13 and three API keys: Companies House (free), Tavily (free ti
    .venv/bin/python -m pytest
    ```
 
-To change what you're selling, the ICP or the limits, edit [settings.py](settings.py).
+To change what you're selling, the ICP or the limits, edit [whynow/settings.py](whynow/settings.py).
 
 ## Live demo
 A hosted version is coming soon. Until then, follow [Run it locally](#run-it-locally). The sample report works without any API keys.
@@ -165,7 +165,7 @@ A hosted version is coming soon. Until then, follow [Run it locally](#run-it-loc
 ### Deploy to Streamlit Community Cloud
 1. On [share.streamlit.io](https://share.streamlit.io), choose **Create app**, then this repository, branch `main` and main file `app.py`.
 2. Under **Advanced settings**, choose Python 3.13 and paste your secrets in the format of [.streamlit/secrets.toml.example](.streamlit/secrets.toml.example).
-3. Deploy. Keys and the owner password are read from Streamlit's secrets when deployed and from `.env` locally ([config.py](config.py)). Caches and usage logs create their own folders, so caching and the daily limits work online. They reset when the app restarts.
+3. Deploy. Keys and the owner password are read from Streamlit's secrets when deployed and from `.env` locally ([whynow/config.py](whynow/config.py)). Caches and usage logs create their own folders, so caching and the daily limits work online. They reset when the app restarts.
 
 ## Roadmap
 - **HubSpot push.** Send the report and email straight to the CRM.

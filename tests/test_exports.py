@@ -1,9 +1,9 @@
-"""Tests for exports.py: the CSV row and the PDF. Built from a fake report, so no API calls."""
+"""Tests for whynow/exports.py: the CSV row and the PDF. Built from a fake report, so no API calls."""
 
 import csv
 import io
 
-import exports
+from whynow import exports
 from tests.test_app import EMAIL, REPORT
 
 

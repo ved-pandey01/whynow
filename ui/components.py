@@ -13,7 +13,7 @@ from datetime import date
 from pathlib import Path
 from urllib.parse import quote_plus
 
-import settings
+from whynow import settings
 
 CSS_FILE = Path(__file__).with_name("style.css")
 

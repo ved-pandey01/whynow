@@ -22,10 +22,10 @@ from pathlib import Path
 
 import requests
 
-import cache
+from whynow import cache
 
-import config
-import settings
+from whynow import config
+from whynow import settings
 
 # Load API keys from the .env file in the project folder
 

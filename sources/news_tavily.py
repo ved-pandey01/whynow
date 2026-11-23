@@ -24,10 +24,10 @@ from email.utils import parsedate_to_datetime
 from tavily import TavilyClient
 from tavily import errors as tavily_errors
 
-import cache
-import config
-import settings
-import usage
+from whynow import cache
+from whynow import config
+from whynow import settings
+from whynow import usage
 from sources.uk_companies_house import is_exact_match
 
 

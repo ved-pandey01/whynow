@@ -1,5 +1,5 @@
 """
-exports.py — download a report as a CSV row (for any CRM) or a clean, printable PDF.
+whynow/exports.py — download a report as a CSV row (for any CRM) or a clean, printable PDF.
 
 Both use only what's already in the report, so nothing new is made up.
 The PDF uses the Inter font in assets/fonts (free SIL Open Font Licence), so £, € and dashes print properly.
@@ -14,7 +14,7 @@ from pathlib import Path
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 
-FONTS = Path(__file__).parent / "assets" / "fonts"
+FONTS = Path(__file__).resolve().parent.parent / "assets" / "fonts"
 CSV_COLUMNS = ["company", "company_number", "website", "employees", "fit_score",
                "top_reasons_to_reach_out", "directors", "competitors",
                "email_subject", "email_body", "report_date"]

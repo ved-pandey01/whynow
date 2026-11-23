@@ -18,9 +18,9 @@ import sys
 import time
 from pathlib import Path
 
-import cache
-import report
-import settings
+from whynow import cache
+from whynow import report
+from whynow import settings
 from sources import news_tavily as tavily
 from sources import uk_companies_house as ch
 

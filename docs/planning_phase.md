@@ -91,7 +91,7 @@ Each step is small. After each one, I get a copy-paste command to test it, and i
 
 0. **Update planning docs.** Write the agreed answers into this file, CLAUDE.md and project_plan.md. No code.
 1. **Project setup.** `git init`, `.gitignore` (including `.env`), `.env.example`, `requirements.txt`, a Python virtual environment and a README skeleton. I create the 3 API keys and paste them into `.env`. First commit. Claude asks before installing packages or pushing to GitHub.
-2. **Settings.** `settings.py` holds the default offer, the ICP rules, the AI model name and limits (3 news items, 120-word email).
+2. **Settings.** `whynow/settings.py` holds the default offer, the ICP rules, the AI model name and limits (3 news items, 120-word email).
 3. **Companies House lookup.** Search by name (top 5 matches), then fetch status, industry codes, founding date, address and recent officer changes. Every fact keeps its source link. Employee count isn't in Companies House, so it comes from Tavily or shows "not found".
 4. **News and signals (Tavily).** 3 recent news items, targeted searches for hiring, funding, new leaders, expansion and layoffs, and a summary of the company website. Every result keeps its link.
 5. **AI report.** A swappable AI provider (Gemini first). The AI only sees the fetched data, with numbered sources, and must cite a source for every claim. The code removes any claim without a real source. A dissolved or dormant company is flagged by the code, not the AI. The email gets a word-count check.

@@ -1,5 +1,5 @@
 """
-models.py — the exact shape the AI's answer must have (using Pydantic).
+whynow/models.py — the exact shape the AI's answer must have (using Pydantic).
 
 Think of these as forms the AI must fill in. Every claim has a "source_ids" box,
 so we can check in code that each claim points to data we really fetched.

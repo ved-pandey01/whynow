@@ -5,16 +5,16 @@ The rest of the app only calls generate_structured(prompt, Shape).
 If the main Gemini model is busy, slow, rate-limited or retired, the same request is tried
 with each backup model in turn (GEMINI_FALLBACK_MODELS), once each. last_model_used() says which answered.
 To swap Gemini for another AI later, add a new _ask_<provider> function here
-and change AI_PROVIDER in settings.py. Nothing else needs to change.
+and change AI_PROVIDER in whynow/settings.py. Nothing else needs to change.
 """
 
 import threading
 
 from pydantic import ValidationError
 
-import config
-import settings
-import usage
+from whynow import config
+from whynow import settings
+from whynow import usage
 
 
 
@@ -45,7 +45,7 @@ def last_model_used():
 def generate_structured(prompt, shape):
     """Ask the AI and get back a filled-in Pydantic object of the given shape."""
     if settings.AI_PROVIDER != "gemini":
-        raise AIError(f"Unknown AI provider '{settings.AI_PROVIDER}' in settings.py.")
+        raise AIError(f"Unknown AI provider '{settings.AI_PROVIDER}' in whynow/settings.py.")
     models = [settings.GEMINI_MODEL] + [m for m in settings.GEMINI_FALLBACK_MODELS if m != settings.GEMINI_MODEL]
     failed = []
     for model in models:
@@ -123,7 +123,7 @@ def _friendly(error, model):
         return AIError("Gemini rejected the API key. Check GEMINI_API_KEY in your .env file.")
     if code == 404:
         return AIError(f"Gemini model '{model}' isn't available. "
-                       "Google retires models over time: update GEMINI_MODEL in settings.py.", try_backup=True)
+                       "Google retires models over time: update GEMINI_MODEL in whynow/settings.py.", try_backup=True)
     if code == 429:
         return AIError("Gemini's free-tier limit was reached. Wait a minute and try again.", try_backup=True)
     if code and code >= 500:

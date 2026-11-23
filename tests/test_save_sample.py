@@ -2,8 +2,8 @@
 
 import json
 
-import report
-import settings
+from whynow import report
+from whynow import settings
 from scripts import save_sample
 from sources import uk_companies_house as ch
 from tests.test_report import FakeAI, make_draft
@@ -28,3 +28,16 @@ def test_research_is_rebuilt_from_the_saved_sample(monkeypatch):
     r = report.build_report(research, ai=FakeAI(make_draft(overview=[], snapshot=[], news=[], signals=[],
                                                            fit_reasons=[])))
     assert r["profile"]["headcount"]["value"] == saved["profile"]["headcount"]["value"]
+
+
+def test_research_saved_before_the_move_into_whynow_still_loads(monkeypatch, tmp_path):
+    """Old saved research names the module 'report'; it must still load (no paid re-run)."""
+    import pickle
+    from scripts import save_sample
+    from whynow import report
+    old = pickle.dumps(report.SourceList(), protocol=0).replace(b"whynow.report", b"report")   # text format: safe to edit
+    assert b"whynow.report" not in old
+    path = tmp_path / "sample_research.pkl"
+    path.write_bytes(old)
+    monkeypatch.setattr(save_sample, "RESEARCH_CACHE", path)
+    assert isinstance(save_sample.load_or_run_research(), report.SourceList)

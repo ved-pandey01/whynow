@@ -4,9 +4,9 @@ Tests for the picker and the daily limits: only 'Research this company' starts r
 the scrolling, and 'Choose a different company'. All with fake data (no paid APIs).
 """
 
-import report
-import settings
-import usage
+from whynow import report
+from whynow import settings
+from whynow import usage
 import ui.components as ui
 from tests.test_app import MATCHES, button, html, search  # noqa: F401
 from tests.test_costs import page, research  # noqa: F401

@@ -5,8 +5,8 @@ doesn't stop the whole report. Uses fakes, so no real waiting or API calls.
 
 import pytest
 
-import report
-import settings
+from whynow import report
+from whynow import settings
 from ai import provider
 from sources import news_tavily as nt
 
@@ -153,7 +153,7 @@ def bad_key():
 
 def test_busy_main_model_falls_back_to_backup(monkeypatch):
     """Real problem (17 Nov 2026): gemini-3.6-flash returned '503 high demand' for several minutes."""
-    from models import Claim
+    from whynow.models import Claim
     gemini = FakeGemini({settings.GEMINI_MODEL: busy()}).install(monkeypatch)
     answer = provider.generate_structured("hi", Claim)
     assert answer.text == "hello"
@@ -164,7 +164,7 @@ def test_busy_main_model_falls_back_to_backup(monkeypatch):
 
 
 def test_main_model_used_when_it_works(monkeypatch):
-    from models import Claim
+    from whynow.models import Claim
     gemini = FakeGemini({}).install(monkeypatch)
     provider.generate_structured("hi", Claim)
     assert gemini.models_asked == [settings.GEMINI_MODEL]
@@ -172,7 +172,7 @@ def test_main_model_used_when_it_works(monkeypatch):
 
 
 def test_key_problem_does_not_try_the_backup(monkeypatch):
-    from models import Claim
+    from whynow.models import Claim
     gemini = FakeGemini({settings.GEMINI_MODEL: bad_key()}).install(monkeypatch)
     with pytest.raises(provider.AIError, match="rejected the API key"):
         provider.generate_structured("hi", Claim)
@@ -181,7 +181,7 @@ def test_key_problem_does_not_try_the_backup(monkeypatch):
 
 def test_backups_are_tried_in_order_until_one_works(monkeypatch):
     """Real problem (17 Nov 2026): the main model hit its 20-a-day limit and the first backup was busy."""
-    from models import Claim
+    from whynow.models import Claim
     main, first, second, third = [settings.GEMINI_MODEL] + settings.GEMINI_FALLBACK_MODELS
     gemini = FakeGemini({main: busy(), first: busy()}).install(monkeypatch)
     provider.generate_structured("hi", Claim)
@@ -191,7 +191,7 @@ def test_backups_are_tried_in_order_until_one_works(monkeypatch):
 
 
 def test_all_models_busy_gives_a_friendly_error(monkeypatch):
-    from models import Claim
+    from whynow.models import Claim
     all_models = [settings.GEMINI_MODEL] + settings.GEMINI_FALLBACK_MODELS
     gemini = FakeGemini({m: busy() for m in all_models}).install(monkeypatch)
     with pytest.raises(provider.AllModelsBusy, match="all 4 models are busy. Try again in a few minutes"):
@@ -205,7 +205,7 @@ class ConnectError(Exception):
 
 def test_dropped_connection_gets_a_plain_message(monkeypatch):
     """Real problem (17 Nov 2026): the connection dropped and the message said 'ConnectError'."""
-    from models import Claim
+    from whynow.models import Claim
     FakeGemini({m: ConnectError() for m in [settings.GEMINI_MODEL] + settings.GEMINI_FALLBACK_MODELS}).install(monkeypatch)
     with pytest.raises(provider.AIError, match="Couldn't connect to the internet"):
         provider.generate_structured("hi", Claim)

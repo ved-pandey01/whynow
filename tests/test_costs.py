@@ -7,10 +7,10 @@ import time
 import pytest
 from streamlit.testing.v1 import AppTest
 
-import cache
-import report
-import settings
-import usage
+from whynow import cache
+from whynow import report
+from whynow import settings
+from whynow import usage
 from sources import news_tavily as nt
 from sources import uk_companies_house as ch
 from tests.test_app import EMAIL, MATCHES, REPORT, button, html, search
@@ -72,7 +72,7 @@ def test_no_tavily_request_is_ever_paid_for_twice(monkeypatch):
 
 
 def test_gemini_requests_are_logged_per_model(monkeypatch):
-    from models import Claim
+    from whynow.models import Claim
     from tests.test_time_limits import FakeGemini, busy
     FakeGemini({settings.GEMINI_MODEL: busy()}).install(monkeypatch)
     from ai import provider

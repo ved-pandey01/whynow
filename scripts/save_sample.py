@@ -17,13 +17,14 @@ Only the report is saved: no API keys are ever written to the file.
 """
 
 import json
+import io
 import pickle
 import re
 from datetime import date
 from pathlib import Path
 
-import report
-import settings
+from whynow import report
+from whynow import settings
 from sources import news_tavily as tavily
 from sources import uk_companies_house as ch
 
@@ -33,10 +34,18 @@ SAMPLE = ROOT / settings.SAMPLE_REPORT_FILE
 RESEARCH_CACHE = ROOT / ".cache" / "sample_research.pkl"   # kept, so a rerun costs no Tavily credits
 
 
+class _OldNamesUnpickler(pickle.Unpickler):
+    """Research saved before the code moved into whynow/ refers to 'report'; read it as 'whynow.report'."""
+    def find_class(self, module, name):
+        if module in ("report", "settings", "models"):
+            module = f"whynow.{module}"
+        return super().find_class(module, name)
+
+
 def load_or_run_research():
     if RESEARCH_CACHE.exists():
         print("Using the saved research (no Tavily credits used).")
-        return pickle.loads(RESEARCH_CACHE.read_bytes())
+        return _OldNamesUnpickler(io.BytesIO(RESEARCH_CACHE.read_bytes())).load()
     match = ch.search_companies(COMPANY)[0]
     print(f"Researching {match['name']}…")
     research = report.research_company(match["company_number"], COMPANY)   # the credits are spent here

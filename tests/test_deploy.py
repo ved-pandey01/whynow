@@ -9,9 +9,9 @@ import re
 import tomllib
 from pathlib import Path
 
-import cache
-import config
-import usage
+from whynow import cache
+from whynow import config
+from whynow import usage
 
 ROOT = Path(__file__).resolve().parent.parent
 REAL_FROM_STREAMLIT_SECRETS = config._from_streamlit_secrets   # saved before conftest swaps it out for tests
@@ -145,7 +145,7 @@ def test_every_third_party_import_is_in_requirements():
 
 # --- Folders create themselves ---------------------------------------------------------------
 def test_cache_and_usage_folders_are_created_automatically(monkeypatch, tmp_path):
-    import settings
+    from whynow import settings
     monkeypatch.setattr(settings, "CACHE_FOLDER", str(tmp_path / "new" / "cache"))
     monkeypatch.setattr(settings, "USAGE_FOLDER", str(tmp_path / "new" / "usage"))
     cache.put("companies_house", ["x"], {"ok": True})

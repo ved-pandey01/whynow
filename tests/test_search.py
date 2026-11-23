@@ -223,7 +223,7 @@ def test_unclear_website_puts_the_registered_company_first(app, monkeypatch):
 
 
 def test_batch_uses_the_registered_company_for_an_unclear_website():
-    import batch
+    from whynow import batch
     wrong = _m("RAVELIN LEASING SERVICES (UK) LIMITED", number="11718215")
     right = dict(_m("RAVELIN TECHNOLOGY LTD", number="08484303"), registered_as={"brand": "Ravelin"})
     made = []

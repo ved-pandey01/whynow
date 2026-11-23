@@ -1,5 +1,5 @@
 """
-Tests for report.py: the code that CHECKS the AI's work.
+Tests for whynow/report.py: the code that CHECKS the AI's work.
 
 We use a fake AI that deliberately misbehaves (invents sources, writes long emails)
 to prove the checks catch it. No real AI or API calls are made.
@@ -9,8 +9,8 @@ from datetime import date
 
 import pytest
 
-import report
-from models import AIReport, Claim, NewsPick, OutreachDraft, Signal
+from whynow import report
+from whynow.models import AIReport, Claim, NewsPick, OutreachDraft, Signal
 
 
 def make_research(headcount=300, status="active", accounts="full"):

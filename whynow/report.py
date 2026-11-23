@@ -1,5 +1,5 @@
 """
-report.py — puts everything together:
+whynow/report.py — puts everything together:
 
   1. research_company()  → fetch Companies House + Tavily data, give every source an ID (S1, S2…)
   2. build_report()      → ask the AI to write the report, then CHECK its work in code:
@@ -11,7 +11,7 @@ report.py — puts everything together:
   The result is a plain dictionary the web page (Step 6) can show.
 
 Try it (about 9 Tavily credits + 1–2 Gemini requests):
-    .venv/bin/python -m report "Cognism"
+    .venv/bin/python -m whynow.report "Cognism"
 """
 
 import re
@@ -19,10 +19,10 @@ import sys
 import time
 from datetime import date, timedelta
 
-import settings
+from whynow import settings
 from ai.prompts import build_email_prompt, build_report_prompt
 from ai.provider import AIError, generate_structured, last_model_used
-from models import AIReport, Claim, OutreachDraft
+from whynow.models import AIReport, Claim, OutreachDraft
 from sources import news_tavily as tavily
 from sources import uk_companies_house as ch
 
@@ -762,7 +762,7 @@ def _pick_news(picks, signals, sources, today, checks):
 
 
 def size_band(headcount):
-    """'best', 'good' or 'weak' for a number of employees (see the bands in settings.py)."""
+    """'best', 'good' or 'weak' for a number of employees (see the bands in whynow/settings.py)."""
     if settings.BEST_FIT_MIN_EMPLOYEES <= headcount <= settings.BEST_FIT_MAX_EMPLOYEES:
         return "best"
     if settings.GOOD_FIT_MIN_EMPLOYEES <= headcount <= settings.GOOD_FIT_MAX_EMPLOYEES:

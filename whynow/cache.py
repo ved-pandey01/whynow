@@ -1,5 +1,5 @@
 """
-cache.py — a tiny file cache, so we never pay for the same API call twice.
+whynow/cache.py — a tiny file cache, so we never pay for the same API call twice.
 
 Each answer is saved as a small JSON file in .cache/, named by a hash of the request,
 with the time it was saved. Reading it back checks it's still fresh enough.
@@ -11,8 +11,8 @@ import hashlib
 import json
 import time
 
-import config
-import settings
+from whynow import config
+from whynow import settings
 
 MISSING = object()   # "not in the cache" (different from a cached None)
 

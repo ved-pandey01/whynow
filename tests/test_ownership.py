@@ -5,8 +5,8 @@ All with fake Companies House answers.
 
 from datetime import date
 
-import exports
-import report
+from whynow import exports
+from whynow import report
 from sources import uk_companies_house as ch
 from tests.test_report import FakeAI, make_draft, make_research
 

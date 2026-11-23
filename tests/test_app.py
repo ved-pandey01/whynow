@@ -8,8 +8,8 @@ import json
 import pytest
 from streamlit.testing.v1 import AppTest
 
-import report
-import settings
+from whynow import report
+from whynow import settings
 from sources import news_tavily as tavily
 from sources import uk_companies_house as ch
 from ai.provider import AIError

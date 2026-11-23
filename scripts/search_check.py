@@ -15,9 +15,9 @@ stand-ins, so no credits are used. For each search it records:
 import json
 import sys
 
-import report
-import settings
-from models import AIReport, Claim
+from whynow import report
+from whynow import settings
+from whynow.models import AIReport, Claim
 from sources import news_tavily as tavily
 from sources import uk_companies_house as ch
 

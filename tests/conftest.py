@@ -14,7 +14,7 @@ class NoRealCalls(Exception):
 @pytest.fixture(autouse=True)
 def separate_cache_and_log(monkeypatch, tmp_path):
     """Each test gets its own empty cache and usage log, never the real ones in .cache/ and .usage/."""
-    import settings
+    from whynow import settings
     monkeypatch.setattr(settings, "CACHE_FOLDER", str(tmp_path / "cache"))
     monkeypatch.setattr(settings, "USAGE_FOLDER", str(tmp_path / "usage"))
 
@@ -22,7 +22,7 @@ def separate_cache_and_log(monkeypatch, tmp_path):
 @pytest.fixture(autouse=True)
 def no_real_secrets(monkeypatch):
     """Tests use fake keys from the environment, never a real .streamlit/secrets.toml on this computer."""
-    import config
+    from whynow import config
     monkeypatch.setattr(config, "_from_streamlit_secrets", lambda name: None)
 
 

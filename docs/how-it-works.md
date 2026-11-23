@@ -7,8 +7,8 @@ The detail behind the [README](../README.md): every step of the app, the code ch
 .venv/bin/streamlit run app.py
 ```
 Your browser opens at http://localhost:8501. Then:
-1. Type a company name or website in the search bar and press **Research →** (or Enter). What you're selling is pre-filled from [settings.py](../settings.py). Open the small **Change offer** link to edit it, because WhyNow uses it to score the fit and write your email.
-   - Or click one of the **Try:** chips under the search bar (Cognism, Darktrace, Paddle). Each chip uses a fixed Companies House number, so it always opens the right company, and goes straight to the report. The chips are set in `TRY_COMPANIES` in settings.py. The first click on each costs about 10 Tavily credits, then it's cached for 24 hours. Each counts as a live search (see Running costs).
+1. Type a company name or website in the search bar and press **Research →** (or Enter). What you're selling is pre-filled from [whynow/settings.py](../whynow/settings.py). Open the small **Change offer** link to edit it, because WhyNow uses it to score the fit and write your email.
+   - Or click one of the **Try:** chips under the search bar (Cognism, Darktrace, Paddle). Each chip uses a fixed Companies House number, so it always opens the right company, and goes straight to the report. The chips are set in `TRY_COMPANIES` in whynow/settings.py. The first click on each costs about 10 Tavily credits, then it's cached for 24 hours. Each counts as a live search (see Running costs).
 2. Pick the right company. Each Companies House match is a small card showing its industry, size, founded year and city. The biggest companies come first. You get a warning if none of them is a close match.
 3. Click **Research this company** (usually 20–45 seconds). While it runs, a card ticks off the live steps: finding the company on Companies House, reading recent news, checking reasons to reach out, scoring the fit and writing the report. The report shows:
    - a banner with the logo and a 3–4 sentence overview (what they do and their main products, who their customers are, one notable fact), every sentence with its source tag, plus **Read more** (5–7 sentences and a link to the About page or website, only if a source gives it); fewer sentences if the sources don't support more. Next to it, a profile card (industry, HQ, website, LinkedIn followers)
@@ -22,12 +22,12 @@ Your browser opens at http://localhost:8501. Then:
 
    Every small `S1`-style tag links to its source.
 4. Use **Download PDF** (a clean, printable report with the WhyNow logo and every source as a clickable link) or **Download CSV** (one CRM-ready row: company, company number, website, employees, fit score, top reasons to reach out, directors, competitors, email subject, email body, report date) at the top of any report. Both include the email once it's been created.
-5. Choose who the email is for (**Head of Sales**, **Head of RevOps** or **Founder / CEO**; Head of Sales by default), then click **Create email for this company** and **Copy** it. Each persona gets its own angle: sales = meetings and pipeline, RevOps = tools and data, founder = growth and cost (set in `EMAIL_PERSONAS` in settings.py). Each email is kept, so switching back is free.
+5. Choose who the email is for (**Head of Sales**, **Head of RevOps** or **Founder / CEO**; Head of Sales by default), then click **Create email for this company** and **Copy** it. Each persona gets its own angle: sales = meetings and pipeline, RevOps = tools and data, founder = growth and cost (set in `EMAIL_PERSONAS` in whynow/settings.py). Each email is kept, so switching back is free.
    - The same single AI request also writes a **LinkedIn connection note** (300 characters at most; if it's longer, code cuts it at the last full sentence) and a **2-line call opener**, each with its own Copy button. All three use only facts from the report. For scores of 3 or under, a note says it's probably not worth contacting.
 6. Open "Behind the scenes" to see what code changed in the AI's answer and how long each step took.
 7. To start again, click the **WhyNow** logo in the top bar or **← Back to home** above the report. Both clear the current report.
 
-**Research a list:** click **Research a list** next to the Try chips and upload a CSV of up to 10 companies (one per row, as names or websites; a `company` or `website` column is used if there is one). WhyNow researches them one by one with the live steps and an overall progress bar, then shows a table ranked by fit score with a **View report** link for each (it opens `?report=<id>` from the 24-hour cache) and **Download all as CSV**. Brands registered under another name are found the same way as a single search (e.g. "Gousto (registered as SCA INVESTMENTS LIMITED)"). A company with no close Companies House match and no registered name in public sources is listed as such, never guessed, and a problem with one company doesn't stop the rest. It warns you first: each company uses about 10 Tavily credits and 1 Gemini request, unless it was researched in the last 24 hours. Research a list is only shown in owner mode. Batch mode doesn't write emails, to save AI quota; open any report to create one. The simple parts (reading the list, ranking) are in [batch.py](../batch.py).
+**Research a list:** click **Research a list** next to the Try chips and upload a CSV of up to 10 companies (one per row, as names or websites; a `company` or `website` column is used if there is one). WhyNow researches them one by one with the live steps and an overall progress bar, then shows a table ranked by fit score with a **View report** link for each (it opens `?report=<id>` from the 24-hour cache) and **Download all as CSV**. Brands registered under another name are found the same way as a single search (e.g. "Gousto (registered as SCA INVESTMENTS LIMITED)"). A company with no close Companies House match and no registered name in public sources is listed as such, never guessed, and a problem with one company doesn't stop the rest. It warns you first: each company uses about 10 Tavily credits and 1 Gemini request, unless it was researched in the last 24 hours. Research a list is only shown in owner mode. Batch mode doesn't write emails, to save AI quota; open any report to create one. The simple parts (reading the list, ranking) are in [whynow/batch.py](../whynow/batch.py).
 
 **See a sample report:** on the landing page, click the **Example report** card (a real result for Paddle, saved 17 Nov 2026) or the **See a sample report** button. You can also link straight to it with `http://localhost:8501/?sample=1`. It uses no API calls and needs no keys. To refresh it: `.venv/bin/python -m scripts.save_sample`. The research is saved first in `.cache/` (git-ignored), so if the AI step fails, running it again costs no Tavily credits.
 
@@ -56,13 +56,13 @@ Results are cached: looking up the same company again within 24 hours costs no A
   - Searches include the website and a topic word from the company card. That stops brands that are ordinary words ("Paddle") pulling in unrelated stories.
   - Try it (about 9 Tavily credits): `.venv/bin/python -m sources.news_tavily "Paddle" "PADDLE.COM MARKET LIMITED" "paddle.com"`
 
-- **AI report** ([report.py](../report.py), [ai/](../ai/), [models.py](../models.py)):
+- **AI report** ([whynow/report.py](../whynow/report.py), [ai/](../ai/), [whynow/models.py](../whynow/models.py)):
   - Every fetched fact gets a source ID (S1, S2…). Gemini sees **only** those sources and must cite them.
   - **Code checks the AI's work:**
     - claims citing sources we didn't fetch are removed
     - news picks must be real stories from the last 6 months
     - any recent story used as a "Why reach out now" signal also appears under "Recent news", so the two never disagree
-    - **only events from the last 6 months count:** older dated search results are left out before the AI sees them, so they never become a reason to reach out or affect the score (set by `EVENT_WINDOW_MONTHS` in settings.py)
+    - **only events from the last 6 months count:** older dated search results are left out before the AI sees them, so they never become a reason to reach out or affect the score (set by `EVENT_WINDOW_MONTHS` in whynow/settings.py)
     - **funding uses the real round date:** a news page dated this month can report an older round. If the company profile dates the last round more than 6 months ago and the signal mentions the same amount, code removes it (real case: Paddle's $25m was debt financing on 17 Aug 2025)
     - each fit reason appears once: when code adds the company-size reason, the AI's own size reason is removed
     - sources are numbered S1, S2, S3… in order with no gaps, and every tag matches
@@ -82,25 +82,25 @@ Results are cached: looking up the same company again within 24 hours costs no A
     - if headcount isn't found, the AI judges size only from evidence in the sources
   - The AI provider sits behind one function ([ai/provider.py](../ai/provider.py)), so swapping Gemini for another model is a settings change.
   - **Backup models:** if the main Gemini model is busy, slow, rate-limited or retired, the request is tried with each model in `GEMINI_FALLBACK_MODELS` in turn, once each (gemini-3.5-flash, then gemini-3.5-flash-lite, then gemini-3.1-flash-lite). Each model has its own free daily allowance (the main model's is only 20 requests a day), so this keeps the app working on busy days. Key problems don't trigger it, because another model wouldn't help. The report and the email each end with a short "Written by [model]" line; if a backup model was used, the reason is shown under "Behind the scenes".
-  - Try it (about 9 Tavily credits + 1–2 Gemini requests): `.venv/bin/python -m report "paddle.com"`
+  - Try it (about 9 Tavily credits + 1–2 Gemini requests): `.venv/bin/python -m whynow.report "paddle.com"`
 
-- **Time limits** (set in [settings.py](../settings.py)):
+- **Time limits** (set in [whynow/settings.py](../whynow/settings.py)):
   - Every service has a limit: Companies House 15s, Tavily 20s per search, Gemini 60s with no hidden retries. A slow service gives a clear message instead of an endless wait.
   - One slow search is skipped with a note, and the rest carry on.
   - After 35 seconds of research, no new searches start, so the report stays near a minute.
   - Each report shows how long each part took.
 
 ## Running costs
-WhyNow is built to be cheap to run. Every limit is in the "Running costs" section of [settings.py](../settings.py).
+WhyNow is built to be cheap to run. Every limit is in the "Running costs" section of [whynow/settings.py](../whynow/settings.py).
 - **Daily limits:** each visitor gets **2 live searches a day**, with **30 a day across all visitors**. The sample report and any company researched in the last 24 hours are free and don't count. The count is kept on the server (a hash of the visitor's IP address and browser, never the IP itself), so a refresh doesn't reset it. When the limit is reached, a friendly message offers the sample report instead.
 - **When a search counts:** only when research actually starts after **Research this company** (not when the company list is shown). A failed attempt is given back. Visitors see a small grey line under the search bar, e.g. "2 free searches left today" (hidden in owner mode).
 - **Picking a company:** **Research this company** is the only way to start research (the name and card aren't clickable). The list then collapses, the live progress card appears under the search bar and the page scrolls to it; when the report is ready the page scrolls to its top. **Choose a different company** above the report brings the list back.
-- **Caches** ([cache.py](../cache.py), on disk in `.cache/`, so they survive restarts):
+- **Caches** ([whynow/cache.py](../whynow/cache.py), on disk in `.cache/`, so they survive restarts):
   - Companies House replies: 7 days
   - Tavily searches and page reads: 24 hours, so the same Tavily request is never paid for twice
   - finished reports: 24 hours
 - **Gemini:** one request per report and one for all the outreach (email, LinkedIn note and call opener). Over-long emails are trimmed by code, not a second request. Each model is tried once before the next backup.
-- **Call log** ([usage.py](../usage.py)): every Gemini and Tavily call, including cache hits at no cost, is logged to `.usage/`. No keys or search text are logged.
+- **Call log** ([whynow/usage.py](../whynow/usage.py)): every Gemini and Tavily call, including cache hits at no cost, is logged to `.usage/`. No keys or search text are logged.
 - **Owner mode:** set `OWNER_PASSWORD` in `.env`, then open the page with `?owner=1` at the end of the address (e.g. `localhost:8501/?owner=1`) and use **Owner** under the footer. Without `?owner=1`, the Owner area is never shown. The owner has no daily limit and sees **Research a list** and today's usage totals in "Behind the scenes". With no password set, owner mode is off.
 
 ## When something goes wrong
@@ -121,7 +121,7 @@ WhyNow never crashes: each problem gets a plain message saying what happened and
 Anything unexpected shows "Something unexpected went wrong. Please try again in a minute." and prints only the error type (never a key) in the terminal. Each case has a mocked test in [tests/test_errors.py](../tests/test_errors.py).
 
 ## Downloads
-- [exports.py](../exports.py) builds the CSV (Python's own `csv` module) and the PDF ([fpdf2](https://py-pdf.github.io/fpdf2/)), using only what's already in the report.
+- [whynow/exports.py](../whynow/exports.py) builds the CSV (Python's own `csv` module) and the PDF ([fpdf2](https://py-pdf.github.io/fpdf2/)), using only what's already in the report.
 - The PDF uses the Inter font in [assets/fonts](../assets/fonts) (SIL Open Font Licence, included), so £, € and dashes print properly.
 
 ## Design

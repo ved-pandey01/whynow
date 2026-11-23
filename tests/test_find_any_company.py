@@ -8,7 +8,7 @@ from datetime import date
 
 import pytest
 
-import report
+from whynow import report
 import ui.components as ui
 from sources import news_tavily as tavily
 from sources import uk_companies_house as ch

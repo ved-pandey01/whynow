@@ -2,10 +2,10 @@
 prompts.py — the instructions we give the AI.
 
 The AI only sees the numbered sources we fetched. It must cite source IDs
-for every claim, and code checks those citations afterwards (see report.py).
+for every claim, and code checks those citations afterwards (see whynow/report.py).
 """
 
-import settings
+from whynow import settings
 
 
 def build_report_prompt(company_name, offer, sources_text, today):

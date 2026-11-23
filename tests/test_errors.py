@@ -6,9 +6,9 @@ All mocked: no API calls.
 import pytest
 import requests
 
-import batch
-import report
-import settings
+from whynow import batch
+from whynow import report
+from whynow import settings
 from ai import provider
 from sources import news_tavily as nt
 from sources import uk_companies_house as ch
@@ -147,7 +147,7 @@ def test_all_gemini_models_failing_on_an_email(app, monkeypatch):
 
 
 def test_no_internet_for_gemini(monkeypatch):
-    from models import Claim
+    from whynow.models import Claim
     from tests.test_time_limits import ConnectError, FakeGemini
     FakeGemini({m: ConnectError() for m in [settings.GEMINI_MODEL] + settings.GEMINI_FALLBACK_MODELS}).install(monkeypatch)
     with pytest.raises(provider.AIError, match="Couldn't connect to the internet"):

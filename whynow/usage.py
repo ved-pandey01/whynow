@@ -1,5 +1,5 @@
 """
-usage.py — a log of every paid API call (Gemini and Tavily), and today's totals for the owner.
+whynow/usage.py — a log of every paid API call (Gemini and Tavily), and today's totals for the owner.
 
 One line per call in .usage/calls-YYYY-MM-DD.jsonl. Cache hits are logged too, at zero cost,
 so the owner can see how much the cache saves. No API keys or search text are ever logged.
@@ -10,8 +10,8 @@ import json
 import time
 from datetime import date
 
-import config
-import settings
+from whynow import config
+from whynow import settings
 
 
 def _folder():

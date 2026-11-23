@@ -85,7 +85,7 @@ def test_model_note_is_short_and_never_shows_errors():
 
 
 def test_header_has_slogan_and_typing_lines():
-    import settings
+    from whynow import settings
     out = ui.hero()
     assert "Before you reach out" not in out                       # the old tagline is gone
     assert '<h2 class="wn-headline"><span>Know the fit.</span> <span>Know the moment.</span></h2>' in out
@@ -96,7 +96,7 @@ def test_header_has_slogan_and_typing_lines():
 
 
 def test_top_bar_has_label_and_author_pill():
-    import settings
+    from whynow import settings
     out = ui.topbar()
     assert "AI account research agent" in out
     assert f'class="wn-built" href="{settings.AUTHOR_LINKEDIN}" target="_blank"' in out
