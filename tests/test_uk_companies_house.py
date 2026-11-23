@@ -10,7 +10,7 @@ from datetime import date
 
 import pytest
 
-from sources import uk_companies_house as ch
+from whynow.sources import uk_companies_house as ch
 
 
 class FakeResponse:

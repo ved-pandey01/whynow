@@ -7,8 +7,8 @@ import pytest
 
 from whynow import report
 from whynow import settings
-from ai import provider
-from sources import news_tavily as nt
+from whynow.ai import provider
+from whynow.sources import news_tavily as nt
 
 
 # --- Gemini ---------------------------------------------------------------

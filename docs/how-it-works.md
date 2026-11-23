@@ -34,8 +34,8 @@ Your browser opens at http://localhost:8501. Then:
 Results are cached: looking up the same company again within 24 hours costs no API credits (all the steps tick at once). See **Running costs** below. Stop the app with `Ctrl + C` in the terminal.
 
 ## Under the hood
-- **Companies House lookup** ([sources/uk_companies_house.py](../sources/uk_companies_house.py)): finds UK companies by name or website, ranks exact name matches first, and fetches status, industry codes, founded date, address and recently appointed directors. Every fact links to its public Companies House page. Dissolved, insolvent or dormant companies are flagged as "not worth contacting" by code, not by the AI.
-  - Try it: `.venv/bin/python -m sources.uk_companies_house "Cognism"`
+- **Companies House lookup** ([whynow/sources/uk_companies_house.py](../whynow/sources/uk_companies_house.py)): finds UK companies by name or website, ranks exact name matches first, and fetches status, industry codes, founded date, address and recently appointed directors. Every fact links to its public Companies House page. Dissolved, insolvent or dormant companies are flagged as "not worth contacting" by code, not by the AI.
+  - Try it: `.venv/bin/python -m whynow.sources.uk_companies_house "Cognism"`
   - Tip: typing the website (e.g. `paddle.com`) finds the right company more reliably than a short name.
   - **Finding any company:** search by name, website or company number (8 digits, or 2 letters and 6 digits such as SC123456). Case, punctuation, apostrophes, "&" and endings like Ltd, Limited or PLC (even a misspelt "Limted") don't matter. Companies House's own search isn't fuzzy, so when nothing matches closely WhyNow tries small spelling changes (at most 24 free, cached calls) and says "Did you mean …?". A one-word search with no exact match also checks for a large company one spelling change away ("Gregs" → GREGGS PLC). Very short brands also search their group name ("BT" → BT GROUP PLC). If Companies House returns names but none share a word with the search, the nearest names are shown with a warning, never "no results". The picker shows up to 10 matches, each with its company number, status, incorporation date and postcode. If nothing matches, the page suggests checking the spelling or searching by company number. Run `.venv/bin/python -m scripts.search_check` (free) to test 20 searches.
   - **Filters** (under the search bar, closed by default): **Location** (town or postcode, e.g. Bedford), **Industry** (a SIC code like 62012, or a keyword like "software", turned into SIC codes from the official list) and **Include dissolved companies** (off by default). Nothing is hidden silently: the page names any closed companies the default hides, and any close matches that Location or Industry hide. With a location or industry, WhyNow uses the free Companies House advanced search.
@@ -48,15 +48,15 @@ Results are cached: looking up the same company again within 24 hours costs no A
   - **Big companies first:** Companies House lists similar names roughly alphabetically, so for "Howden" the big companies were buried under local firms. The app fetches 100 matches, checks the size of the most likely 25 from the type of accounts they file (group, full, small, micro…), and lists the biggest first. Companies House has no staff counts, so this is a guide. Headcount comes later, from the company profile.
   - Industry (SIC) codes come with their **official meanings** from Companies House, stored in [data/sic_codes.csv](../data/sic_codes.csv) (all 731 codes). The AI never has to guess what a code means.
 
-- **News, signals and company card** ([sources/news_tavily.py](../sources/news_tavily.py)), using Tavily:
+- **News, signals and company card** ([whynow/sources/news_tavily.py](../whynow/sources/news_tavily.py)), using Tavily:
   - **Company card:** headcount and its yearly trend, funding rounds, B2B/SaaS, website. It's only used if one of these confirms it's the company we found: its legal name matches, its website matches, or its name *and* head office city both match Companies House. Each report says how its card was confirmed. If the full name finds no card (e.g. "Sage Group"), one more search tries the short name ("Sage").
   - **News:** recent articles with the company in the headline.
   - **"Why reach out now" signals:** targeted searches for sales hiring, funding, new sales leaders, expansion and layoffs.
   - **Website:** homepage text, so the AI knows what the company actually does.
   - Searches include the website and a topic word from the company card. That stops brands that are ordinary words ("Paddle") pulling in unrelated stories.
-  - Try it (about 9 Tavily credits): `.venv/bin/python -m sources.news_tavily "Paddle" "PADDLE.COM MARKET LIMITED" "paddle.com"`
+  - Try it (about 9 Tavily credits): `.venv/bin/python -m whynow.sources.news_tavily "Paddle" "PADDLE.COM MARKET LIMITED" "paddle.com"`
 
-- **AI report** ([whynow/report.py](../whynow/report.py), [ai/](../ai/), [whynow/models.py](../whynow/models.py)):
+- **AI report** ([whynow/report.py](../whynow/report.py), [whynow/ai/](../whynow/ai/), [whynow/models.py](../whynow/models.py)):
   - Every fetched fact gets a source ID (S1, S2…). Gemini sees **only** those sources and must cite them.
   - **Code checks the AI's work:**
     - claims citing sources we didn't fetch are removed
@@ -80,7 +80,7 @@ Results are cached: looking up the same company again within 24 hours costs no A
       | Weak fit | under 50 or over 10,000 | at most 3, plus a "low fit" warning |
 
     - if headcount isn't found, the AI judges size only from evidence in the sources
-  - The AI provider sits behind one function ([ai/provider.py](../ai/provider.py)), so swapping Gemini for another model is a settings change.
+  - The AI provider sits behind one function ([whynow/ai/provider.py](../whynow/ai/provider.py)), so swapping Gemini for another model is a settings change.
   - **Backup models:** if the main Gemini model is busy, slow, rate-limited or retired, the request is tried with each model in `GEMINI_FALLBACK_MODELS` in turn, once each (gemini-3.5-flash, then gemini-3.5-flash-lite, then gemini-3.1-flash-lite). Each model has its own free daily allowance (the main model's is only 20 requests a day), so this keeps the app working on busy days. Key problems don't trigger it, because another model wouldn't help. The report and the email each end with a short "Written by [model]" line; if a backup model was used, the reason is shown under "Behind the scenes".
   - Try it (about 9 Tavily credits + 1–2 Gemini requests): `.venv/bin/python -m whynow.report "paddle.com"`
 
@@ -125,7 +125,7 @@ Anything unexpected shows "Something unexpected went wrong. Please try again in 
 - The PDF uses the Inter font in [assets/fonts](../assets/fonts) (SIL Open Font Licence, included), so £, € and dashes print properly.
 
 ## Design
-- Our own look in [ui/style.css](../ui/style.css): a premium dark theme with royal blue, emerald and an amber typing line, the Inter font, and dark cards with soft shadows. The landing page has a two-column hero (the WhyNow title, "Know the fit. Know the moment.", an animated "Because…" line and a Google-style search bar on the left; a clickable example report on the right), a subtle grid and line-chart background, and a "Built by Ved Prakash Pandey" pill linking to LinkedIn. The layout stacks on phones.
-- Each part of the page is a small function in [ui/components.py](../ui/components.py).
+- Our own look in [whynow/ui/style.css](../whynow/ui/style.css): a premium dark theme with royal blue, emerald and an amber typing line, the Inter font, and dark cards with soft shadows. The landing page has a two-column hero (the WhyNow title, "Know the fit. Know the moment.", an animated "Because…" line and a Google-style search bar on the left; a clickable example report on the right), a subtle grid and line-chart background, and a "Built by Ved Prakash Pandey" pill linking to LinkedIn. The layout stacks on phones.
+- Each part of the page is a small function in [whynow/ui/components.py](../whynow/ui/components.py).
 - **Safety:** all text fetched from the internet is escaped before it goes on the page, and links only allow http(s), so a web page title can never add code to WhyNow.
 - Logos come from the company website's icon (DuckDuckGo's icon service), with the company's initials behind it as a fallback.

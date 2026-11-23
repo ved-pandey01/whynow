@@ -5,8 +5,8 @@ Tests for the improved company search: cleaning the text, hiding unrelated names
 
 import pytest
 
-from sources import uk_companies_house as ch
-from sources import news_tavily as tavily
+from whynow.sources import uk_companies_house as ch
+from whynow.sources import news_tavily as tavily
 from tests.test_app import MATCHES, app, search  # noqa: F401
 from tests.test_uk_companies_house import FakeResponse
 

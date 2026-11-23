@@ -10,7 +10,7 @@ Every fact comes with a "source" link to the public Companies House page,
 so the report can always show where it came from.
 
 Test it from the terminal:
-    .venv/bin/python -m sources.uk_companies_house "Cognism"
+    .venv/bin/python -m whynow.sources.uk_companies_house "Cognism"
 """
 
 import csv
@@ -33,7 +33,7 @@ API_BASE = "https://api.company-information.service.gov.uk"
 PUBLIC_SITE = "https://find-and-update.company-information.service.gov.uk"
 
 
-SIC_CODES_FILE = Path(__file__).resolve().parent.parent / "data" / "sic_codes.csv"
+SIC_CODES_FILE = Path(__file__).resolve().parents[2] / "data" / "sic_codes.csv"   # the project's data/ folder
 
 
 class CompaniesHouseError(Exception):

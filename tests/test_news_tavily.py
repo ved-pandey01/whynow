@@ -5,7 +5,7 @@ These use FAKE Tavily replies, so they cost no credits.
 
 import pytest
 
-from sources import news_tavily as nt
+from whynow.sources import news_tavily as nt
 
 # A shortened copy of a real Tavily company page (Cognism, Nov 2026)
 SAMPLE_CARD = """# Cognism

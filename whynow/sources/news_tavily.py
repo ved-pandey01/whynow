@@ -13,7 +13,7 @@ searches much more accurate (e.g. 'Paddle' payments, not canoe paddles).
 Every item keeps its source link. Results that don't mention the company are thrown away.
 
 Test it from the terminal (uses about 9 Tavily credits):
-    .venv/bin/python -m sources.news_tavily "Cognism" "COGNISM LIMITED"
+    .venv/bin/python -m whynow.sources.news_tavily "Cognism" "COGNISM LIMITED"
 """
 
 import re
@@ -28,7 +28,7 @@ from whynow import cache
 from whynow import config
 from whynow import settings
 from whynow import usage
-from sources.uk_companies_house import is_exact_match
+from whynow.sources.uk_companies_house import is_exact_match
 
 
 

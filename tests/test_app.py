@@ -10,9 +10,9 @@ from streamlit.testing.v1 import AppTest
 
 from whynow import report
 from whynow import settings
-from sources import news_tavily as tavily
-from sources import uk_companies_house as ch
-from ai.provider import AIError
+from whynow.sources import news_tavily as tavily
+from whynow.sources import uk_companies_house as ch
+from whynow.ai.provider import AIError
 
 MATCHES = [
     {"name": "ACME LTD", "company_number": "123", "status": "active", "founded": "2015-01-01",

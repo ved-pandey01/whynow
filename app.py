@@ -6,7 +6,7 @@ app.py — the WhyNow web page.
   3. The report: banner, key stats, fit score, who to contact, "why now" signals, news,
      what we couldn't find, sources, and an email written only when you ask.
 
-The look lives in ui/style.css and ui/components.py; this file only arranges the pieces.
+The look lives in whynow/ui/style.css and whynow/ui/components.py; this file only arranges the pieces.
 
 Run it with:
     .venv/bin/streamlit run app.py
@@ -27,11 +27,11 @@ from whynow import report
 from whynow import config
 from whynow import settings
 from whynow import usage
-from ai.provider import AIError, AllModelsBusy
-from sources import uk_companies_house as ch
-from sources import news_tavily as tavily
-from sources.news_tavily import domain_of
-from ui import components as ui
+from whynow.ai.provider import AIError, AllModelsBusy
+from whynow.sources import uk_companies_house as ch
+from whynow.sources import news_tavily as tavily
+from whynow.sources.news_tavily import domain_of
+from whynow.ui import components as ui
 
 SAMPLE_FILE = Path(__file__).parent / settings.SAMPLE_REPORT_FILE
 

@@ -18,8 +18,8 @@ import sys
 from whynow import report
 from whynow import settings
 from whynow.models import AIReport, Claim
-from sources import news_tavily as tavily
-from sources import uk_companies_house as ch
+from whynow.sources import news_tavily as tavily
+from whynow.sources import uk_companies_house as ch
 
 SEARCHES = [  # (typed, kind, acceptable company numbers; empty = should find nothing)
     ("Tesco", "big brand", {"00445790"}),

@@ -9,9 +9,9 @@ from datetime import date
 import pytest
 
 from whynow import report
-import ui.components as ui
-from sources import news_tavily as tavily
-from sources import uk_companies_house as ch
+import whynow.ui.components as ui
+from whynow.sources import news_tavily as tavily
+from whynow.sources import uk_companies_house as ch
 from tests.test_app import MATCHES, app, search  # noqa: F401
 from tests.test_report import FakeAI, make_draft
 from tests.test_uk_companies_house import FakeResponse

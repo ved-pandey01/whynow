@@ -7,7 +7,7 @@ the scrolling, and 'Choose a different company'. All with fake data (no paid API
 from whynow import report
 from whynow import settings
 from whynow import usage
-import ui.components as ui
+import whynow.ui.components as ui
 from tests.test_app import MATCHES, button, html, search  # noqa: F401
 from tests.test_costs import page, research  # noqa: F401
 

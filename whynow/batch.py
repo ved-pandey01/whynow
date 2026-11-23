@@ -7,7 +7,7 @@ import csv
 import io
 
 from whynow import settings
-from sources import uk_companies_house as ch
+from whynow.sources import uk_companies_house as ch
 
 # Column names we recognise in an uploaded list. A website is the most accurate way to find a company.
 WEBSITE_COLUMNS = ("website", "domain", "url")

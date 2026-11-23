@@ -5,7 +5,7 @@ import json
 from whynow import report
 from whynow import settings
 from scripts import save_sample
-from sources import uk_companies_house as ch
+from whynow.sources import uk_companies_house as ch
 from tests.test_report import FakeAI, make_draft
 
 

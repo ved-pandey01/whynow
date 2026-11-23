@@ -21,8 +21,8 @@ from pathlib import Path
 from whynow import cache
 from whynow import report
 from whynow import settings
-from sources import news_tavily as tavily
-from sources import uk_companies_house as ch
+from whynow.sources import news_tavily as tavily
+from whynow.sources import uk_companies_house as ch
 
 COMPANIES = [   # (what a user would type, sector, rough size)
     ("Sage Group", "Accounting software", "Large (plc)"),

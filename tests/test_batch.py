@@ -3,7 +3,7 @@
 import pytest
 
 from whynow import batch
-from sources import uk_companies_house as ch
+from whynow.sources import uk_companies_house as ch
 
 
 @pytest.mark.parametrize("text, names", [

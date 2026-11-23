@@ -67,12 +67,12 @@ def test_secrets_file_values_are_read(monkeypatch):
 
 def test_every_key_and_the_owner_password_go_through_get_secret():
     """No module reads a key from the environment directly, so st.secrets always works when deployed."""
-    for path in ["app.py", "ai/provider.py", "sources/news_tavily.py", "sources/uk_companies_house.py"]:
+    for path in ["app.py", "whynow/ai/provider.py", "whynow/sources/news_tavily.py", "whynow/sources/uk_companies_house.py"]:
         code = (ROOT / path).read_text()
         assert "os.getenv(" not in code and "load_dotenv" not in code, path
     for name in config.SECRET_NAMES:
         assert any(f'config.get_secret("{name}")' in (ROOT / p).read_text()
-                   for p in ["app.py", "ai/provider.py", "sources/news_tavily.py", "sources/uk_companies_house.py"]), name
+                   for p in ["app.py", "whynow/ai/provider.py", "whynow/sources/news_tavily.py", "whynow/sources/uk_companies_house.py"]), name
 
 
 def test_owner_login_works_with_the_password_from_cloud_secrets(monkeypatch):

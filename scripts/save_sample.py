@@ -25,8 +25,8 @@ from pathlib import Path
 
 from whynow import report
 from whynow import settings
-from sources import news_tavily as tavily
-from sources import uk_companies_house as ch
+from whynow.sources import news_tavily as tavily
+from whynow.sources import uk_companies_house as ch
 
 COMPANY = "paddle.com"
 ROOT = Path(__file__).resolve().parent.parent

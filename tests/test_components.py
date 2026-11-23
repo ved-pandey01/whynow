@@ -1,8 +1,8 @@
-"""Tests for the page pieces in ui/components.py: colours, safety and fallbacks."""
+"""Tests for the page pieces in whynow/ui/components.py: colours, safety and fallbacks."""
 
 import pytest
 
-from ui import components as ui
+from whynow.ui import components as ui
 
 
 @pytest.mark.parametrize("score, kind", [

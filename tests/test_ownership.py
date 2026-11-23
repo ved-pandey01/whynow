@@ -7,7 +7,7 @@ from datetime import date
 
 from whynow import exports
 from whynow import report
-from sources import uk_companies_house as ch
+from whynow.sources import uk_companies_house as ch
 from tests.test_report import FakeAI, make_draft, make_research
 
 CAZOO_GROUP = {"name": "CAZOO GROUP LTD", "company_number": "11111111", "status": "closed-on",

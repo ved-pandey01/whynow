@@ -9,9 +9,9 @@ import requests
 from whynow import batch
 from whynow import report
 from whynow import settings
-from ai import provider
-from sources import news_tavily as nt
-from sources import uk_companies_house as ch
+from whynow.ai import provider
+from whynow.sources import news_tavily as nt
+from whynow.sources import uk_companies_house as ch
 from tests.test_app import MATCHES, REPORT, app, button, html, research_and_open, search  # noqa: F401
 from tests.test_uk_companies_house import FakeResponse
 
@@ -59,7 +59,7 @@ def test_over_long_search_is_capped_and_never_crashes(app):
 
 def test_search_bar_hides_counter_and_enter_hint():
     """The "0/100" counter and "Press Enter to submit form" hint are hidden; the cap and Enter still work."""
-    css = open("ui/style.css").read()
+    css = open("whynow/ui/style.css").read()
     assert '.st-key-wn_search [data-testid="InputInstructions"] { display: none !important; }' in css
     code = open("app.py").read()
     assert 'with st.form("search"' in code              # a form, so Enter submits the search

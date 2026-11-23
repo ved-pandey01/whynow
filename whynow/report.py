@@ -20,11 +20,11 @@ import time
 from datetime import date, timedelta
 
 from whynow import settings
-from ai.prompts import build_email_prompt, build_report_prompt
-from ai.provider import AIError, generate_structured, last_model_used
+from whynow.ai.prompts import build_email_prompt, build_report_prompt
+from whynow.ai.provider import AIError, generate_structured, last_model_used
 from whynow.models import AIReport, Claim, OutreachDraft
-from sources import news_tavily as tavily
-from sources import uk_companies_house as ch
+from whynow.sources import news_tavily as tavily
+from whynow.sources import uk_companies_house as ch
 
 # The live progress steps shown on the page, in order. Each one matches real work below.
 STEPS = [

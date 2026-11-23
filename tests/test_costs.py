@@ -11,8 +11,8 @@ from whynow import cache
 from whynow import report
 from whynow import settings
 from whynow import usage
-from sources import news_tavily as nt
-from sources import uk_companies_house as ch
+from whynow.sources import news_tavily as nt
+from whynow.sources import uk_companies_house as ch
 from tests.test_app import EMAIL, MATCHES, REPORT, button, html, search
 
 
@@ -75,7 +75,7 @@ def test_gemini_requests_are_logged_per_model(monkeypatch):
     from whynow.models import Claim
     from tests.test_time_limits import FakeGemini, busy
     FakeGemini({settings.GEMINI_MODEL: busy()}).install(monkeypatch)
-    from ai import provider
+    from whynow.ai import provider
     provider.generate_structured("hi", Claim)
     assert usage.today_totals()["gemini"] == {settings.GEMINI_MODEL: 1, settings.GEMINI_FALLBACK_MODELS[0]: 1}
 
