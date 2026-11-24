@@ -236,7 +236,8 @@ def search_form():
         with st.form("search", border=False):
             text, button = st.columns([5, 1.3], vertical_alignment="center")
             typed = text.text_input("Company name or website", placeholder=settings.SEARCH_PLACEHOLDER,
-                                    label_visibility="collapsed", max_chars=settings.MAX_SEARCH_CHARS)
+                                    label_visibility="collapsed", max_chars=settings.MAX_SEARCH_CHARS,
+                                    key="wn_company")
             submitted = button.form_submit_button("Research →", type="primary")
     if not is_owner():
         st.html(ui.searches_left_line(usage.searches_left(visitor_id())))
@@ -255,35 +256,44 @@ def search_form():
         st.info("Type a company name or website first, e.g. cognism.com.", icon=":material/info:")
         return
     if submitted:
-        for key in ("report", "email", "emails", "sample"):
-            st.session_state.pop(key, None)
-        st.session_state["offer"] = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
-        st.session_state["typed"] = typed
-        for key in ("registration", "last_matches", "chosen", "search_info"):
-            st.session_state.pop(key, None)
-        filters = current_filters()
-        st.session_state["filters"] = filters
-        try:
-            matches, info = picker_search(typed, filters)
-            st.session_state["search_info"] = info
-            filtered = bool(filters["location"] or filters["industry"])
-            # The public-sources lookup ignores Location and Industry, so it isn't run (or paid for) when they're
-            # set; a company number or a spelling suggestion already points at a registered company
-            if (typed.strip() and not filtered and not ch.as_company_number(typed) and not info["spelling"]
-                    and ch.registration_check_needed(typed, matches)):
-                # No active company with this name (or, for a website, no clear one): look for the registered name
-                with st.spinner("Looking for the registered company name in public sources…"):
-                    registration = find_registered(typed if report.looks_like_website(typed) else ch.main_name(typed))
-                st.session_state["registration"] = registration
-                if registration["match"]:
-                    number = registration["match"]["company_number"]
-                    matches = [registration["match"]] + [m for m in matches if m["company_number"] != number]
-            st.session_state["matches"] = matches
-        except Exception as e:
-            st.session_state["matches"] = None
-            friendly_error(e)
-            return
-        st.rerun()   # redraw with the picker
+        start_search(typed)
+
+
+def start_search(typed, paid_lookup=True):
+    """
+    Search Companies House and show the company list (the Research button and ?company= links both use this).
+    Free: a visitor's free search is only used when research starts. paid_lookup=False skips the public-sources
+    lookup for brand names (about 2 Tavily credits), so a link alone can never spend credits.
+    """
+    for key in ("report", "email", "emails", "sample"):
+        st.session_state.pop(key, None)
+    st.session_state["offer"] = st.session_state.get("offer_text") or settings.DEFAULT_OFFER
+    st.session_state["typed"] = typed
+    for key in ("registration", "last_matches", "chosen", "search_info"):
+        st.session_state.pop(key, None)
+    filters = current_filters()
+    st.session_state["filters"] = filters
+    try:
+        matches, info = picker_search(typed, filters)
+        st.session_state["search_info"] = info
+        filtered = bool(filters["location"] or filters["industry"])
+        # The public-sources lookup ignores Location and Industry, so it isn't run (or paid for) when they're
+        # set; a company number or a spelling suggestion already points at a registered company
+        if (paid_lookup and typed.strip() and not filtered and not ch.as_company_number(typed)
+                and not info["spelling"] and ch.registration_check_needed(typed, matches)):
+            # No active company with this name (or, for a website, no clear one): look for the registered name
+            with st.spinner("Looking for the registered company name in public sources…"):
+                registration = find_registered(typed if report.looks_like_website(typed) else ch.main_name(typed))
+            st.session_state["registration"] = registration
+            if registration["match"]:
+                number = registration["match"]["company_number"]
+                matches = [registration["match"]] + [m for m in matches if m["company_number"] != number]
+        st.session_state["matches"] = matches
+    except Exception as e:
+        st.session_state["matches"] = None
+        friendly_error(e)
+        return
+    st.rerun()   # redraw with the picker
 
 
 def try_chips():
@@ -313,12 +323,34 @@ def run_try(chip):
     run_report({"company_number": number, "name": name})
 
 
+SAMPLE_LINK_VALUES = {"1", "paddle", "true", "yes"}   # ?sample=paddle (or ?sample=1) opens the saved Paddle report
+
+
+def search_from_link():
+    """
+    A link ending in ?company=<name> (e.g. ?company=Monzo, from the portfolio's "Research my company") puts the
+    name in the search bar and starts the search once, when the visitor arrives. Only the free Companies House
+    search runs: no free search is used until the visitor clicks 'Research this company', and the paid
+    public-sources lookup is skipped (pressing Research runs the full search). A ?sample= or ?report= link wins.
+    """
+    if st.session_state.get("wn_prefilled"):
+        return
+    st.session_state["wn_prefilled"] = True
+    company = " ".join((st.query_params.get("company") or "").split())[:settings.MAX_SEARCH_CHARS]
+    if not company:
+        return
+    st.session_state["wn_company"] = company
+    sample_link = (st.query_params.get("sample") or "").strip().lower() in SAMPLE_LINK_VALUES
+    if not sample_link and not st.query_params.get("report"):
+        start_search(company, paid_lookup=False)
+
+
 def open_sample_from_link():
-    """A link ending in ?sample=1 opens the sample report; ?report=<id> opens a report from the 24-hour cache
-    (the links in the batch results table)."""
+    """A link ending in ?sample=paddle (or ?sample=1) opens the saved Paddle report; ?report=<id> opens a report
+    from the 24-hour cache (the links in the batch results table)."""
     if "report" in st.session_state:
         return
-    if st.query_params.get("sample") == "1":
+    if (st.query_params.get("sample") or "").strip().lower() in SAMPLE_LINK_VALUES:
         sample = load_sample()
         if sample:
             st.session_state.update(report=sample, sample=True, matches=None)
@@ -768,6 +800,7 @@ def main():
     st.set_page_config(page_title=f"{settings.APP_NAME} · {settings.APP_LABEL}",
                        page_icon=":material/bolt:", layout="wide")
     st.html(ui.css())
+    search_from_link()
     open_sample_from_link()
     st.html(ui.topbar())
     if st.session_state.get("batch_mode") and is_owner() and "report" not in st.session_state:

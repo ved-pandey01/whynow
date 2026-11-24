@@ -349,3 +349,83 @@ def test_registered_name_lookup_is_skipped_when_an_active_match_exists(app, monk
     monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: calls.append(brand))
     search(app, "Acme")
     assert calls == []      # no extra credits when Companies House already has the company
+
+
+def test_company_link_fills_the_search_bar_and_searches(app, monkeypatch):
+    """?company=Monzo: the name is typed in and the company list appears, with no free search used
+    (that only happens when the visitor clicks 'Research this company')."""
+    from whynow import usage
+    app.query_params["company"] = "Acme"
+    app.run()
+    assert not app.exception
+    assert app.text_input[0].value == "Acme"
+    assert [b.key for b in app.button if (b.key or "").startswith("pick_")] == ["pick_123", "pick_456"]
+    assert "report" not in app.session_state
+    assert usage.searches_today()["total"] == 0
+
+
+def test_company_link_never_spends_credits_on_its_own(app, monkeypatch):
+    """A link can't trigger the paid public-sources lookup (about 2 Tavily credits); pressing Research can."""
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: [])
+    monkeypatch.setattr(tavily, "find_registration", lambda brand, website=None: pytest.fail("paid lookup from a link"))
+    app.query_params["company"] = "Monzo"
+    app.run()
+    assert not app.exception
+    assert app.session_state["matches"] == []
+    assert any("No company found" in w.value for w in app.warning)
+
+
+def test_company_link_collapses_extra_spaces(app):
+    app.query_params["company"] = "  Acme   Widgets  "
+    app.run()
+    assert app.text_input[0].value == "Acme Widgets"
+
+
+def test_sample_link_wins_over_a_company_link(app, monkeypatch):
+    monkeypatch.setattr(ch, "search_companies", lambda typed, **kw: pytest.fail("no search when ?sample= is set"))
+    app.query_params["company"] = "Acme"
+    app.query_params["sample"] = "paddle"
+    app.run()
+    assert not app.exception
+    assert app.session_state["sample"] is True
+
+
+@pytest.mark.parametrize("value", ["paddle", "Paddle", "1"])
+def test_sample_paddle_link_opens_the_saved_paddle_report(app, value):
+    app.query_params["sample"] = value
+    app.run()
+    assert not app.exception
+    assert app.session_state["sample"] is True
+    assert "PADDLE" in app.session_state["report"]["company"]["name"].upper()
+
+
+def test_unknown_sample_name_is_ignored(app):
+    app.query_params["sample"] = "monzo"
+    app.run()
+    assert not app.exception
+    assert "report" not in app.session_state
+
+
+def test_company_link_runs_only_once(app):
+    """After arriving, the visitor can clear or change the name; the link does not put it back or search again."""
+    app.query_params["company"] = "Paddle"
+    app.run()
+    app.session_state["wn_company"] = "Cognism"   # the visitor changes the name
+    app.run()
+    assert app.text_input[0].value == "Cognism"
+
+
+def test_overlong_company_link_is_trimmed(app):
+    app.query_params["company"] = "x" * (settings.MAX_SEARCH_CHARS + 50)
+    app.run()
+    assert not app.exception
+    assert len(app.text_input[0].value) == settings.MAX_SEARCH_CHARS
+
+
+def test_sample_link_opens_the_paddle_sample(app):
+    """The portfolio's 'See a sample report (Paddle)' links to ./?sample=1."""
+    app.query_params["sample"] = "1"
+    app.run()
+    assert not app.exception
+    assert app.session_state["sample"] is True
+    assert "PADDLE" in app.session_state["report"]["company"]["name"].upper()
