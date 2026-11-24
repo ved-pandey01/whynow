@@ -2,7 +2,7 @@
 whynow/settings.py — all the app's choices in one place.
 
 Change things here (your offer, your ICP, limits) without touching any other code.
-No API keys here: those live in the .env file.
+No API keys here: those come from Streamlit secrets (deployed) or the .env file (local).
 """
 
 # ---------------------------------------------------------------------------

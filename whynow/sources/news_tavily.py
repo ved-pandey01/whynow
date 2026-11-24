@@ -49,14 +49,16 @@ class NewsError(Exception):
 def _client():
     api_key = config.get_secret("TAVILY_API_KEY")
     if not api_key:
-        raise NewsError("Tavily API key is missing. Add TAVILY_API_KEY to your .env file.")
+        config.log_setup_problem("TAVILY_API_KEY is missing", "TAVILY_API_KEY")
+        raise NewsError(config.SETUP_PROBLEM)
     return TavilyClient(api_key=api_key)
 
 
 def _friendly(error):
     """Turn any Tavily failure into a message a user can act on."""
     if isinstance(error, (tavily_errors.InvalidAPIKeyError, tavily_errors.MissingAPIKeyError)):
-        return NewsError("Tavily rejected the API key. Check TAVILY_API_KEY in your .env file.")
+        config.log_setup_problem("Tavily rejected TAVILY_API_KEY")
+        return NewsError(config.SETUP_PROBLEM)
     if isinstance(error, tavily_errors.UsageLimitExceededError):
         return NewsError("Tavily credits have run out")
     if isinstance(error, tavily_errors.TimeoutError) or "timeout" in type(error).__name__.lower():

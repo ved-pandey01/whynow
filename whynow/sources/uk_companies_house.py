@@ -27,7 +27,7 @@ from whynow import cache
 from whynow import config
 from whynow import settings
 
-# Load API keys from the .env file in the project folder
+# API keys come from whynow/config.py (Streamlit secrets when deployed, .env locally)
 
 API_BASE = "https://api.company-information.service.gov.uk"
 PUBLIC_SITE = "https://find-and-update.company-information.service.gov.uk"
@@ -201,9 +201,8 @@ def _call_api(path, params=None):
 def _call_api_live(path, params=None):
     api_key = config.get_secret("COMPANIES_HOUSE_API_KEY")
     if not api_key:
-        raise CompaniesHouseError(
-            "Companies House API key is missing. Add COMPANIES_HOUSE_API_KEY to your .env file."
-        )
+        config.log_setup_problem("COMPANIES_HOUSE_API_KEY is missing", "COMPANIES_HOUSE_API_KEY")
+        raise CompaniesHouseError(config.SETUP_PROBLEM)
     try:
         # Companies House uses the key as a username with a blank password
         response = requests.get(
@@ -220,7 +219,8 @@ def _call_api_live(path, params=None):
         raise CompaniesHouseError(CH_DOWN)
 
     if response.status_code == 401:
-        raise CompaniesHouseError("Companies House rejected the API key. Check it in your .env file.")
+        config.log_setup_problem("Companies House rejected COMPANIES_HOUSE_API_KEY")
+        raise CompaniesHouseError(config.SETUP_PROBLEM)
     if response.status_code == 404:
         return None  # "not found" is normal, not an error
     if response.status_code == 429:

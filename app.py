@@ -146,7 +146,7 @@ def is_owner():
 
 
 def check_owner_password(entered):
-    """True if it matches OWNER_PASSWORD in .env (compared safely). If no password is set, owner mode is off."""
+    """True if it matches OWNER_PASSWORD (Streamlit secrets or .env; compared safely). No password set: owner mode is off."""
     expected = config.get_secret("OWNER_PASSWORD") or ""
     return bool(expected) and hmac.compare_digest(entered.encode(), expected.encode())
 

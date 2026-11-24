@@ -174,7 +174,7 @@ def test_main_model_used_when_it_works(monkeypatch):
 def test_key_problem_does_not_try_the_backup(monkeypatch):
     from whynow.models import Claim
     gemini = FakeGemini({settings.GEMINI_MODEL: bad_key()}).install(monkeypatch)
-    with pytest.raises(provider.AIError, match="rejected the API key"):
+    with pytest.raises(provider.AIError, match="Research is temporarily unavailable"):
         provider.generate_structured("hi", Claim)
     assert gemini.models_asked == [settings.GEMINI_MODEL]
 

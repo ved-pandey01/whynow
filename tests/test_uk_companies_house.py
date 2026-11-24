@@ -177,13 +177,14 @@ def test_search_with_no_results_returns_empty_list(monkeypatch):
 # --- Friendly errors ----------------------------------------------------
 def test_missing_key_gives_friendly_error(monkeypatch):
     monkeypatch.delenv("COMPANIES_HOUSE_API_KEY")
-    with pytest.raises(ch.CompaniesHouseError, match="key is missing"):
+    with pytest.raises(ch.CompaniesHouseError, match="Research is temporarily unavailable") as caught:
         ch.search_companies("Cognism")
+    assert ".env" not in str(caught.value) and "key" not in str(caught.value).lower()
 
 
 def test_wrong_key_gives_friendly_error(monkeypatch):
     fake_reply(monkeypatch, status_code=401)
-    with pytest.raises(ch.CompaniesHouseError, match="rejected the API key"):
+    with pytest.raises(ch.CompaniesHouseError, match="Research is temporarily unavailable"):
         ch.search_companies("Cognism")
 
 

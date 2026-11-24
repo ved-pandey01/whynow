@@ -7,6 +7,8 @@ All offline: no real keys, no real API calls.
 import ast
 import re
 import tomllib
+
+import pytest
 from pathlib import Path
 
 from whynow import cache
@@ -49,6 +51,14 @@ class FakeSecrets:
         if self.values is None:
             raise FileNotFoundError("no secrets.toml")
         return self.values.get(name, default)
+
+    def keys(self):
+        if self.values is None:
+            raise FileNotFoundError("no secrets.toml")
+        return self.values.keys()
+
+    def __getitem__(self, name):
+        return self.values[name]
 
 
 def test_no_secrets_file_is_never_an_error(monkeypatch):
@@ -162,3 +172,53 @@ def test_unwritable_project_folder_falls_back_to_the_temp_folder(monkeypatch, tm
     monkeypatch.setattr(config.os, "access", lambda p, mode: False if "blocked" in str(p) else real_access(p, mode))
     folder = config.data_folder(str(tmp_path / "blocked" / ".usage"))
     assert folder == tmp_path / "whynow" / ".usage" and folder.is_dir()
+
+
+# --- Found live (24 Nov 2026): 'Companies House API key is missing' on Streamlit Cloud ---------
+def test_secrets_inside_a_section_are_still_found(monkeypatch):
+    """A heading such as [secrets] above the four lines hides them from st.secrets.get and the environment."""
+    import streamlit as st
+    monkeypatch.setattr(st, "secrets", FakeSecrets({"secrets": {"COMPANIES_HOUSE_API_KEY": "ch-key"}}))
+    assert REAL_FROM_STREAMLIT_SECRETS("COMPANIES_HOUSE_API_KEY") == "ch-key"
+
+
+def test_secret_names_in_any_capitals_are_found(monkeypatch):
+    import streamlit as st
+    monkeypatch.setattr(st, "secrets", FakeSecrets({"companies_house_api_key": "ch-key"}))
+    assert REAL_FROM_STREAMLIT_SECRETS("COMPANIES_HOUSE_API_KEY") == "ch-key"
+
+
+def test_companies_house_reads_the_key_from_streamlit_secrets(monkeypatch):
+    """End to end: with no environment key, the Companies House call uses the key from st.secrets."""
+    from whynow.sources import uk_companies_house as ch
+    from tests.test_uk_companies_house import FakeResponse
+    monkeypatch.delenv("COMPANIES_HOUSE_API_KEY", raising=False)
+    monkeypatch.setattr(config, "_from_streamlit_secrets", lambda name: {"COMPANIES_HOUSE_API_KEY": "cloud-key"}.get(name))
+    used = []
+    monkeypatch.setattr(ch.requests, "get", lambda url, params=None, auth=None, **k: used.append(auth) or FakeResponse(200, {"items": []}))
+    ch._call_api_live("/search/companies", {"q": "x"})
+    assert used == [("cloud-key", "")]
+
+
+def test_missing_key_message_is_generic_and_the_log_names_only(monkeypatch, capsys):
+    """Visitors see a generic message; the server log explains, listing secret NAMES but never values."""
+    import streamlit as st
+    from whynow.sources import uk_companies_house as ch
+    monkeypatch.delenv("COMPANIES_HOUSE_API_KEY", raising=False)
+    monkeypatch.setattr(st, "secrets", FakeSecrets({"TAVILY_API_KEY": "tvly-secret-value", "secrets": {"X": "1"}}))
+    monkeypatch.setattr(config, "_from_streamlit_secrets", REAL_FROM_STREAMLIT_SECRETS)
+    with pytest.raises(ch.CompaniesHouseError) as caught:
+        ch._call_api_live("/search/companies", {"q": "x"})
+    assert str(caught.value) == "Research is temporarily unavailable. Please try again later."
+    log = capsys.readouterr().err
+    assert "COMPANIES_HOUSE_API_KEY is missing" in log and "TAVILY_API_KEY" in log and "secrets" in log
+    assert "tvly-secret-value" not in log
+
+
+def test_no_public_message_mentions_env():
+    """Error messages people can see never mention the .env file."""
+    import re
+    for path in ["app.py", "whynow/ai/provider.py", "whynow/sources/news_tavily.py", "whynow/sources/uk_companies_house.py"]:
+        for line in (ROOT / path).read_text().splitlines():
+            if re.search(r"(raise \w+Error\(|return \w+Error\(|st\.(error|warning|info)\()", line):
+                assert ".env" not in line, (path, line)

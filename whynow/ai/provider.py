@@ -73,7 +73,8 @@ def _ask_gemini(prompt, shape, model):
 
     api_key = config.get_secret("GEMINI_API_KEY")
     if not api_key:
-        raise AIError("Gemini API key is missing. Add GEMINI_API_KEY to your .env file.")
+        config.log_setup_problem("GEMINI_API_KEY is missing", "GEMINI_API_KEY")
+        raise AIError(config.SETUP_PROBLEM)
 
     # Keep the client in a variable: if it's created and used in one line,
     # Python throws it away too early and the library says "client has been closed".
@@ -120,7 +121,8 @@ def _friendly(error, model):
     """A plain-English message. Key problems never try the backup model (it wouldn't help)."""
     code = getattr(error, "code", None)
     if code in (401, 403):
-        return AIError("Gemini rejected the API key. Check GEMINI_API_KEY in your .env file.")
+        config.log_setup_problem("Gemini rejected GEMINI_API_KEY")
+        return AIError(config.SETUP_PROBLEM)
     if code == 404:
         return AIError(f"Gemini model '{model}' isn't available. "
                        "Google retires models over time: update GEMINI_MODEL in whynow/settings.py.", try_backup=True)

@@ -265,12 +265,13 @@ def test_signals_runs_one_search_per_type_and_tags_results(monkeypatch):
 def test_missing_key_gives_friendly_error(monkeypatch):
     monkeypatch.setattr(nt, "_client", nt.real_client_for_tests)   # checks the key before calling anything
     monkeypatch.delenv("TAVILY_API_KEY")
-    with pytest.raises(nt.NewsError, match="key is missing"):
+    with pytest.raises(nt.NewsError, match="Research is temporarily unavailable") as caught:
         nt.get_recent_news("Cognism")
+    assert ".env" not in str(caught.value)
 
 
 @pytest.mark.parametrize("error, message", [
-    (nt.tavily_errors.InvalidAPIKeyError("bad"), "rejected the API key"),
+    (nt.tavily_errors.InvalidAPIKeyError("bad"), "Research is temporarily unavailable"),
     (nt.tavily_errors.UsageLimitExceededError("limit"), "credits have run out"),
     (RuntimeError("anything else"), "Tavily isn't responding right now"),
 ])
