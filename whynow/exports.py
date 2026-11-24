@@ -33,6 +33,15 @@ def _value(r, field):
     return fact["value"] if fact else ""
 
 
+def founded_text(r):
+    """'2017 (Company registered 2024)', or just the year; 'not found (Holding company registered 2021)' if
+    only the registration year is known, so it's never passed off as the founding year."""
+    year, note = _value(r, "founded"), (r.get("profile") or {}).get("founded_note")
+    if not note:
+        return year
+    return f"{year or 'not found'} ({note})"
+
+
 def _more(r, part):
     return (r.get("more_about") or {}).get(part) or {}
 
@@ -176,7 +185,7 @@ def report_to_pdf(r, email=None, today=None):
     funding = main_total(_value(r, "total_raised"))
     facts = [("Employees", _value(r, "headcount") and f"{_value(r, 'headcount'):,}"
               + (f" ({_value(r, 'headcount_change')})" if _value(r, "headcount_change") else "")),
-             ("Founded", _value(r, "founded")), ("Funding raised", funding), ("Revenue", _value(r, "revenue")),
+             ("Founded", founded_text(r)), ("Funding raised", funding), ("Revenue", _value(r, "revenue")),
              ("Industry", _value(r, "industry")), ("Headquarters", _value(r, "headquarters")),
              ("Website", _value(r, "website"))]
     for label, value in facts:

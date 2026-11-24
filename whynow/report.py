@@ -363,6 +363,73 @@ def _add_sales_hiring_signal(signals, more_about, brand, checks, most=3):
     return True
 
 
+# Companies House industry codes for holding companies and head offices
+HOLDING_SIC_CODES = {"64201", "64202", "64203", "64204", "64205", "64209", "70100"}
+HOLDING_NAME_WORDS = {"holdings", "holding", "group", "holdco", "topco", "bidco", "midco"}
+_FOUNDED_IN_TEXT = re.compile(r"\b(?:founded|established|launched|started)\s+(?:in\s+)?((?:18|19|20)\d\d)\b",
+                              re.IGNORECASE)
+
+
+def is_holding_company(profile):
+    """A holding company or group parent: its industry code says so, it files group accounts, or its name does."""
+    return bool(set(profile.get("sic_codes") or []) & HOLDING_SIC_CODES
+                or (profile.get("last_accounts_type") or "") == "group"
+                or set(ch._words(profile.get("name"))) & HOLDING_NAME_WORDS)
+
+
+def _brand_founding_year(research):
+    """
+    (year, source id) for when the brand itself was founded, from the sources only: the company profile's
+    'Founded', or else a 'founded in 2012' phrase in the profile, website or news text. (None, None) if not found.
+    """
+    sources, card = research["sources"], research.get("card") or {}
+    year = str(card.get("founded") or "")[:4]
+    if year.isdigit():
+        return year, sources._by_url.get(card.get("source"))
+    for s in sources.items:
+        if s["kind"] in ("company_card", "website", "news"):
+            found = _FOUNDED_IN_TEXT.search(s.get("content") or "")
+            if found:
+                return found.group(1), s["id"]
+    return None, None
+
+
+def registered_later(research):
+    """
+    When the registered company is newer than the brand (often a holding company set up later, e.g.
+    ONFIDO HOLDINGS LIMITED in 2021, or RIGHTMOVE PLC in 2007 for a brand from 2000), 'Founded' should show
+    the brand's year from the sources, with a note: 'Holding company registered 2021'.
+    Returns {"brand_year", "source", "registered", "note"} or None when the dates agree.
+    For a holding company with no brand year in the sources, Founded is left 'not found' (never the
+    registration year passed off as the founding year), and the note still says when it was registered.
+    """
+    profile = research["profile"]
+    registered = (profile.get("founded") or "")[:4]
+    if not registered.isdigit():
+        return None
+    holding = is_holding_company(profile)
+    brand_year, source = _brand_founding_year(research)
+    if brand_year and int(brand_year) >= int(registered):
+        return None                                   # registered when the brand began (or earlier): nothing to note
+    if not brand_year and not holding:
+        return None                                   # an ordinary company: its registration year is its founding year
+    kind = "Holding company" if holding else "Company"
+    return {"brand_year": brand_year, "source": source, "registered": registered,
+            "note": f"{kind} registered {registered}"}
+
+
+def _note_registration_year(research):
+    """Add a plain note to the Companies House source, so the AI doesn't call the registration year the founding year."""
+    later = registered_later(research)
+    profile = research["profile"]
+    item = research["sources"].get(research["sources"]._by_url.get(profile["source"]) or "")
+    if not later or not item or "Registration note:" in item["content"]:
+        return
+    brand = f"the brand dates from {later['brand_year']}" if later["brand_year"] else "the brand's founding year isn't in this data"
+    item["content"] += (f"\nRegistration note: {later['note']}; {brand}. This registration date is not the brand's "
+                        "founding date.")
+
+
 def company_profile(research):
     """
     The facts for the banner, profile card and stat tiles. Each is {"value", "source"}
@@ -377,6 +444,7 @@ def company_profile(research):
 
     founded_year = (p.get("founded") or "")[:4] or None
     changed_owner = bool(research.get("former_business"))   # the card may describe the former business
+    later = None if changed_owner else registered_later(research)   # e.g. a holding company set up after the brand
     typed_site = research.get("website") if looks_like_website(research.get("typed") or "") else None
     website = typed_site or card.get("website") or research.get("website")   # the site the user typed wins
     return {
@@ -388,8 +456,10 @@ def company_profile(research):
         "headquarters": fact(card.get("headquarters"), card_id),
         "industry": (fact(card.get("industry"), card_id)
                      or fact(ch.sic_description((p.get("sic_codes") or [None])[0]), ch_id)),
-        "founded": ((fact(founded_year, ch_id) or fact(card.get("founded"), card_id)) if changed_owner
+        "founded": (fact(later["brand_year"], later["source"]) if later
+                    else (fact(founded_year, ch_id) or fact(card.get("founded"), card_id)) if changed_owner
                     else (fact(card.get("founded"), card_id) or fact(founded_year, ch_id))),
+        "founded_note": later["note"] if later else None,
         "headcount": fact(card.get("headcount"), card_id),
         "headcount_change": fact(card.get("headcount_yearly_change"), card_id),
         "total_raised": fact(", ".join(card.get("total_raised") or []), card_id),
@@ -415,6 +485,7 @@ def build_report(research, offer=None, ai=generate_structured, today=None, on_st
             on_step(step, DONE)
         return _closed_company_report(research)
 
+    _note_registration_year(research)
     prompt = build_report_prompt(profile["name"], offer, sources.as_prompt_text(),
                                  (today or date.today()).isoformat())
     ai_start = time.monotonic()

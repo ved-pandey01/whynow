@@ -375,7 +375,7 @@ def stat_tile(label, icon_name, fact, by_id, value=None, trend=None, note=None):
         direction = "down" if trend.strip().startswith("-") else "up"
         arrow = "▼" if direction == "down" else "▲"
         trend_html = f'<div class="wn-trend {direction}">{arrow} {esc(trend)}</div>'
-    note_html = f'<div class="wn-stat-note">{esc(note)}</div>' if note and fact else ""
+    note_html = f'<div class="wn-stat-note">{esc(note)}</div>' if note else ""
     return (f'<div class="wn-stat"><div class="wn-stat-label">{icon(icon_name)}{esc(label)}</div>'
             f'{shown}{trend_html}{note_html}</div>')
 
@@ -395,7 +395,7 @@ def stats_row(r, by_id):
     tiles = [
         stat_tile("Employees", "groups", headcount, by_id,
                   value=f"{headcount['value']:,}" if headcount else None, trend=change),
-        stat_tile("Founded", "calendar_month", p.get("founded"), by_id),
+        stat_tile("Founded", "calendar_month", p.get("founded"), by_id, note=p.get("founded_note")),
         stat_tile("Funding raised", "savings", p.get("total_raised"), by_id,
                   value=esc(split_totals(p["total_raised"]["value"])[0]) if p.get("total_raised") else None,
                   note=split_totals(p["total_raised"]["value"])[1] if p.get("total_raised") else None),
