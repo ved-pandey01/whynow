@@ -181,6 +181,6 @@ Shareable links:
 ## About the builder
 Built by **Ved Prakash Pandey**, a Business Development professional moving into GTM Engineering.
 
-[LinkedIn](https://www.linkedin.com/in/ved-prakash-pandey-954493202/) · [GitHub](https://github.com/ved-pandey01)
+[LinkedIn](https://www.linkedin.com/in/vedprakashpandey01) · [GitHub](https://github.com/ved-pandey01)
 
 WhyNow is the outbound partner to my [Inbound Lead Engine](https://github.com/ved-pandey01/inbound-lead-engine), built in n8n.

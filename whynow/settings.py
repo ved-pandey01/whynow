@@ -156,7 +156,7 @@ TRY_COMPANIES = [                  # the "Try:" chips: (name shown, website, fix
 AUTHOR_NAME = "Ved Prakash Pandey"
 AUTHOR_SHORT_NAME = "Ved"          # used in the header pill on phones
 AUTHOR_INITIALS = "VP"
-AUTHOR_LINKEDIN = "https://www.linkedin.com/in/ved-prakash-pandey-954493202/"
+AUTHOR_LINKEDIN = "https://www.linkedin.com/in/vedprakashpandey01"
 AUTHOR_GITHUB = "https://github.com/ved-pandey01"
 SAMPLE_REPORT_FILE = "data/sample_report_paddle.json"   # the saved example behind "See a sample report"
 
