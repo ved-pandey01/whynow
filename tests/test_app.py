@@ -429,3 +429,10 @@ def test_sample_link_opens_the_paddle_sample(app):
     assert not app.exception
     assert app.session_state["sample"] is True
     assert "PADDLE" in app.session_state["report"]["company"]["name"].upper()
+
+
+def test_search_bar_has_the_phone_hint_script():
+    at = AppTest.from_file("../app.py", default_timeout=30)
+    at.run()
+    assert not at.exception
+    assert any("Company or website" in (h.proto.body or "") for h in at.get("html"))

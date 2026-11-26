@@ -139,6 +139,7 @@ APP_TYPING_LINES = [             # the animated amber line on the landing page
     "Because they're expanding to new markets…",
 ]
 SEARCH_PLACEHOLDER = "Type a company or website, e.g. cognism.com"
+SEARCH_PLACEHOLDER_PHONE = "Company or website"   # on screens under 600px, so it isn't cut off
 OFFER_HINT = "WhyNow uses this to score the fit and write your email."
 EMAIL_PERSONAS = {                 # who the email is for, and what that person cares about
     "Head of Sales": "meetings and pipeline: helping their reps book more meetings and build more pipeline",

@@ -239,6 +239,8 @@ def search_form():
                                     label_visibility="collapsed", max_chars=settings.MAX_SEARCH_CHARS,
                                     key="wn_company")
             submitted = button.form_submit_button("Research →", type="primary")
+    with st.container(key="wn_scroll_hint"):   # hidden box: the short search hint on phones
+        st.html(ui.phone_placeholder_script(), unsafe_allow_javascript=True)
     if not is_owner():
         st.html(ui.searches_left_line(usage.searches_left(visitor_id())))
     search_filters()

@@ -143,6 +143,20 @@ def scroll_script(selector):
             "setTimeout(go,300);})();</script>")
 
 
+def phone_placeholder_script():
+    """
+    A tiny script that swaps the search bar's hint to the short one on screens under 600px wide
+    (CSS can't change a placeholder). It follows the screen if it's rotated or resized.
+    No '<' inside the script: it stops Streamlit loading it.
+    """
+    long_text, short_text = json.dumps(settings.SEARCH_PLACEHOLDER), json.dumps(settings.SEARCH_PLACEHOLDER_PHONE)
+    return ("<script>(function(){var w=window.parent||window,d=w.document,m=w.matchMedia('(max-width: 599px)'),tries=0;"
+            "function set(){var box=d.querySelectorAll('.st-key-wn_company input');"
+            f"for(var i=0;box.length>i;i++){{box[i].placeholder=m.matches?{short_text}:{long_text};}}return box.length;}}"
+            "function go(){tries++;if(!set()&&20>tries){setTimeout(go,150);}}go();"
+            "if(!w.wnPhoneHint){w.wnPhoneHint=true;m.addEventListener('change',set);}})();</script>")
+
+
 def back_link():
     """'← Back to home' above every report (live or sample)."""
     return f'<a class="wn-back" href="{HOME_URL}" target="_self">← Back to home</a>'

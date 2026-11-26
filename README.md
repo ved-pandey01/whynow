@@ -10,7 +10,7 @@ Sales reps lose time researching accounts by hand, then send outreach that is ge
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.67-FF4B4B?logo=streamlit&logoColor=white)
 ![Gemini](https://img.shields.io/badge/AI-Gemini-8E75B2?logo=googlegemini&logoColor=white)
 ![Tavily](https://img.shields.io/badge/Search-Tavily-0A66C2)
-![Tests](https://img.shields.io/badge/tests-487%20passing-2EA44F)
+![Tests](https://img.shields.io/badge/tests-491%20passing-2EA44F)
 
 **[Live demo](https://whynow.streamlit.app)** · **[Sample report](#sample-report)** · [How it works in detail](docs/how-it-works.md)
 
@@ -87,7 +87,7 @@ A real report for Paddle, saved from a live run.
 - **Model fallbacks.** gemini-3.6-flash is the main model, with 3 backup models. Each is tried once, with no hidden retries.
 - **Caching.** Companies House data is kept for 7 days, and search results and finished reports for 24 hours, so nothing is paid for twice.
 - **Rate limits.** Daily limits are counted on the server, so a page refresh doesn't reset them.
-- **487 automated tests.** They use fake API replies, so they run in seconds, cost nothing and need no keys.
+- **491 automated tests.** They use fake API replies, so they run in seconds, cost nothing and need no keys.
 - **Live test on 18 companies.** Real searches through the full pipeline, with the error patterns found and fixed (see Results).
 - **Secrets never committed.** API keys live only in a git-ignored `.env` file, and the full Git history was scanned before publishing.
 
@@ -130,7 +130,7 @@ A live test on 19 Nov 2026: 15 UK B2B companies of different sizes and sectors, 
 | News, signals, job ads | [Tavily](https://tavily.com/) search API |
 | AI | Google Gemini, with structured answers checked by Pydantic |
 | Exports | fpdf2 for PDF, Python's csv module for CSV |
-| Tests | pytest, 487 tests |
+| Tests | pytest, 491 tests |
 
 ## Run it locally
 You need Python 3.13 and three API keys: Companies House (free), Tavily (free tier available) and Gemini.

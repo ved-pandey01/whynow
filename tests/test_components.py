@@ -262,3 +262,28 @@ def test_picker_card_shows_number_incorporation_date_postcode_and_status():
     assert "Active" in card                                         # the status chip
     assert "LS16 9JG" in ui.picker_card(dict(m, postcode=None, city="LS16 9JG")) or "Leeds" in ui.picker_card(
         dict(m, postcode=None))                                     # the town when there's no postcode
+
+
+# --- Phone view (checked at 390px wide in headless Chrome) ------------------------------------
+def test_phone_placeholder_script_swaps_to_the_short_hint_under_600px():
+    from whynow import settings
+    script = ui.phone_placeholder_script()
+    inside = script[len("<script>"):-len("</script>")]
+    assert "<" not in inside                                   # a '<' stops Streamlit loading the script
+    assert "(max-width: 599px)" in inside and ".st-key-wn_company input" in inside
+    assert '"Company or website"' in inside and f'"{settings.SEARCH_PLACEHOLDER}"' in inside
+    assert settings.SEARCH_PLACEHOLDER_PHONE == "Company or website"
+
+
+def test_css_hides_streamlits_toolbar_and_leaves_room_on_phones():
+    css = ui.CSS_FILE.read_text()
+    assert '[data-testid="stToolbar"], [data-testid="stHeader"], [data-testid="stDecoration"] { display: none !important; }' in css
+    phones = css[css.index("@media (max-width: 760px) {\n  .stApp .wn-headline"):]
+    phones = phones[:phones.index("\n}")]
+    assert "padding-bottom: 90px" in phones                    # Streamlit Cloud's badge never covers content
+    assert ':has(.wn-preview) { row-gap: 1rem' in phones       # small gap above the Example report
+
+
+def test_toolbar_is_minimal_in_the_config():
+    from pathlib import Path
+    assert 'toolbarMode = "minimal"' in (Path(__file__).parent.parent / ".streamlit" / "config.toml").read_text()
